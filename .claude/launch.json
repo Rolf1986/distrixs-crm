@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "distrixs-crm",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/usr/local/Cellar/node@20/20.20.2/bin/node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev"],
       "port": 3000,
       "autoPort": false
     }
