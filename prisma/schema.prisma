@@ -1,0 +1,583 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  SALES
+  FINANCE
+  VIEWER
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  PROSPECT
+}
+
+enum AddressType {
+  BILLING
+  SHIPPING
+  VISITING
+}
+
+enum SupplierType {
+  EU
+  CHINA
+  OTHER
+}
+
+enum DealStatus {
+  NEW
+  CONTACTED
+  QUOTE_SENT
+  WON
+  LOST
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CREDITED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  MOLLIE
+  WERO
+  OTHER
+}
+
+enum PaymentSource {
+  MANUAL
+  MOLLIE
+  WERO
+  IMPORT
+}
+
+enum PaymentTerm {
+  DAYS_14
+  DAYS_30
+  PREPAYMENT
+  INSTALLMENTS
+}
+
+enum ReminderType {
+  FIRST
+  SECOND
+  FINAL
+  LEGAL
+}
+
+enum ReminderChannel {
+  EMAIL
+  PHONE
+  LETTER
+}
+
+enum ReminderStatus {
+  SENT
+  FAILED
+  PENDING
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CLOSED
+  CANCELLED
+}
+
+enum PurchaseOrderLineStatus {
+  PENDING
+  PARTIALLY_RECEIVED
+  RECEIVED
+}
+
+enum ExtraCostType {
+  PRODUCT_PRICE
+  IMPORT_DUTIES
+  SHIPPING
+}
+
+enum ActivityType {
+  TASK
+  CALL
+  MEETING
+  EMAIL
+  NOTE
+}
+
+enum ActivityStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+enum TwinfieldSyncStatus {
+  NOT_SYNCED
+  PENDING
+  SYNCED
+  ERROR
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  role         UserRole  @default(SALES)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  dealsCreated         Deal[]          @relation("DealCreatedBy")
+  quotesCreated        Quote[]         @relation("QuoteCreatedBy")
+  invoicesCreated      Invoice[]       @relation("InvoiceCreatedBy")
+  purchaseOrdersCreated PurchaseOrder[] @relation("POCreatedBy")
+  activitiesCreated    Activity[]      @relation("ActivityCreatedBy")
+  activitiesAssigned   Activity[]      @relation("ActivityAssignedTo")
+  paymentsCreated      Payment[]
+
+  @@map("users")
+}
+
+model Customer {
+  id                 String         @id @default(cuid())
+  customerNumber     String         @unique @map("customer_number")
+  companyName        String         @map("company_name")
+  kvkNumber          String?        @map("kvk_number")
+  vatNumber          String?        @map("vat_number")
+  vatCountry         String?        @map("vat_country")
+  defaultPaymentTerm PaymentTerm    @default(DAYS_30) @map("default_payment_term")
+  notes              String?
+  status             CustomerStatus @default(ACTIVE)
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  addresses  CustomerAddress[]
+  contacts   CustomerContact[]
+  deals      Deal[]
+  quotes     Quote[]
+  invoices   Invoice[]
+
+  @@map("customers")
+}
+
+model CustomerAddress {
+  id          String      @id @default(cuid())
+  customerId  String      @map("customer_id")
+  type        AddressType
+  isDefault   Boolean     @default(false) @map("is_default")
+  street      String
+  houseNumber String      @map("house_number")
+  postalCode  String      @map("postal_code")
+  city        String
+  country     String      @default("NL")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@map("customer_addresses")
+}
+
+model CustomerContact {
+  id             String   @id @default(cuid())
+  customerId     String   @map("customer_id")
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  email          String?
+  phone          String?
+  roleOrFunction String?  @map("role_or_function")
+  isPrimary      Boolean  @default(false) @map("is_primary")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  customer  Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deals     Deal[]     @relation("DealPrimaryContact")
+  quotes    Quote[]
+  invoices  Invoice[]
+  activities Activity[]
+
+  @@map("customer_contacts")
+}
+
+model Supplier {
+  id              String       @id @default(cuid())
+  name            String
+  supplierType    SupplierType @default(EU) @map("supplier_type")
+  defaultCurrency String       @default("EUR") @map("default_currency")
+  email           String?
+  phone           String?
+  notes           String?
+  isActive        Boolean      @default(true) @map("is_active")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  products       Product[]
+  purchaseOrders PurchaseOrder[]
+
+  @@map("suppliers")
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  sku               String   @unique
+  title             String
+  shortDescription  String?  @map("short_description")
+  supplierId        String   @map("supplier_id")
+  productType       String?  @map("product_type")
+  isStaffelProduct  Boolean  @default(false) @map("is_staffel_product")
+  staffelGroupCode  String?  @map("staffel_group_code")
+  advisorySellPrice Decimal  @default(0) @map("advisory_sell_price") @db.Decimal(12, 2)
+  baseCostPrice     Decimal  @default(0) @map("base_cost_price") @db.Decimal(12, 2)
+  unit              String   @default("stuk")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  supplier          Supplier           @relation(fields: [supplierId], references: [id])
+  priceTiers        ProductPriceTier[]
+  dealLines         DealLine[]
+  purchaseOrderLines PurchaseOrderLine[]
+
+  @@map("products")
+}
+
+model ProductPriceTier {
+  id               String   @id @default(cuid())
+  productId        String?  @map("product_id")
+  staffelGroupCode String?  @map("staffel_group_code")
+  minQty           Int      @map("min_qty")
+  maxQty           Int?     @map("max_qty")
+  unitPrice        Decimal  @map("unit_price") @db.Decimal(12, 2)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  product Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_price_tiers")
+}
+
+model Deal {
+  id                String     @id @default(cuid())
+  dealNumber        String     @unique @map("deal_number")
+  title             String
+  customerId        String     @map("customer_id")
+  primaryContactId  String?    @map("primary_contact_id")
+  status            DealStatus @default(NEW)
+  expectedCloseDate DateTime?  @map("expected_close_date")
+  notes             String?
+  createdBy         String     @map("created_by")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  primaryContact CustomerContact? @relation("DealPrimaryContact", fields: [primaryContactId], references: [id])
+  createdByUser  User            @relation("DealCreatedBy", fields: [createdBy], references: [id])
+
+  lines          DealLine[]
+  quotes         Quote[]
+  invoices       Invoice[]
+  purchaseOrders PurchaseOrder[]
+  activities     Activity[]
+  files          FileAsset[]
+
+  @@map("deals")
+}
+
+model DealLine {
+  id                   String   @id @default(cuid())
+  dealId               String   @map("deal_id")
+  productId            String   @map("product_id")
+  skuSnapshot          String   @map("sku_snapshot")
+  titleSnapshot        String   @map("title_snapshot")
+  supplierIdSnapshot   String   @map("supplier_id_snapshot")
+  supplierTypeSnapshot String   @map("supplier_type_snapshot")
+  qty                  Decimal  @db.Decimal(12, 3)
+  grossUnitPrice       Decimal  @map("gross_unit_price") @db.Decimal(12, 2)
+  discountPercent      Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  netLineTotal         Decimal  @map("net_line_total") @db.Decimal(12, 2)
+  baseCostSnapshot     Decimal  @map("base_cost_snapshot") @db.Decimal(12, 2)
+  expectedCostTotal    Decimal  @map("expected_cost_total") @db.Decimal(12, 2)
+  expectedMarginTotal  Decimal  @map("expected_margin_total") @db.Decimal(12, 2)
+  realCostTotal        Decimal? @map("real_cost_total") @db.Decimal(12, 2)
+  realMarginTotal      Decimal? @map("real_margin_total") @db.Decimal(12, 2)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  deal               Deal               @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  product            Product            @relation(fields: [productId], references: [id])
+  quoteLines         QuoteLine[]
+  purchaseOrderLines PurchaseOrderLine[]
+
+  @@map("deal_lines")
+}
+
+model Quote {
+  id              String      @id @default(cuid())
+  quoteNumber     String      @unique @map("quote_number")
+  dealId          String      @map("deal_id")
+  customerId      String      @map("customer_id")
+  contactId       String?     @map("contact_id")
+  status          QuoteStatus @default(DRAFT)
+  quoteDate       DateTime    @default(now()) @map("quote_date")
+  validUntil      DateTime?   @map("valid_until")
+  subtotal        Decimal     @default(0) @db.Decimal(12, 2)
+  vatAmount       Decimal     @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  total           Decimal     @default(0) @db.Decimal(12, 2)
+  termsVersion    String?     @map("terms_version")
+  createdBy       String      @map("created_by")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  deal          Deal            @relation(fields: [dealId], references: [id])
+  customer      Customer        @relation(fields: [customerId], references: [id])
+  contact       CustomerContact? @relation(fields: [contactId], references: [id])
+  createdByUser User            @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
+
+  lines    QuoteLine[]
+  invoices Invoice[]
+  files    FileAsset[]
+
+  @@map("quotes")
+}
+
+model QuoteLine {
+  id                     String   @id @default(cuid())
+  quoteId                String   @map("quote_id")
+  dealLineId             String?  @map("deal_line_id")
+  productId              String?  @map("product_id")
+  skuSnapshot            String   @map("sku_snapshot")
+  titleSnapshot          String   @map("title_snapshot")
+  qty                    Decimal  @db.Decimal(12, 3)
+  grossUnitPrice         Decimal  @map("gross_unit_price") @db.Decimal(12, 2)
+  discountPercent        Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  netLineTotal           Decimal  @map("net_line_total") @db.Decimal(12, 2)
+  costSnapshot           Decimal  @map("cost_snapshot") @db.Decimal(12, 2)
+  expectedMarginSnapshot Decimal  @map("expected_margin_snapshot") @db.Decimal(12, 2)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  quote        Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  dealLine     DealLine?    @relation(fields: [dealLineId], references: [id])
+  invoiceLines InvoiceLine[]
+
+  @@map("quote_lines")
+}
+
+model Invoice {
+  id                    String              @id @default(cuid())
+  invoiceNumber         String              @unique @map("invoice_number")
+  dealId                String?             @map("deal_id")
+  quoteId               String?             @map("quote_id")
+  customerId            String              @map("customer_id")
+  contactId             String?             @map("contact_id")
+  status                InvoiceStatus       @default(DRAFT)
+  invoiceDate           DateTime            @default(now()) @map("invoice_date")
+  dueDate               DateTime            @map("due_date")
+  paymentTermType       PaymentTerm         @default(DAYS_30) @map("payment_term_type")
+  subtotal              Decimal             @default(0) @db.Decimal(12, 2)
+  vatAmount             Decimal             @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  total                 Decimal             @default(0) @db.Decimal(12, 2)
+  paidAmount            Decimal             @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  openAmount            Decimal             @default(0) @map("open_amount") @db.Decimal(12, 2)
+  twinfieldSyncStatus   TwinfieldSyncStatus @default(NOT_SYNCED) @map("twinfield_sync_status")
+  twinfieldLocked       Boolean             @default(false) @map("twinfield_locked")
+  twinfieldReference    String?             @map("twinfield_reference")
+  termsVersion          String?             @map("terms_version")
+  createdBy             String              @map("created_by")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  deal          Deal?           @relation(fields: [dealId], references: [id])
+  quote         Quote?          @relation(fields: [quoteId], references: [id])
+  customer      Customer        @relation(fields: [customerId], references: [id])
+  contact       CustomerContact? @relation(fields: [contactId], references: [id])
+  createdByUser User            @relation("InvoiceCreatedBy", fields: [createdBy], references: [id])
+
+  lines     InvoiceLine[]
+  payments  Payment[]
+  reminders InvoiceReminder[]
+  files     FileAsset[]
+
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id              String   @id @default(cuid())
+  invoiceId       String   @map("invoice_id")
+  quoteLineId     String?  @map("quote_line_id")
+  productId       String?  @map("product_id")
+  skuSnapshot     String   @map("sku_snapshot")
+  titleSnapshot   String   @map("title_snapshot")
+  qty             Decimal  @db.Decimal(12, 3)
+  grossUnitPrice  Decimal  @map("gross_unit_price") @db.Decimal(12, 2)
+  discountPercent Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  netLineTotal    Decimal  @map("net_line_total") @db.Decimal(12, 2)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  invoice   Invoice    @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  quoteLine QuoteLine? @relation(fields: [quoteLineId], references: [id])
+
+  @@map("invoice_lines")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  invoiceId   String        @map("invoice_id")
+  paymentDate DateTime      @map("payment_date")
+  amount      Decimal       @db.Decimal(12, 2)
+  method      PaymentMethod @default(BANK_TRANSFER)
+  source      PaymentSource @default(MANUAL)
+  reference   String?
+  createdBy   String?       @map("created_by")
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdByUser User?   @relation(fields: [createdBy], references: [id])
+
+  @@map("payments")
+}
+
+model InvoiceReminder {
+  id           String          @id @default(cuid())
+  invoiceId    String          @map("invoice_id")
+  reminderType ReminderType    @map("reminder_type")
+  sentAt       DateTime        @map("sent_at")
+  channel      ReminderChannel
+  status       ReminderStatus
+  notes        String?
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_reminders")
+}
+
+model PurchaseOrder {
+  id         String              @id @default(cuid())
+  poNumber   String              @unique @map("po_number")
+  dealId     String?             @map("deal_id")
+  supplierId String              @map("supplier_id")
+  status     PurchaseOrderStatus @default(DRAFT)
+  orderDate  DateTime            @default(now()) @map("order_date")
+  notes      String?
+  createdBy  String              @map("created_by")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  deal          Deal?                    @relation(fields: [dealId], references: [id])
+  supplier      Supplier                 @relation(fields: [supplierId], references: [id])
+  createdByUser User                     @relation("POCreatedBy", fields: [createdBy], references: [id])
+
+  lines      PurchaseOrderLine[]
+  extraCosts PurchaseOrderExtraCost[]
+  files      FileAsset[]
+
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderLine {
+  id                   String                  @id @default(cuid())
+  purchaseOrderId      String                  @map("purchase_order_id")
+  dealLineId           String?                 @map("deal_line_id")
+  productId            String                  @map("product_id")
+  skuSnapshot          String                  @map("sku_snapshot")
+  titleSnapshot        String                  @map("title_snapshot")
+  qtyOrdered           Decimal                 @map("qty_ordered") @db.Decimal(12, 3)
+  qtyReceived          Decimal                 @default(0) @map("qty_received") @db.Decimal(12, 3)
+  baseCostSnapshot     Decimal                 @map("base_cost_snapshot") @db.Decimal(12, 2)
+  expectedDeliveryDate DateTime?               @map("expected_delivery_date")
+  status               PurchaseOrderLineStatus @default(PENDING)
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  dealLine      DealLine?     @relation(fields: [dealLineId], references: [id])
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@map("purchase_order_lines")
+}
+
+model PurchaseOrderExtraCost {
+  id               String        @id @default(cuid())
+  purchaseOrderId  String        @map("purchase_order_id")
+  costType         ExtraCostType @map("cost_type")
+  amount           Decimal       @db.Decimal(12, 2)
+  currency         String        @default("EUR")
+  description      String?
+  sourceDocumentId String?       @map("source_document_id")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_order_extra_costs")
+}
+
+model FileAsset {
+  id           String   @id @default(cuid())
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  storagePath  String   @map("storage_path")
+  uploadedBy   String   @map("uploaded_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  deal          Deal?          @relation(fields: [entityId], references: [id], map: "file_deal_fk")
+  quote         Quote?         @relation(fields: [entityId], references: [id], map: "file_quote_fk")
+  invoice       Invoice?       @relation(fields: [entityId], references: [id], map: "file_invoice_fk")
+  purchaseOrder PurchaseOrder? @relation(fields: [entityId], references: [id], map: "file_po_fk")
+
+  @@index([entityType, entityId])
+  @@map("file_assets")
+}
+
+model Activity {
+  id         String         @id @default(cuid())
+  dealId     String?        @map("deal_id")
+  customerId String?        @map("customer_id")
+  contactId  String?        @map("contact_id")
+  type       ActivityType
+  title      String
+  notes      String?
+  dueAt      DateTime?      @map("due_at")
+  status     ActivityStatus @default(OPEN)
+  assignedTo String?        @map("assigned_to")
+  createdBy  String         @map("created_by")
+  createdAt  DateTime       @default(now()) @map("created_at")
+  updatedAt  DateTime       @updatedAt @map("updated_at")
+
+  deal          Deal?           @relation(fields: [dealId], references: [id])
+  contact       CustomerContact? @relation(fields: [contactId], references: [id])
+  assignedToUser User?           @relation("ActivityAssignedTo", fields: [assignedTo], references: [id])
+  createdByUser  User            @relation("ActivityCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("activities")
+}
