@@ -153,13 +153,14 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  dealsCreated         Deal[]          @relation("DealCreatedBy")
-  quotesCreated        Quote[]         @relation("QuoteCreatedBy")
-  invoicesCreated      Invoice[]       @relation("InvoiceCreatedBy")
+  dealsCreated          Deal[]          @relation("DealCreatedBy")
+  quotesCreated         Quote[]         @relation("QuoteCreatedBy")
+  invoicesCreated       Invoice[]       @relation("InvoiceCreatedBy")
   purchaseOrdersCreated PurchaseOrder[] @relation("POCreatedBy")
-  activitiesCreated    Activity[]      @relation("ActivityCreatedBy")
-  activitiesAssigned   Activity[]      @relation("ActivityAssignedTo")
-  paymentsCreated      Payment[]
+  activitiesCreated     Activity[]      @relation("ActivityCreatedBy")
+  activitiesAssigned    Activity[]      @relation("ActivityAssignedTo")
+  paymentsCreated       Payment[]
+  sessions              Session[]
 
   @@map("users")
 }
@@ -580,4 +581,36 @@ model Activity {
   createdByUser  User            @relation("ActivityCreatedBy", fields: [createdBy], references: [id])
 
   @@map("activities")
+}
+
+model OtpCode {
+  id        String    @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([email])
+  @@map("otp_codes")
+}
+
+// NextAuth session storage
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
 }
