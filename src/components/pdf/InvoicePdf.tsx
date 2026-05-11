@@ -291,23 +291,21 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
           ))}
         </View>
 
-        {/* Bankgegevens (kleiner, onder betaalinstructies) */}
-        {(co?.iban || co?.kvkNumber) && (
-          <View style={[shared.bankBox, { marginTop: 10 }]}>
-            <Text style={shared.bankText}>
-              {[
-                co.bankName,
-                co.iban ? `IBAN: ${co.iban}` : null,
-                co.bic ? `SWIFT / BIC: ${co.bic}` : null,
-                co.kvkNumber ? `KVK: ${co.kvkNumber}` : null,
-                co.vatNumber ? (lang === "EN" ? `VAT: ${co.vatNumber}` : `BTW: ${co.vatNumber}`) : null,
-              ].filter(Boolean).join("  |  ")}
-            </Text>
-            <Text style={[shared.bankText, { marginTop: 3, fontStyle: "italic" }]}>
-              {t("termsFooterInvoice", lang)}
-            </Text>
-          </View>
-        )}
+        {/* Bankgegevens */}
+        <View style={[shared.bankBox, { marginTop: 10 }]}>
+          <Text style={shared.bankLabel}>{lang === "EN" ? "Bank details" : "Bankgegevens"}</Text>
+          {co?.bankName && <Text style={shared.bankText}>{co.bankName}</Text>}
+          {co?.iban    && <Text style={shared.bankText}>IBAN: {co.iban}</Text>}
+          {co?.bic     && <Text style={shared.bankText}>SWIFT / BIC: {co.bic}</Text>}
+          {co?.kvkNumber && <Text style={shared.bankText}>KVK: {co.kvkNumber}</Text>}
+          {co?.vatNumber && <Text style={shared.bankText}>{lang === "EN" ? "VAT" : "BTW"}: {co.vatNumber}</Text>}
+          <Text style={[shared.bankText, { marginTop: 6 }]}>
+            Op al onze leveringen en diensten zijn de algemene voorwaarden van toepassing welke zijn bijgevoegd met deze factuur.
+          </Text>
+          <Text style={[shared.bankText, { marginTop: 2, fontStyle: "italic", color: "#888" }]}>
+            The general terms and conditions that are attached to this invoice apply to all our deliveries and services.
+          </Text>
+        </View>
 
         {/* Page footer */}
         <View style={shared.pageFooter} fixed>

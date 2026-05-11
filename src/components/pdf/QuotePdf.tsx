@@ -247,15 +247,17 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
 
         {/* Footer bottom */}
         <View style={shared.pageFooter} fixed>
-          <Text style={shared.footerText}>
-            {t("termsFooterQuote", lang)}
-          </Text>
+          <View style={{ flex: 1 }}>
+            <Text style={shared.footerText}>
+              Bij akkoord op de offerte wordt automatisch ook de algemene voorwaarden geaccepteerd.
+            </Text>
+            {footerIds ? (
+              <Text style={[shared.footerText, { marginTop: 2 }]}>{footerIds}</Text>
+            ) : null}
+          </View>
           <Text style={shared.footerText} render={({ pageNumber, totalPages }) =>
             `${pageNumber} / ${totalPages}`
           } />
-        </View>
-        <View style={{ position: "absolute", bottom: 12, left: 40, right: 40 }}>
-          <Text style={[shared.footerText, { textAlign: "center" }]}>{footerIds}</Text>
         </View>
       </Page>
 
