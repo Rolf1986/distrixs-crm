@@ -1,21 +1,19 @@
-import { cn } from "@/lib/utils";
-
-interface Props {
+interface KpiCardProps {
   label: string;
-  value: string;
+  value: string | number;
   sub?: string;
-  trend?: "up" | "down" | "neutral";
-  className?: string;
+  highlight?: boolean;
 }
 
-export function KpiCard({ label, value, sub, className }: Props) {
+export function KpiCard({ label, value, sub, highlight }: KpiCardProps) {
   return (
-    <div className={cn(
-      "bg-white border border-slate-200 rounded-lg px-5 py-4",
-      className
-    )}>
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-2xl font-semibold text-slate-900 mt-1">{value}</p>
+    <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">
+        {label}
+      </p>
+      <p className={`text-lg font-semibold ${highlight ? "text-green-700" : "text-slate-900"}`}>
+        {value}
+      </p>
       {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
     </div>
   );

@@ -46,6 +46,7 @@ type View = "list" | "kanban";
 export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
   const [view, setView] = useState<View>("list");
   const [sortDesc, setSortDesc] = useState(true);
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
 
@@ -60,11 +61,20 @@ export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
     localStorage.setItem("deals-view", v);
   }
 
-  const sorted = [...deals].sort((a, b) => {
-    // Sort by dealNumber descending (newest = highest number)
-    const na = parseInt(a.dealNumber.replace(/\D/g, "")) || 0;
-    const nb = parseInt(b.dealNumber.replace(/\D/g, "")) || 0;
-    return sortDesc ? nb - na : na - nb;
+  const filtered = deals.filter((d) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      d.dealNumber.toLowerCase().includes(q) ||
+      d.title.toLowerCase().includes(q) ||
+      d.customer.companyName.toLowerCase().includes(q)
+    );
+  });
+
+  const sorted = [...filtered].sort((a, b) => {
+    const da = new Date(a.createdAt).getTime();
+    const db = new Date(b.createdAt).getTime();
+    return sortDesc ? db - da : da - db;
   });
 
   const totalPages = Math.ceil(sorted.length / pageSize);
@@ -75,8 +85,8 @@ export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
     <div>
       {/* Toolbar */}
       <div className="flex items-center justify-between mb-4 gap-2">
-        {view === "list" && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          {view === "list" && (
             <button
               onClick={() => { setSortDesc(!sortDesc); setPage(1); }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:border-slate-300 transition-colors"
@@ -84,9 +94,15 @@ export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
               {sortDesc ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
               {sortDesc ? "Nieuwste eerst" : "Oudste eerst"}
             </button>
-          </div>
-        )}
-        {view === "kanban" && <div />}
+          )}
+          <input
+            type="text"
+            placeholder="Zoeken…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 w-48"
+          />
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => switchView("list")}

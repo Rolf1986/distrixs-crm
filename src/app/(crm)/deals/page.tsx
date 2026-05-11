@@ -1,93 +1,85 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { formatCurrency } from "@/lib/utils";
-import { Plus } from "lucide-react";
-import Link from "next/link";
+import { CreateDealButton } from "@/components/CreateDealButton";
+import { DealsViewWrapper } from "@/components/DealsViewWrapper";
+import type { SerializedDeal } from "@/components/DealKanbanView";
+import { TrendingUp } from "lucide-react";
 
 async function getDeals() {
   return prisma.deal.findMany({
     include: {
       customer: { select: { companyName: true } },
-      lines: { select: { netLineTotal: true, expectedMarginTotal: true } },
-      _count: { select: { quotes: true, invoices: true } },
+      // Omzet komt uit offertes, niet uit deallines
+      quotes: {
+        where: { status: { not: "REJECTED" } },
+        select: { total: true },
+      },
+      _count: { select: { invoices: true } },
+      activities: {
+        where: { status: "OPEN" },
+        orderBy: { dueAt: "asc" },
+        select: { id: true, dueAt: true },
+        take: 1,
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 }
 
+async function getCustomers() {
+  return prisma.customer.findMany({
+    where: { status: "ACTIVE" },
+    select: { id: true, companyName: true },
+    orderBy: { companyName: "asc" },
+  });
+}
+
 export default async function DealsPage() {
-  const deals = await getDeals();
+  const [deals, customers] = await Promise.all([getDeals(), getCustomers()]);
+
+  // Serialize for client components (Decimal → number, Date → ISO string)
+  const serialized: SerializedDeal[] = deals.map((d) => {
+    const activity = d.activities[0] ?? null;
+    const hasOpenActivity = !!activity;
+    const hasOverdueActivity =
+      hasOpenActivity && !!activity.dueAt && new Date(activity.dueAt) < new Date();
+    return {
+      id: d.id,
+      dealNumber: d.dealNumber,
+      title: d.title,
+      status: d.status,
+      customer: { companyName: d.customer.companyName },
+      omzet: d.quotes.reduce((s, q) => s + Number(q.total), 0),
+      gefactureerd: d._count.invoices > 0,
+      hasOpenActivity,
+      hasOverdueActivity,
+      expectedCloseDate: d.expectedCloseDate?.toISOString() ?? null,
+      winProbability: d.winProbability,
+      createdAt: d.createdAt.toISOString(),
+    };
+  });
 
   return (
     <div className="min-h-screen bg-slate-50">
       <PageHeader
         title="Deals"
         description={`${deals.length} deals`}
-        actions={
-          <button className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-            <Plus className="w-4 h-4" />
-            Nieuwe deal
-          </button>
+        action={
+          <div className="flex items-center gap-2">
+            <Link
+              href="/deals/forecast"
+              className="flex items-center gap-1.5 text-sm text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-slate-300 bg-white rounded-lg px-3 py-2 transition-colors"
+            >
+              <TrendingUp className="w-4 h-4" />
+              Forecast
+            </Link>
+            <CreateDealButton customers={customers} />
+          </div>
         }
       />
-
       <div className="px-8 py-6">
-        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Deal</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Klant</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Omzet</th>
-                <th className="text-right px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Marge</th>
-                <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Status</th>
-                <th className="text-center px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Offertes</th>
-                <th className="text-center px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Facturen</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {deals.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-slate-400">
-                    Nog geen deals aangemaakt
-                  </td>
-                </tr>
-              )}
-              {deals.map((deal) => {
-                const omzet = deal.lines.reduce((s, l) => s + Number(l.netLineTotal), 0);
-                const marge = deal.lines.reduce((s, l) => s + Number(l.expectedMarginTotal), 0);
-                const margePct = omzet > 0 ? (marge / omzet) * 100 : 0;
-
-                return (
-                  <tr key={deal.id} className="hover:bg-slate-50 cursor-pointer transition-colors group relative">
-                    <td className="px-4 py-3">
-                      {/* Stretched link covers the full row */}
-                      <Link href={`/deals/${deal.id}/products`} className="absolute inset-0" aria-label={deal.title} />
-                      <div className="font-medium text-slate-900 group-hover:text-blue-700 transition-colors">{deal.title}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">{deal.dealNumber}</div>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{deal.customer.companyName}</td>
-                    <td className="px-4 py-3 text-right font-medium text-slate-900">
-                      {formatCurrency(omzet)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={margePct >= 30 ? "text-green-700 font-medium" : margePct >= 15 ? "text-slate-700" : "text-red-600 font-medium"}>
-                        {formatCurrency(marge)}
-                      </span>
-                      <div className="text-xs text-slate-400">{margePct.toFixed(1)}%</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={deal.status} type="deal" />
-                    </td>
-                    <td className="px-4 py-3 text-center text-slate-500">{deal._count.quotes}</td>
-                    <td className="px-4 py-3 text-center text-slate-500">{deal._count.invoices}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DealsViewWrapper deals={serialized} />
       </div>
     </div>
   );

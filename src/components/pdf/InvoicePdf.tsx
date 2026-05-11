@@ -291,28 +291,22 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
           ))}
         </View>
 
-        {/* Bankgegevens */}
-        <View style={[shared.bankBox, { marginTop: 10 }]}>
-          <Text style={shared.bankLabel}>{lang === "EN" ? "Bank details" : "Bankgegevens"}</Text>
-          {co?.bankName && <Text style={shared.bankText}>{co.bankName}</Text>}
-          {co?.iban    && <Text style={shared.bankText}>IBAN: {co.iban}</Text>}
-          {co?.bic     && <Text style={shared.bankText}>SWIFT / BIC: {co.bic}</Text>}
-          {co?.kvkNumber && <Text style={shared.bankText}>KVK: {co.kvkNumber}</Text>}
-          {co?.vatNumber && <Text style={shared.bankText}>{lang === "EN" ? "VAT" : "BTW"}: {co.vatNumber}</Text>}
-          <Text style={[shared.bankText, { marginTop: 6 }]}>
-            Op al onze leveringen en diensten zijn de algemene voorwaarden van toepassing welke zijn bijgevoegd met deze factuur.
-          </Text>
-          <Text style={[shared.bankText, { marginTop: 2, fontStyle: "italic", color: "#888" }]}>
-            The general terms and conditions that are attached to this invoice apply to all our deliveries and services.
-          </Text>
-        </View>
-
-        {/* Page footer */}
-        <View style={shared.pageFooter} fixed>
-          <Text style={shared.footerText}>{footerIds}</Text>
-          <Text style={shared.footerText} render={({ pageNumber, totalPages }) =>
-            `${pageNumber} / ${totalPages}`
-          } />
+        {/* Page footer — bankgegevens + paginanummer */}
+        <View style={[shared.pageFooter, { flexDirection: "column", alignItems: "stretch" }]} fixed>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+            <Text style={shared.footerText}>
+              Op al onze leveringen en diensten zijn de algemene voorwaarden van toepassing welke zijn bijgevoegd met deze factuur.{"  "}
+              <Text style={{ fontStyle: "italic", color: "#999" }}>The general terms and conditions that are attached to this invoice apply to all our deliveries and services.</Text>
+            </Text>
+            <Text style={shared.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+          </View>
+          <View style={{ flexDirection: "row", gap: 12 }}>
+            {co?.bankName  && <Text style={shared.footerText}>{co.bankName}</Text>}
+            {co?.iban      && <Text style={shared.footerText}>IBAN: {co.iban}</Text>}
+            {co?.bic       && <Text style={shared.footerText}>SWIFT / BIC: {co.bic}</Text>}
+            {co?.kvkNumber && <Text style={shared.footerText}>KVK: {co.kvkNumber}</Text>}
+            {co?.vatNumber && <Text style={shared.footerText}>{lang === "EN" ? "VAT" : "BTW"}: {co.vatNumber}</Text>}
+          </View>
         </View>
       </Page>
 

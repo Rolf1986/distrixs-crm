@@ -52,12 +52,13 @@ export interface QuotePdfData {
 }
 
 const S = StyleSheet.create({
-  colSku:     { width: "13%", fontSize: 8, color: C.muted },
+  colSku:     { width: "11%", fontSize: 8, color: C.muted },
   colDesc:    { flex: 1 },
-  colQty:     { width: "9%", textAlign: "right" },
-  colPrice:   { width: "13%", textAlign: "right" },
-  colDiscount:{ width: "10%", textAlign: "right", color: C.muted },
-  colTotal:   { width: "14%", textAlign: "right" },
+  colQty:     { width: "8%", textAlign: "right" },
+  colPrice:   { width: "11%", textAlign: "right" },
+  colDiscount:{ width: "9%", textAlign: "right", color: C.muted },
+  colNet:     { width: "11%", textAlign: "right" },
+  colTotal:   { width: "13%", textAlign: "right" },
   discountRow:{ color: "#d97706", fontSize: 8 },  // oranje voor korting
   subRow:     { color: C.muted, fontSize: 8 },
 });
@@ -142,7 +143,7 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
           )}
         </View>
 
-        {/* Tabel — kolommen: SKU | Omschrijving | Aantal | Stukprijs | Korting | Totaal */}
+        {/* Tabel — kolommen: SKU | Omschrijving | Aantal | Stukprijs | Korting | Netto stukprijs | Totaal */}
         <View>
           <View style={shared.tableHeader}>
             <Text style={[S.colSku,      shared.thText]}>SKU</Text>
@@ -150,19 +151,15 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
             <Text style={[S.colQty,      shared.thText]}>{t("qty", lang)}</Text>
             <Text style={[S.colPrice,    shared.thText]}>{t("unitPrice", lang)}</Text>
             <Text style={[S.colDiscount, shared.thText]}>{lang === "EN" ? "Discount" : "Korting"}</Text>
+            <Text style={[S.colNet,      shared.thText]}>{lang === "EN" ? "Net price" : "Netto prijs"}</Text>
             <Text style={[S.colTotal,    shared.thText]}>{t("total", lang)}</Text>
           </View>
           {data.lines.flatMap((line, i) => {
-            const grossTotal  = line.qty * line.grossUnitPrice;
             const hasDiscount = line.discountPercent > 0;
-            const netUnitPrice = hasDiscount
-              ? line.grossUnitPrice * (1 - line.discountPercent / 100)
-              : null;
-            const discountAmount = hasDiscount ? line.netLineTotal - grossTotal : 0; // negatief
+            const netUnitPrice = line.grossUnitPrice * (1 - line.discountPercent / 100);
             const rowStyle = i % 2 === 0 ? shared.tableRow : shared.tableRowAlt;
 
             const rows = [
-              // ── Hoofdregel: brutoprijs + korting% + nettototaal ──────────────
               <View key={`line-${i}`} style={rowStyle}>
                 <Text style={S.colSku}>{line.skuSnapshot}</Text>
                 <View style={S.colDesc}>
@@ -178,7 +175,9 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
                 <Text style={S.colDiscount}>
                   {hasDiscount ? `−${line.discountPercent}%` : "—"}
                 </Text>
-                {/* Totaal = netto (na korting) */}
+                <Text style={S.colNet}>
+                  {hasDiscount ? fmt(netUnitPrice, lang) : "—"}
+                </Text>
                 <Text style={[S.colTotal, { fontFamily: "Helvetica-Bold" }]}>
                   {fmt(line.netLineTotal, lang)}
                 </Text>
@@ -200,10 +199,11 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
                       ? `−${line.discountPercent}% Discount`
                       : `−${line.discountPercent}% Korting`}
                   </Text>
-                  <Text style={[S.colQty,      S.discountRow]}>1</Text>
-                  <Text style={[S.colPrice,    S.discountRow]}>{fmt(netUnitPrice!, lang)}</Text>
+                  <Text style={[S.colQty,      S.discountRow]} />
+                  <Text style={[S.colPrice,    S.discountRow]} />
                   <Text style={[S.colDiscount, S.discountRow]} />
-                  <Text style={[S.colTotal,    S.discountRow]}>{fmt(discountAmount, lang)}</Text>
+                  <Text style={[S.colNet,      S.discountRow]} />
+                  <Text style={[S.colTotal,    S.discountRow]}></Text>
                 </View>
               );
             }
