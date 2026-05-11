@@ -114,7 +114,7 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
   return (
     <Document title={data.invoiceNumber} author={coName}>
       {/* ── Pagina 1 ── */}
-      <Page size="A4" style={shared.page}>
+      <Page size="A4" style={[shared.page, { paddingBottom: 160 }]}>
         {/* Header: klant links, Distrixs rechts */}
         <View style={shared.headerRow}>
           <View style={{ flex: 1 }}>
@@ -240,73 +240,67 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
           </View>
         </View>
 
-        {/* Referenties + betaalinstructie */}
+        {/* Onze referentie */}
         {data.ourReference && (
-          <View style={{ marginTop: 12 }}>
+          <View style={{ marginTop: 8 }}>
             <Text style={{ fontSize: 8.5 }}>{t("ourRef", lang)}: {data.ourReference}</Text>
           </View>
         )}
-        <View style={{ marginTop: 6 }}>
-          <Text style={{ fontSize: 8.5 }}>
-            {lang === "EN"
-              ? `Please use the following reference: ${data.invoiceNumber}`
-              : `Gebruik de volgende mededeling: ${data.invoiceNumber}`}
-          </Text>
-        </View>
 
-        {/* Betaalinstructies — groen blok zoals in origineel */}
+        {/* Footer — vast onderaan de pagina: betaalinstructies + bankgegevens + AV + paginanummer */}
         <View style={{
-          marginTop: 20,
-          backgroundColor: "#f0faf4",
-          borderWidth: 0.5,
-          borderColor: "#a3d9b5",
-          borderRadius: 3,
-          padding: 10,
-        }}>
-          <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 9, color: "#1a6b3a", marginBottom: 6 }}>
-            {lang === "EN" ? "Payment instructions" : "Betaalinstructies"}
-          </Text>
-          {[
-            {
-              label: lang === "EN" ? "Pay before" : "Te betalen voor",
-              value: fmtDate(data.dueDate, lang),
-            },
-            {
-              label: lang === "EN" ? "Amount" : "Bedrag",
-              value: fmt(data.openAmount ?? data.total, lang),
-            },
-            {
-              label: "IBAN",
-              value: co?.iban ?? "—",
-            },
-            {
-              label: lang === "EN" ? "Reference" : "Onder vermelding van",
-              value: data.invoiceNumber,
-            },
-          ].map((row, i) => (
-            <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
-              <Text style={{ fontSize: 8.5, color: "#2d6a4f" }}>{row.label}</Text>
-              <Text style={{ fontSize: 8.5, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{row.value}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Page footer — bankgegevens + paginanummer */}
-        <View style={[shared.pageFooter, { flexDirection: "column", alignItems: "stretch" }]} fixed>
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
-            <Text style={shared.footerText}>
-              Op al onze leveringen en diensten zijn de algemene voorwaarden van toepassing welke zijn bijgevoegd met deze factuur.{"  "}
-              <Text style={{ fontStyle: "italic", color: "#999" }}>The general terms and conditions that are attached to this invoice apply to all our deliveries and services.</Text>
+          position: "absolute",
+          bottom: 20,
+          left: 40,
+          right: 40,
+        }} fixed>
+          {/* Groen betaalinstructies blok */}
+          <View style={{
+            backgroundColor: "#f0faf4",
+            borderWidth: 0.5,
+            borderColor: "#a3d9b5",
+            borderRadius: 3,
+            padding: 8,
+            marginBottom: 6,
+          }}>
+            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 8.5, color: "#1a6b3a", marginBottom: 4 }}>
+              {lang === "EN" ? "Payment instructions" : "Betaalinstructies"}
             </Text>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+              <Text style={{ fontSize: 8, color: "#2d6a4f" }}>{lang === "EN" ? "Pay before" : "Te betalen voor"}</Text>
+              <Text style={{ fontSize: 8, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{fmtDate(data.dueDate, lang)}</Text>
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+              <Text style={{ fontSize: 8, color: "#2d6a4f" }}>{lang === "EN" ? "Amount" : "Bedrag"}</Text>
+              <Text style={{ fontSize: 8, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{fmt(data.openAmount ?? data.total, lang)}</Text>
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+              <Text style={{ fontSize: 8, color: "#2d6a4f" }}>IBAN</Text>
+              <Text style={{ fontSize: 8, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{co?.iban ?? "—"}</Text>
+            </View>
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ fontSize: 8, color: "#2d6a4f" }}>{lang === "EN" ? "Reference" : "Onder vermelding van"}</Text>
+              <Text style={{ fontSize: 8, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{data.invoiceNumber}</Text>
+            </View>
+          </View>
+
+          {/* Bankgegevens regel */}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3, borderTopWidth: 0.5, borderTopColor: C.border, paddingTop: 4 }}>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              {co?.bankName  && <Text style={shared.footerText}>{co.bankName}</Text>}
+              {co?.iban      && <Text style={shared.footerText}>IBAN: {co.iban}</Text>}
+              {co?.bic       && <Text style={shared.footerText}>SWIFT / BIC: {co.bic}</Text>}
+              {co?.kvkNumber && <Text style={shared.footerText}>KVK: {co.kvkNumber}</Text>}
+              {co?.vatNumber && <Text style={shared.footerText}>{lang === "EN" ? "VAT" : "BTW"}: {co.vatNumber}</Text>}
+            </View>
             <Text style={shared.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
           </View>
-          <View style={{ flexDirection: "row", gap: 12 }}>
-            {co?.bankName  && <Text style={shared.footerText}>{co.bankName}</Text>}
-            {co?.iban      && <Text style={shared.footerText}>IBAN: {co.iban}</Text>}
-            {co?.bic       && <Text style={shared.footerText}>SWIFT / BIC: {co.bic}</Text>}
-            {co?.kvkNumber && <Text style={shared.footerText}>KVK: {co.kvkNumber}</Text>}
-            {co?.vatNumber && <Text style={shared.footerText}>{lang === "EN" ? "VAT" : "BTW"}: {co.vatNumber}</Text>}
-          </View>
+
+          {/* AV tekst */}
+          <Text style={[shared.footerText, { fontStyle: "italic" }]}>
+            Op al onze leveringen en diensten zijn de algemene voorwaarden van toepassing welke zijn bijgevoegd met deze factuur.{"  "}
+            The general terms and conditions that are attached to this invoice apply to all our deliveries and services.
+          </Text>
         </View>
       </Page>
 

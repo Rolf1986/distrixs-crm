@@ -184,29 +184,7 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
               </View>,
             ];
 
-            // ── Kortingsregel: negatief bedrag (zoals Teamleader) ──────────────
-            if (hasDiscount) {
-              rows.push(
-                <View key={`discount-${i}`} style={{
-                  flexDirection: "row",
-                  paddingVertical: 3,
-                  paddingHorizontal: 6,
-                  backgroundColor: "#fffbf0",
-                }}>
-                  <Text style={[S.colSku, S.discountRow]} />
-                  <Text style={[S.colDesc, S.discountRow]}>
-                    {lang === "EN"
-                      ? `−${line.discountPercent}% Discount`
-                      : `−${line.discountPercent}% Korting`}
-                  </Text>
-                  <Text style={[S.colQty,      S.discountRow]} />
-                  <Text style={[S.colPrice,    S.discountRow]} />
-                  <Text style={[S.colDiscount, S.discountRow]} />
-                  <Text style={[S.colNet,      S.discountRow]} />
-                  <Text style={[S.colTotal,    S.discountRow]}></Text>
-                </View>
-              );
-            }
+            // Geen aparte kortingsregel — netto prijs staat al in de kolom
 
             return rows;
           })}
