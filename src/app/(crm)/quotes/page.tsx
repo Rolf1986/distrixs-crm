@@ -11,7 +11,7 @@ async function getQuotes() {
       lines: { select: { expectedMarginSnapshot: true } },
       _count: { select: { invoices: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { quoteNumber: "desc" },
   });
 }
 

@@ -63,9 +63,14 @@ export function QuotesClient({ quotes }: { quotes: Quote[] }) {
       return q.status === filter;
     })
     .sort((a, b) => {
-      const da = new Date(a.quoteDate).getTime();
-      const db = new Date(b.quoteDate).getTime();
-      return sortDesc ? db - da : da - db;
+      // Sorteer op het numerieke deel van het offertenummer (hoogste = nieuwste TL-offerte)
+      const getNum = (s: string) => {
+        const parts = s.split("-");
+        return parseInt(parts[parts.length - 1]) || 0;
+      };
+      const na = getNum(a.quoteNumber);
+      const nb = getNum(b.quoteNumber);
+      return sortDesc ? nb - na : na - nb;
     });
 
   const totalPages = Math.ceil(filtered.length / pageSize);
@@ -116,7 +121,7 @@ export function QuotesClient({ quotes }: { quotes: Quote[] }) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:border-slate-300 transition-colors"
           >
             {sortDesc ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
-            {sortDesc ? "Nieuwste eerst" : "Oudste eerst"}
+            {sortDesc ? "Hoogste nr eerst" : "Laagste nr eerst"}
           </button>
           <input
             type="text"
