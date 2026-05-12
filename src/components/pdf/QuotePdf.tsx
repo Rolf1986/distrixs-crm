@@ -224,18 +224,16 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
         </View>
 
         {/* Footer bottom */}
-        <View style={shared.pageFooter} fixed>
-          <View style={{ flex: 1 }}>
-            <Text style={shared.footerText}>
-              Bij akkoord op de offerte wordt automatisch ook de algemene voorwaarden geaccepteerd.
-            </Text>
-            {footerIds ? (
-              <Text style={[shared.footerText, { marginTop: 2 }]}>{footerIds}</Text>
-            ) : null}
+        <View style={[shared.pageFooter, { flexDirection: "column" }]} fixed>
+          <Text style={[shared.footerText, { textAlign: "center", marginBottom: 2 }]}>
+            Bij akkoord op de offerte wordt automatisch ook de algemene voorwaarden geaccepteerd.
+          </Text>
+          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+            <Text style={[shared.footerText, { textAlign: "center", flex: 1 }]}>{footerIds}</Text>
+            <Text style={shared.footerText} render={({ pageNumber, totalPages }) =>
+              `${pageNumber} / ${totalPages}`
+            } />
           </View>
-          <Text style={shared.footerText} render={({ pageNumber, totalPages }) =>
-            `${pageNumber} / ${totalPages}`
-          } />
         </View>
       </Page>
 

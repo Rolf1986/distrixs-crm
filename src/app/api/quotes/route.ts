@@ -1,0 +1,32 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { nextQuoteNumber } from "@/lib/sequences";
+
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
+  const { customerId, dealId, validUntil } = await req.json();
+  if (!customerId) return NextResponse.json({ error: "Klant verplicht" }, { status: 400 });
+
+  const year = new Date().getFullYear();
+  const quoteNumber = await nextQuoteNumber(year);
+
+  const quote = await prisma.quote.create({
+    data: {
+      quoteNumber,
+      customerId,
+      dealId: dealId || null,
+      status: "DRAFT",
+      quoteDate: new Date(),
+      validUntil: validUntil ? new Date(validUntil) : null,
+      subtotal: 0,
+      vatAmount: 0,
+      total: 0,
+      createdBy: session.user.id,
+    },
+  });
+
+  return NextResponse.json({ id: quote.id, quoteNumber: quote.quoteNumber });
+}
