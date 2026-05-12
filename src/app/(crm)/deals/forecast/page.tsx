@@ -4,7 +4,8 @@ import { formatCurrency } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ChevronLeft } from "lucide-react";
 
-const OPEN_STATUSES = ["NEW", "CONTACTED", "MEETING_PLANNED", "QUOTE_SENT"];
+import type { DealStatus } from "@/generated/prisma";
+const OPEN_STATUSES: DealStatus[] = ["NEW", "CONTACTED", "MEETING_PLANNED", "QUOTE_SENT"];
 
 async function getForecastData() {
   const deals = await prisma.deal.findMany({
