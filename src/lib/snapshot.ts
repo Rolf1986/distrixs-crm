@@ -1,29 +1,32 @@
-import type { Deal, DealLine, Quote, QuoteLine } from "@/generated/prisma";
-
 /**
- * Generates the next sequential number for quotes: Q-YYYY-001
+ * Nummer-formatteerders voor Distrixs CRM
+ * Deal: D-YYYY-001 · Quote: Q-YYYY-001 · Invoice: F-YYYY-001 · PO: PO-YYYY-001
  */
-export function generateQuoteNumber(year: number, sequence: number): string {
-  return `Q-${year}-${String(sequence).padStart(3, "0")}`;
+
+export function formatDealNumber(year: number, seq: number): string {
+  return `D-${year}-${String(seq).padStart(3, "0")}`;
 }
 
-/**
- * Generates the next sequential invoice number: F-YYYY-001
- */
-export function generateInvoiceNumber(year: number, sequence: number): string {
-  return `F-${year}-${String(sequence).padStart(3, "0")}`;
+export function formatQuoteNumber(year: number, seq: number): string {
+  return `Q-${year}-${String(seq).padStart(3, "0")}`;
 }
 
-/**
- * Generates a deal number: D-YYYY-001
- */
-export function generateDealNumber(year: number, sequence: number): string {
-  return `D-${year}-${String(sequence).padStart(3, "0")}`;
+export function formatInvoiceNumber(year: number, seq: number): string {
+  return `F-${year}-${String(seq).padStart(3, "0")}`;
 }
 
-/**
- * Generates a PO number: PO-YYYY-001
- */
-export function generatePoNumber(year: number, sequence: number): string {
-  return `PO-${year}-${String(sequence).padStart(3, "0")}`;
+export function formatPoNumber(year: number, seq: number): string {
+  return `PO-${year}-${String(seq).padStart(3, "0")}`;
+}
+
+export function formatRmaNumber(year: number, seq: number): string {
+  return `RMA-${year}-${String(seq).padStart(3, "0")}`;
+}
+
+export function formatOrderConfirmationNumber(year: number, seq: number): string {
+  return `OB-${year}-${String(seq).padStart(3, "0")}`;
+}
+
+export function formatDeliveryNoteNumber(year: number, seq: number): string {
+  return `VD-${year}-${String(seq).padStart(3, "0")}`;
 }

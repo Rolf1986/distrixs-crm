@@ -20,10 +20,10 @@ type Invoice = {
 };
 
 const STATUS_FILTERS = [
+  { key: "DRAFT",       label: "Nog niet verzonden" },
   { key: "all",         label: "Alle" },
   { key: "unpaid",      label: "Niet betaald" },
   { key: "overdue",     label: "Verlopen" },
-  { key: "DRAFT",       label: "Concept" },
   { key: "SENT",        label: "Verzonden" },
   { key: "PARTIALLY_PAID", label: "Deels betaald" },
   { key: "PAID",        label: "Betaald" },
@@ -40,7 +40,7 @@ function daysOverdue(dueDateStr: string): number {
 }
 
 export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("DRAFT");
   const [search, setSearch] = useState("");
   const [sortDesc, setSortDesc] = useState(true); // newest first by default
   const [page, setPage] = useState(1);

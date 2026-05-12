@@ -1,23 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
-import { verifyPassword, createAndSendOtp } from "@/lib/otp";
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { createOtp } from "@/lib/otp";
+import bcrypt from "bcryptjs";
 
-export async function POST(req: NextRequest) {
-  const { email, password } = await req.json();
+export async function POST(req: Request) {
+  try {
+    const { email, password } = await req.json();
 
-  if (!email || !password) {
-    return NextResponse.json({ error: "Verplichte velden ontbreken" }, { status: 400 });
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email en wachtwoord zijn verplicht" }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user || !user.isActive) {
+      return NextResponse.json({ error: "Onjuiste inloggegevens" }, { status: 401 });
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      return NextResponse.json({ error: "Onjuiste inloggegevens" }, { status: 401 });
+    }
+
+    const otp = await createOtp(user.id);
+
+    // In productie: verstuur via Resend
+    // Voor nu: log naar console
+    console.log(`OTP voor ${email}: ${otp}`);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("request-otp error:", error);
+    return NextResponse.json({ error: "Interne fout" }, { status: 500 });
   }
-
-  const valid = await verifyPassword(email, password);
-  if (!valid) {
-    // Zelfde foutmelding om user enumeration te voorkomen
-    return NextResponse.json({ error: "Ongeldige inloggegevens" }, { status: 401 });
-  }
-
-  const result = await createAndSendOtp(email);
-  if (!result.success) {
-    return NextResponse.json({ error: "Versturen mislukt, probeer opnieuw" }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true });
 }

@@ -37,6 +37,7 @@ enum SupplierType {
 enum DealStatus {
   NEW
   CONTACTED
+  MEETING_PLANNED
   QUOTE_SENT
   WON
   LOST
@@ -140,6 +141,48 @@ enum TwinfieldSyncStatus {
   ERROR
 }
 
+enum RmaStatus {
+  NEW
+  ASSIGNED
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  RECEIVED
+  RESOLVED
+  CLOSED
+}
+
+enum RmaReason {
+  DEFECTIVE
+  WRONG_PRODUCT
+  DAMAGED
+  NOT_AS_DESCRIBED
+  CHANGED_MIND
+  OTHER
+}
+
+enum RmaResolutionType {
+  CREDIT_NOTE
+  REPLACEMENT
+  REPAIR
+  REFUND
+  OTHER
+}
+
+enum OrderConfirmationStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  CANCELLED
+}
+
+enum DeliveryNoteStatus {
+  DRAFT
+  SENT
+  DELIVERED
+  CANCELLED
+}
+
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model User {
@@ -155,12 +198,22 @@ model User {
 
   dealsCreated          Deal[]          @relation("DealCreatedBy")
   quotesCreated         Quote[]         @relation("QuoteCreatedBy")
-  invoicesCreated       Invoice[]       @relation("InvoiceCreatedBy")
-  purchaseOrdersCreated PurchaseOrder[] @relation("POCreatedBy")
-  activitiesCreated     Activity[]      @relation("ActivityCreatedBy")
+  invoicesCreated          Invoice[]         @relation("InvoiceCreatedBy")
+  purchaseOrdersCreated    PurchaseOrder[]   @relation("POCreatedBy")
+  activitiesCreated        Activity[]        @relation("ActivityCreatedBy")
+  creditNotesCreated          CreditNote[]        @relation("CreditNoteCreatedBy")
+  supplierInvoicesCreated     SupplierInvoice[]   @relation("SupplierInvoiceCreatedBy")
+  recurringInvoicesCreated    RecurringInvoice[]  @relation("RecurringInvoiceCreatedBy")
+  leadsCreated                Lead[]              @relation("LeadCreatedBy")
+  leadsAssigned               Lead[]              @relation("LeadAssignedTo")
+  auditLogs                   AuditLog[]
   activitiesAssigned    Activity[]      @relation("ActivityAssignedTo")
-  paymentsCreated       Payment[]
-  sessions              Session[]
+  paymentsCreated              Payment[]
+  sessions                     Session[]
+  otpTokens                    OtpToken[]
+  rmasAssigned                 Rma[]              @relation("RmaAssignedTo")
+  orderConfirmationsCreated    OrderConfirmation[] @relation("OcCreatedBy")
+  deliveryNotesCreated         DeliveryNote[]      @relation("DnCreatedBy")
 
   @@map("users")
 }
@@ -175,14 +228,25 @@ model Customer {
   defaultPaymentTerm PaymentTerm    @default(DAYS_30) @map("default_payment_term")
   notes              String?
   status             CustomerStatus @default(ACTIVE)
+  externalId         String?        @unique @map("external_id")
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @updatedAt @map("updated_at")
 
-  addresses  CustomerAddress[]
-  contacts   CustomerContact[]
-  deals      Deal[]
-  quotes     Quote[]
-  invoices   Invoice[]
+  addresses          CustomerAddress[]
+  contacts           CustomerContact[]
+  deals              Deal[]
+  quotes             Quote[]
+  invoices           Invoice[]
+  rmas               Rma[]
+  orderConfirmations OrderConfirmation[]
+  deliveryNotes      DeliveryNote[]
+  activities         Activity[]
+  emails             Email[]
+  creditNotes        CreditNote[]
+  pricelists         CustomerPricelist[]
+  recurringInvoices  RecurringInvoice[]
+  convertedLeads     Lead[]
+  shipments          Shipment[]
 
   @@map("customers")
 }
@@ -215,14 +279,16 @@ model CustomerContact {
   roleOrFunction String?  @map("role_or_function")
   isPrimary      Boolean  @default(false) @map("is_primary")
   isActive       Boolean  @default(true) @map("is_active")
+  externalId     String?  @unique @map("external_id")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  customer  Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  deals     Deal[]     @relation("DealPrimaryContact")
-  quotes    Quote[]
-  invoices  Invoice[]
-  activities Activity[]
+  customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  deals             Deal[]            @relation("DealPrimaryContact")
+  quotes            Quote[]
+  invoices          Invoice[]
+  activities        Activity[]
+  recurringInvoices RecurringInvoice[]
 
   @@map("customer_contacts")
 }
@@ -240,7 +306,8 @@ model Supplier {
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
   products       Product[]
-  purchaseOrders PurchaseOrder[]
+  purchaseOrders   PurchaseOrder[]
+  supplierInvoices SupplierInvoice[]
 
   @@map("suppliers")
 }
@@ -258,13 +325,16 @@ model Product {
   baseCostPrice     Decimal  @default(0) @map("base_cost_price") @db.Decimal(12, 2)
   unit              String   @default("stuk")
   isActive          Boolean  @default(true) @map("is_active")
+  externalId        String?  @unique @map("external_id")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  supplier          Supplier           @relation(fields: [supplierId], references: [id])
-  priceTiers        ProductPriceTier[]
-  dealLines         DealLine[]
+  supplier           Supplier           @relation(fields: [supplierId], references: [id])
+  priceTiers         ProductPriceTier[]
+  dealLines          DealLine[]
+  quoteLines         QuoteLine[]
   purchaseOrderLines PurchaseOrderLine[]
+  customerPricelists CustomerPricelist[]
 
   @@map("products")
 }
@@ -291,8 +361,10 @@ model Deal {
   customerId        String     @map("customer_id")
   primaryContactId  String?    @map("primary_contact_id")
   status            DealStatus @default(NEW)
+  winProbability    Int?       @map("win_probability")
   expectedCloseDate DateTime?  @map("expected_close_date")
   notes             String?
+  externalId        String?    @unique @map("external_id")
   createdBy         String     @map("created_by")
   createdAt         DateTime   @default(now()) @map("created_at")
   updatedAt         DateTime   @updatedAt @map("updated_at")
@@ -301,12 +373,17 @@ model Deal {
   primaryContact CustomerContact? @relation("DealPrimaryContact", fields: [primaryContactId], references: [id])
   createdByUser  User            @relation("DealCreatedBy", fields: [createdBy], references: [id])
 
-  lines          DealLine[]
-  quotes         Quote[]
-  invoices       Invoice[]
-  purchaseOrders PurchaseOrder[]
-  activities     Activity[]
-  files          FileAsset[]
+  lines              DealLine[]
+  quotes             Quote[]
+  invoices           Invoice[]
+  purchaseOrders     PurchaseOrder[]
+  activities         Activity[]
+  files              FileAsset[]
+  orderConfirmations OrderConfirmation[]
+  deliveryNotes      DeliveryNote[]
+  emails             Email[]
+  recurringInvoices  RecurringInvoice[]
+  shipments          Shipment[]
 
   @@map("deals")
 }
@@ -342,7 +419,7 @@ model DealLine {
 model Quote {
   id              String      @id @default(cuid())
   quoteNumber     String      @unique @map("quote_number")
-  dealId          String      @map("deal_id")
+  dealId          String?     @map("deal_id")
   customerId      String      @map("customer_id")
   contactId       String?     @map("contact_id")
   status          QuoteStatus @default(DRAFT)
@@ -351,19 +428,22 @@ model Quote {
   subtotal        Decimal     @default(0) @db.Decimal(12, 2)
   vatAmount       Decimal     @default(0) @map("vat_amount") @db.Decimal(12, 2)
   total           Decimal     @default(0) @db.Decimal(12, 2)
+  language        String      @default("NL")
   termsVersion    String?     @map("terms_version")
+  externalId      String?     @unique @map("external_id")
   createdBy       String      @map("created_by")
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
 
-  deal          Deal            @relation(fields: [dealId], references: [id])
+  deal          Deal?           @relation(fields: [dealId], references: [id])
   customer      Customer        @relation(fields: [customerId], references: [id])
   contact       CustomerContact? @relation(fields: [contactId], references: [id])
   createdByUser User            @relation("QuoteCreatedBy", fields: [createdBy], references: [id])
 
-  lines    QuoteLine[]
-  invoices Invoice[]
-  files    FileAsset[]
+  lines              QuoteLine[]
+  invoices           Invoice[]
+  files              FileAsset[]
+  orderConfirmations OrderConfirmation[]
 
   @@map("quotes")
 }
@@ -379,6 +459,8 @@ model QuoteLine {
   grossUnitPrice         Decimal  @map("gross_unit_price") @db.Decimal(12, 2)
   discountPercent        Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
   netLineTotal           Decimal  @map("net_line_total") @db.Decimal(12, 2)
+  vatRate                Decimal  @default(21) @map("vat_rate") @db.Decimal(5, 2)
+  vatAmount              Decimal  @default(0) @map("vat_amount") @db.Decimal(12, 2)
   costSnapshot           Decimal  @map("cost_snapshot") @db.Decimal(12, 2)
   expectedMarginSnapshot Decimal  @map("expected_margin_snapshot") @db.Decimal(12, 2)
   createdAt              DateTime @default(now()) @map("created_at")
@@ -386,6 +468,7 @@ model QuoteLine {
 
   quote        Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
   dealLine     DealLine?    @relation(fields: [dealLineId], references: [id])
+  product      Product?     @relation(fields: [productId], references: [id])
   invoiceLines InvoiceLine[]
 
   @@map("quote_lines")
@@ -407,10 +490,17 @@ model Invoice {
   total                 Decimal             @default(0) @db.Decimal(12, 2)
   paidAmount            Decimal             @default(0) @map("paid_amount") @db.Decimal(12, 2)
   openAmount            Decimal             @default(0) @map("open_amount") @db.Decimal(12, 2)
+  ourReference             String?             @map("our_reference")
+  notes                    String?             // Interne opmerking zichtbaar op factuur
+  earlyPaymentDiscountPct  Decimal?            @map("early_payment_discount_pct") @db.Decimal(5, 2)
+  earlyPaymentDays         Int?                @map("early_payment_days")
+  recurringInvoiceId       String?             @map("recurring_invoice_id")
   twinfieldSyncStatus   TwinfieldSyncStatus @default(NOT_SYNCED) @map("twinfield_sync_status")
   twinfieldLocked       Boolean             @default(false) @map("twinfield_locked")
   twinfieldReference    String?             @map("twinfield_reference")
+  language              String              @default("NL")
   termsVersion          String?             @map("terms_version")
+  externalId            String?             @unique @map("external_id")
   createdBy             String              @map("created_by")
   createdAt             DateTime            @default(now()) @map("created_at")
   updatedAt             DateTime            @updatedAt @map("updated_at")
@@ -421,10 +511,13 @@ model Invoice {
   contact       CustomerContact? @relation(fields: [contactId], references: [id])
   createdByUser User            @relation("InvoiceCreatedBy", fields: [createdBy], references: [id])
 
-  lines     InvoiceLine[]
-  payments  Payment[]
-  reminders InvoiceReminder[]
-  files     FileAsset[]
+  lines             InvoiceLine[]
+  payments          Payment[]
+  reminders         InvoiceReminder[]
+  installments      InvoiceInstallment[]
+  creditNotes       CreditNote[]
+  files             FileAsset[]
+  recurringInvoice  RecurringInvoice?   @relation(fields: [recurringInvoiceId], references: [id])
 
   @@map("invoices")
 }
@@ -440,6 +533,8 @@ model InvoiceLine {
   grossUnitPrice  Decimal  @map("gross_unit_price") @db.Decimal(12, 2)
   discountPercent Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
   netLineTotal    Decimal  @map("net_line_total") @db.Decimal(12, 2)
+  vatRate         Decimal  @default(21) @map("vat_rate") @db.Decimal(5, 2)
+  vatAmount       Decimal  @default(0) @map("vat_amount") @db.Decimal(12, 2)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -447,6 +542,22 @@ model InvoiceLine {
   quoteLine QuoteLine? @relation(fields: [quoteLineId], references: [id])
 
   @@map("invoice_lines")
+}
+
+model InvoiceInstallment {
+  id                 String   @id @default(cuid())
+  invoiceId          String   @map("invoice_id")
+  installmentNumber  Int      @map("installment_number")
+  dueDate            DateTime @map("due_date")
+  percentage         Decimal? @db.Decimal(5, 2)   // bijv. 30.00 voor 30%
+  amount             Decimal? @db.Decimal(12, 2)   // vast bedrag (heeft voorrang boven %)
+  isPaid             Boolean  @default(false) @map("is_paid")
+  notes              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_installments")
 }
 
 model Payment {
@@ -496,9 +607,10 @@ model PurchaseOrder {
   supplier      Supplier                 @relation(fields: [supplierId], references: [id])
   createdByUser User                     @relation("POCreatedBy", fields: [createdBy], references: [id])
 
-  lines      PurchaseOrderLine[]
-  extraCosts PurchaseOrderExtraCost[]
-  files      FileAsset[]
+  lines            PurchaseOrderLine[]
+  extraCosts       PurchaseOrderExtraCost[]
+  files            FileAsset[]
+  supplierInvoices SupplierInvoice[]
 
   @@map("purchase_orders")
 }
@@ -575,24 +687,130 @@ model Activity {
   createdAt  DateTime       @default(now()) @map("created_at")
   updatedAt  DateTime       @updatedAt @map("updated_at")
 
-  deal          Deal?           @relation(fields: [dealId], references: [id])
-  contact       CustomerContact? @relation(fields: [contactId], references: [id])
-  assignedToUser User?           @relation("ActivityAssignedTo", fields: [assignedTo], references: [id])
-  createdByUser  User            @relation("ActivityCreatedBy", fields: [createdBy], references: [id])
+  deal           Deal?            @relation(fields: [dealId], references: [id])
+  customer       Customer?        @relation(fields: [customerId], references: [id])
+  contact        CustomerContact? @relation(fields: [contactId], references: [id])
+  assignedToUser User?            @relation("ActivityAssignedTo", fields: [assignedTo], references: [id])
+  createdByUser  User             @relation("ActivityCreatedBy", fields: [createdBy], references: [id])
 
   @@map("activities")
 }
 
-model OtpCode {
-  id        String    @id @default(cuid())
-  email     String
-  code      String
-  expiresAt DateTime  @map("expires_at")
-  usedAt    DateTime? @map("used_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+model Rma {
+  id                 String              @id @default(cuid())
+  rmaNumber          String              @unique @map("rma_number")
 
-  @@index([email])
-  @@map("otp_codes")
+  // Klant-koppeling – kan achteraf worden ingesteld
+  customerId         String?             @map("customer_id")
+
+  // Ingevuld via publiek formulier
+  submittedName      String              @map("submitted_name")
+  submittedEmail     String              @map("submitted_email")
+  submittedPhone     String?             @map("submitted_phone")
+  submittedCompany   String?             @map("submitted_company")
+
+  // Product- en orderinformatie
+  orderReference     String?             @map("order_reference")
+  productDescription String              @map("product_description")
+  serialNumber       String?             @map("serial_number")
+  purchaseDate       DateTime?           @map("purchase_date")
+  quantity           Int                 @default(1)
+
+  // Retourdetails
+  reason             RmaReason
+  description        String
+
+  // Interne afhandeling
+  status             RmaStatus           @default(NEW)
+  assignedTo         String?             @map("assigned_to")
+  resolution         RmaResolutionType?
+  resolutionNotes    String?             @map("resolution_notes")
+
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  customer           Customer?           @relation(fields: [customerId], references: [id])
+  assignedToUser     User?               @relation("RmaAssignedTo", fields: [assignedTo], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+  @@map("rmas")
+}
+
+model OrderConfirmation {
+  id                 String                  @id @default(cuid())
+  confirmationNumber String                  @unique @map("confirmation_number")
+  dealId             String                  @map("deal_id")
+  quoteId            String?                 @map("quote_id")
+  customerId         String                  @map("customer_id")
+  status             OrderConfirmationStatus @default(DRAFT)
+  confirmationDate   DateTime                @default(now()) @map("confirmation_date")
+  expectedDelivery   DateTime?               @map("expected_delivery")
+  notes              String?
+  createdBy          String                  @map("created_by")
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+
+  deal          Deal              @relation(fields: [dealId], references: [id])
+  quote         Quote?            @relation(fields: [quoteId], references: [id])
+  customer      Customer          @relation(fields: [customerId], references: [id])
+  createdByUser User              @relation("OcCreatedBy", fields: [createdBy], references: [id])
+  deliveryNotes DeliveryNote[]
+
+  @@index([dealId])
+  @@map("order_confirmations")
+}
+
+model DeliveryNote {
+  id             String             @id @default(cuid())
+  deliveryNumber String             @unique @map("delivery_number")
+  dealId         String             @map("deal_id")
+  confirmationId String?            @map("confirmation_id")
+  customerId     String             @map("customer_id")
+  status         DeliveryNoteStatus @default(DRAFT)
+  deliveryDate   DateTime?          @map("delivery_date")
+  trackingCode   String?            @map("tracking_code")
+  carrier        String?
+  notes          String?
+  createdBy      String             @map("created_by")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  deal          Deal               @relation(fields: [dealId], references: [id])
+  confirmation  OrderConfirmation? @relation(fields: [confirmationId], references: [id])
+  customer      Customer           @relation(fields: [customerId], references: [id])
+  createdByUser User               @relation("DnCreatedBy", fields: [createdBy], references: [id])
+  lines         DeliveryNoteLine[]
+  shipments     Shipment[]
+
+  @@index([dealId])
+  @@map("delivery_notes")
+}
+
+model DeliveryNoteLine {
+  id             String   @id @default(cuid())
+  deliveryNoteId String   @map("delivery_note_id")
+  skuSnapshot    String   @map("sku_snapshot")
+  titleSnapshot  String   @map("title_snapshot")
+  qty            Decimal  @db.Decimal(12, 3)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+
+  @@map("delivery_note_lines")
+}
+
+model OtpToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  codeHash  String   @map("code_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("otp_tokens")
 }
 
 // NextAuth session storage
@@ -613,4 +831,356 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// ─── Company Settings ─────────────────────────────────────────────────────────
+
+model CompanySetting {
+  id            String   @id @default("singleton")
+  companyName   String   @default("Distrixs") @map("company_name")
+  addressLine1  String?  @map("address_line1")
+  addressLine2  String?  @map("address_line2")
+  city          String?
+  postalCode    String?  @map("postal_code")
+  country       String   @default("Nederland")
+  kvkNumber     String?  @map("kvk_number")
+  vatNumber     String?  @map("vat_number")
+  iban          String?
+  bic           String?
+  bankName      String?  @map("bank_name")
+  email         String?
+  phone         String?
+  website       String?
+  // Logo URL (extern, bijv. CDN of eigen domein)
+  logoUrl       String?  @map("logo_url")
+  // Contactpersoon voor offerte-ondertekening
+  contactPersonName  String? @map("contact_person_name")
+  contactPersonPhone String? @map("contact_person_phone")
+  contactPersonEmail String? @map("contact_person_email")
+  // Algemene voorwaarden NL + EN (volledige tekst, per artikel)
+  termsNl       String?  @map("terms_nl")
+  termsEn       String?  @map("terms_en")
+  quoteTerms          String?  @map("quote_terms")
+  invoiceFooter       String?  @map("invoice_footer")
+  quoteEmailSubject    String?  @map("quote_email_subject")
+  quoteEmailBody       String?  @map("quote_email_body")
+  quoteEmailSubjectEn  String?  @map("quote_email_subject_en")
+  quoteEmailBodyEn     String?  @map("quote_email_body_en")
+  invoiceEmailSubject  String?  @map("invoice_email_subject")
+  invoiceEmailBody     String?  @map("invoice_email_body")
+  invoiceEmailSubjectEn String? @map("invoice_email_subject_en")
+  invoiceEmailBodyEn   String?  @map("invoice_email_body_en")
+  reminderEmailSubject String?  @map("reminder_email_subject")
+  reminderEmailBody    String?  @map("reminder_email_body")
+  reminderEmailSubjectEn String? @map("reminder_email_subject_en")
+  reminderEmailBodyEn  String?  @map("reminder_email_body_en")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("company_settings")
+}
+
+// ─── Nummervolgorde (race-condition-veilig) ────────────────────────────────────
+model NumberSequence {
+  id        String   @id               // bijv. "invoice-2026", "quote-2026", "cn-2026"
+  nextVal   Int      @default(1) @map("next_val")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("number_sequences")
+}
+
+// ─── Creditnota ───────────────────────────────────────────────────────────────
+model CreditNote {
+  id               String      @id @default(cuid())
+  creditNoteNumber String      @unique @map("credit_note_number")   // CN-2026-001
+  invoiceId        String      @map("invoice_id")
+  customerId       String      @map("customer_id")
+  reason           String?
+  subtotal         Decimal     @default(0) @db.Decimal(12, 2)
+  vatAmount        Decimal     @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  total            Decimal     @default(0) @db.Decimal(12, 2)
+  language         String      @default("NL")
+  creditNoteDate   DateTime    @default(now()) @map("credit_note_date")
+  createdBy        String      @map("created_by")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  invoice      Invoice          @relation(fields: [invoiceId], references: [id])
+  customer     Customer         @relation(fields: [customerId], references: [id])
+  createdByUser User            @relation("CreditNoteCreatedBy", fields: [createdBy], references: [id])
+  lines        CreditNoteLine[]
+
+  @@map("credit_notes")
+}
+
+model CreditNoteLine {
+  id             String   @id @default(cuid())
+  creditNoteId   String   @map("credit_note_id")
+  skuSnapshot    String   @map("sku_snapshot")
+  titleSnapshot  String   @map("title_snapshot")
+  qty            Decimal  @db.Decimal(12, 3)
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(12, 2)
+  vatRate        Decimal  @default(21) @map("vat_rate") @db.Decimal(5, 2)
+  lineTotal      Decimal  @map("line_total") @db.Decimal(12, 2)
+  vatAmount      Decimal  @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  creditNote CreditNote @relation(fields: [creditNoteId], references: [id], onDelete: Cascade)
+
+  @@map("credit_note_lines")
+}
+
+// ─── Inkoopfacturen (crediteurenadministratie) ────────────────────────────────
+model SupplierInvoice {
+  id                    String              @id @default(cuid())
+  invoiceNumber         String              @map("invoice_number")   // nummer van leverancier
+  supplierId            String              @map("supplier_id")
+  purchaseOrderId       String?             @map("purchase_order_id")
+  invoiceDate           DateTime            @map("invoice_date")
+  dueDate               DateTime            @map("due_date")
+  subtotal              Decimal             @default(0) @db.Decimal(12, 2)
+  vatAmount             Decimal             @default(0) @map("vat_amount") @db.Decimal(12, 2)
+  total                 Decimal             @default(0) @db.Decimal(12, 2)
+  paidAmount            Decimal             @default(0) @map("paid_amount") @db.Decimal(12, 2)
+  openAmount            Decimal             @default(0) @map("open_amount") @db.Decimal(12, 2)
+  status                SupplierInvoiceStatus @default(OPEN)
+  notes                 String?
+  createdBy             String              @map("created_by")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  supplier        Supplier        @relation(fields: [supplierId], references: [id])
+  purchaseOrder   PurchaseOrder?  @relation(fields: [purchaseOrderId], references: [id])
+  createdByUser   User            @relation("SupplierInvoiceCreatedBy", fields: [createdBy], references: [id])
+  payments        SupplierPayment[]
+
+  @@map("supplier_invoices")
+}
+
+model SupplierPayment {
+  id                String   @id @default(cuid())
+  supplierInvoiceId String   @map("supplier_invoice_id")
+  paymentDate       DateTime @map("payment_date")
+  amount            Decimal  @db.Decimal(12, 2)
+  reference         String?
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  supplierInvoice SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_payments")
+}
+
+enum SupplierInvoiceStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  DISPUTED
+}
+
+// ─── Mailbox integratie ────────────────────────────────────────────────────────
+
+model EmailAccount {
+  id          String   @id @default(cuid())
+  label       String                          // bijv. "Verkoop inbox"
+  host        String                          // imap.gmail.com
+  port        Int      @default(993)
+  secure      Boolean  @default(true)
+  username    String                          // email adres
+  password    String                          // versleuteld opgeslagen
+  lastSyncAt  DateTime? @map("last_sync_at")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  emails      Email[]
+
+  @@map("email_accounts")
+}
+
+model Email {
+  id            String   @id @default(cuid())
+  accountId     String   @map("account_id")
+  messageId     String   @map("message_id")   // RFC Message-ID header
+  uid           Int?                           // IMAP UID
+  subject       String
+  fromAddress   String   @map("from_address")
+  fromName      String?  @map("from_name")
+  toAddresses   String   @map("to_addresses")  // JSON array
+  ccAddresses   String?  @map("cc_addresses")
+  bodyText      String?  @map("body_text")
+  bodyHtml      String?  @map("body_html")
+  snippet       String?                        // eerste ~200 tekens
+  sentAt        DateTime @map("sent_at")
+  isRead        Boolean  @default(false) @map("is_read")
+  direction     String   @default("INBOUND")   // INBOUND | OUTBOUND
+  // Koppelingen
+  customerId    String?  @map("customer_id")
+  dealId        String?  @map("deal_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  account       EmailAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  deal          Deal?        @relation(fields: [dealId], references: [id])
+
+  @@unique([accountId, messageId])
+  @@index([customerId])
+  @@index([dealId])
+  @@index([sentAt])
+  @@map("emails")
+}
+
+// ─── Terugkerende facturen ────────────────────────────────────────────────────
+
+enum RecurringFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model RecurringInvoice {
+  id               String             @id @default(cuid())
+  customerId       String             @map("customer_id")
+  contactId        String?            @map("contact_id")
+  dealId           String?            @map("deal_id")
+  description      String                              // bijv. "Maandelijkse servicekosten"
+  frequency        RecurringFrequency @default(MONTHLY)
+  nextRunDate      DateTime           @map("next_run_date")
+  endDate          DateTime?          @map("end_date")
+  isActive         Boolean            @default(true) @map("is_active")
+  paymentTermType  PaymentTerm        @default(DAYS_30) @map("payment_term_type")
+  language         String             @default("NL")
+  notes            String?
+  createdBy        String             @map("created_by")
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  customer      Customer         @relation(fields: [customerId], references: [id])
+  contact       CustomerContact? @relation(fields: [contactId], references: [id])
+  deal          Deal?            @relation(fields: [dealId], references: [id])
+  createdByUser User             @relation("RecurringInvoiceCreatedBy", fields: [createdBy], references: [id])
+  lines         RecurringInvoiceLine[]
+  generatedInvoices Invoice[]
+
+  @@map("recurring_invoices")
+}
+
+model RecurringInvoiceLine {
+  id                  String   @id @default(cuid())
+  recurringInvoiceId  String   @map("recurring_invoice_id")
+  skuSnapshot         String   @map("sku_snapshot")
+  titleSnapshot       String   @map("title_snapshot")
+  qty                 Decimal  @db.Decimal(12, 3)
+  unitPrice           Decimal  @map("unit_price") @db.Decimal(12, 2)
+  vatRate             Decimal  @default(21) @map("vat_rate") @db.Decimal(5, 2)
+  sortOrder           Int      @default(0) @map("sort_order")
+
+  recurringInvoice RecurringInvoice @relation(fields: [recurringInvoiceId], references: [id], onDelete: Cascade)
+
+  @@map("recurring_invoice_lines")
+}
+
+// ─── Auditlog ─────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  action     String                    // bijv. "invoice.status_changed", "payment.created"
+  entityType String   @map("entity_type") // "Invoice", "Quote", "Payment", etc.
+  entityId   String   @map("entity_id")
+  oldValue   String?  @map("old_value")  // JSON
+  newValue   String?  @map("new_value")  // JSON
+  ip         String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Klantspecifieke prijslijsten ─────────────────────────────────────────────
+
+model CustomerPricelist {
+  id             String   @id @default(cuid())
+  customerId     String   @map("customer_id")
+  productId      String   @map("product_id")
+  fixedPrice     Decimal? @map("fixed_price") @db.Decimal(12, 2)
+  discountPct    Decimal? @map("discount_pct") @db.Decimal(5, 2)
+  validFrom      DateTime? @map("valid_from")
+  validUntil     DateTime? @map("valid_until")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, productId])
+  @@map("customer_pricelists")
+}
+
+// ─── Leads ────────────────────────────────────────────────────────────────────
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  TRADE_SHOW
+  COLD_OUTREACH
+  SOCIAL_MEDIA
+  OTHER
+}
+
+model Lead {
+  id           String     @id @default(cuid())
+  companyName  String     @map("company_name")
+  contactName  String?    @map("contact_name")
+  email        String?
+  phone        String?
+  source       LeadSource @default(OTHER)
+  status       LeadStatus @default(NEW)
+  estimatedValue Decimal? @map("estimated_value") @db.Decimal(12, 2)
+  notes        String?
+  convertedToCustomerId String? @map("converted_to_customer_id")
+  assignedTo   String?    @map("assigned_to")
+  createdBy    String     @map("created_by")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  convertedToCustomer Customer? @relation(fields: [convertedToCustomerId], references: [id])
+  assignedToUser      User?     @relation("LeadAssignedTo", fields: [assignedTo], references: [id])
+  createdByUser       User      @relation("LeadCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("leads")
+}
+
+// ─── MyParcel zendingtracking ─────────────────────────────────────────────────
+
+model Shipment {
+  id               String   @id @default(cuid())
+  deliveryNoteId   String?  @map("delivery_note_id")
+  customerId       String?  @map("customer_id")
+  dealId           String?  @map("deal_id")
+  myParcelShipmentId String? @map("myparcel_shipment_id")
+  trackingCode     String?  @map("tracking_code")
+  carrier          String?                          // postnl, dhl, dpd, etc.
+  status           String   @default("PENDING")     // PENDING, IN_TRANSIT, DELIVERED, etc.
+  statusLabel      String?  @map("status_label")    // leesbare omschrijving
+  lastCheckedAt    DateTime? @map("last_checked_at")
+  estimatedDelivery DateTime? @map("estimated_delivery")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  deliveryNote DeliveryNote? @relation(fields: [deliveryNoteId], references: [id])
+  customer     Customer?     @relation(fields: [customerId], references: [id])
+  deal         Deal?         @relation(fields: [dealId], references: [id])
+
+  @@map("shipments")
 }

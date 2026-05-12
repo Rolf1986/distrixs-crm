@@ -1,8 +1,12 @@
-export default function SettingsPage() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold text-slate-900">Instellingen</h1>
-      <p className="text-slate-500 mt-1">Applicatie-instellingen</p>
-    </div>
-  );
+import { prisma } from "@/lib/prisma";
+import { CompanySettingsForm } from "./CompanySettingsForm";
+
+async function getSettings() {
+  return prisma.companySetting.findUnique({ where: { id: "singleton" } });
+}
+
+export default async function SettingsPage() {
+  const settings = await getSettings();
+
+  return <CompanySettingsForm initialSettings={settings} />;
 }

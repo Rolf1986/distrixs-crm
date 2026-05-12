@@ -1,28 +1,36 @@
-import type { SupplierType } from "@/generated/prisma";
+/**
+ * Margeberekening voor Distrixs CRM
+ * China-opslag: ~8% shipping + ~6% invoerrechten (configureerbaar)
+ */
 
-// Default China overhead estimates (configurable later via settings)
-export const CHINA_SHIPPING_ESTIMATE_PCT = 0.08; // 8%
-export const CHINA_IMPORT_DUTIES_ESTIMATE_PCT = 0.06; // 6%
+const CHINA_SHIPPING_FACTOR = 0.08;
+const CHINA_IMPORT_DUTIES_FACTOR = 0.06;
 
-export function calcExpectedCost(
+export interface MarginResult {
+  expectedMargin: number;
+  expectedMarginPct: number;
+  chinaCost: number;
+}
+
+export function calcExpectedMargin(
+  salePrice: number,
   baseCostPrice: number,
-  qty: number,
-  supplierType: SupplierType
-): number {
-  const base = baseCostPrice * qty;
-  if (supplierType !== "CHINA") return base;
-  return base * (1 + CHINA_SHIPPING_ESTIMATE_PCT + CHINA_IMPORT_DUTIES_ESTIMATE_PCT);
+  isChina = false
+): MarginResult {
+  const chinaCost = isChina
+    ? baseCostPrice * (CHINA_SHIPPING_FACTOR + CHINA_IMPORT_DUTIES_FACTOR)
+    : 0;
+  const totalCost = baseCostPrice + chinaCost;
+  const expectedMargin = salePrice - totalCost;
+  const expectedMarginPct = salePrice > 0 ? (expectedMargin / salePrice) * 100 : 0;
+  return { expectedMargin, expectedMarginPct, chinaCost };
 }
 
-export function calcExpectedMargin(netLineTotal: number, expectedCostTotal: number): number {
-  return netLineTotal - expectedCostTotal;
-}
-
-export function calcRealMargin(netLineTotal: number, realCostTotal: number): number {
-  return netLineTotal - realCostTotal;
-}
-
-export function calcMarginPct(margin: number, revenue: number): number {
-  if (revenue === 0) return 0;
-  return (margin / revenue) * 100;
+export function calcRealMargin(
+  salePrice: number,
+  actualCost: number
+): { realMargin: number; realMarginPct: number } {
+  const realMargin = salePrice - actualCost;
+  const realMarginPct = salePrice > 0 ? (realMargin / salePrice) * 100 : 0;
+  return { realMargin, realMarginPct };
 }

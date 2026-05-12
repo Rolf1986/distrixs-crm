@@ -4,8 +4,12 @@ import { getToken } from "next-auth/jwt";
 export default async function proxy(req: NextRequest) {
   const isAuthPage = req.nextUrl.pathname.startsWith("/login");
   const isApiAuth = req.nextUrl.pathname.startsWith("/api/auth");
+  const isPublicRma =
+    req.nextUrl.pathname.startsWith("/retour") ||
+    req.nextUrl.pathname === "/api/rma" ||
+    req.nextUrl.pathname.startsWith("/api/rma/");
 
-  if (isApiAuth) return NextResponse.next();
+  if (isApiAuth || isPublicRma) return NextResponse.next();
 
   const token = await getToken({
     req,

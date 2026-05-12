@@ -112,7 +112,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60
+                className="w-full bg-brand-blue hover:bg-brand-blue-dark disabled:opacity-60
                            text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors"
               >
                 {loading ? "Even geduld…" : "Verder"}
@@ -157,7 +157,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || otp.length < 6}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60
+                className="w-full bg-brand-blue hover:bg-brand-blue-dark disabled:opacity-60
                            text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors"
               >
                 {loading ? "Controleren…" : "Inloggen"}

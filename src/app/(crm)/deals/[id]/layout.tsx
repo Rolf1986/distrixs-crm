@@ -5,7 +5,13 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TabNav } from "@/components/TabNav";
 import { formatCurrency } from "@/lib/utils";
-import { ChevronRight, FileText, Receipt, ShoppingCart } from "lucide-react";
+import { ChevronRight } from "lucide-react";
+import { CreateQuoteButton } from "@/components/CreateQuoteButton";
+import { CreatePoButton } from "@/components/CreatePoButton";
+import { DealStatusActions } from "@/components/DealStatusActions";
+import { DealPipeline } from "@/components/DealPipeline";
+import { WinProbabilityEditor } from "@/components/WinProbabilityEditor";
+import { ExpectedCloseDateEditor } from "@/components/ExpectedCloseDateEditor";
 
 async function getDeal(id: string) {
   return prisma.deal.findUnique({
@@ -13,9 +19,20 @@ async function getDeal(id: string) {
     include: {
       customer: true,
       primaryContact: true,
-      lines: { select: { netLineTotal: true, expectedMarginTotal: true } },
+      // KPI's komen uit offertes, niet uit dealregels
+      quotes: {
+        select: { subtotal: true, total: true, status: true },
+      },
       _count: { select: { quotes: true, invoices: true, purchaseOrders: true } },
     },
+  });
+}
+
+async function getSuppliers() {
+  return prisma.supplier.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, supplierType: true },
+    orderBy: { name: "asc" },
   });
 }
 
@@ -27,12 +44,16 @@ export default async function DealLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const deal = await getDeal(id);
+  const [deal, suppliers] = await Promise.all([getDeal(id), getSuppliers()]);
   if (!deal) notFound();
 
-  const omzet = deal.lines.reduce((s, l) => s + Number(l.netLineTotal), 0);
-  const marge = deal.lines.reduce((s, l) => s + Number(l.expectedMarginTotal), 0);
-  const margePct = omzet > 0 ? (marge / omzet) * 100 : 0;
+  // Bereken omzet uit offertes (voorkeur: geaccepteerde, anders verzonden, anders alle niet-afgewezen)
+  const activeQuotes = deal.quotes.filter(
+    (q) => q.status !== "REJECTED"
+  );
+  const omzet = activeQuotes.reduce((s, q) => s + Number(q.total), 0);
+
+  const isOpenStatus = deal.status !== "WON" && deal.status !== "LOST";
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -44,54 +65,63 @@ export default async function DealLayout({
       </div>
 
       {/* Header */}
-      <div className="px-8 pt-3 pb-5 bg-white border-b border-slate-200">
-        <div className="flex items-start justify-between gap-4">
+      <div className="px-8 pt-3 pb-0 bg-white border-b border-slate-200">
+        <div className="flex items-start justify-between gap-4 pb-4">
           <div>
             <h1 className="text-xl font-semibold text-slate-900">{deal.title}</h1>
             <div className="flex items-center gap-3 mt-1.5">
-              <span className="text-sm text-slate-500">{deal.customer.companyName}</span>
+              <Link href={`/customers/${deal.customerId}`} className="text-sm text-brand-blue hover:underline">
+                {deal.customer.companyName}
+              </Link>
               {deal.primaryContact && (
                 <span className="text-sm text-slate-400">
                   · {deal.primaryContact.firstName} {deal.primaryContact.lastName}
                 </span>
               )}
-              <StatusBadge status={deal.status} type="deal" />
+              <WinProbabilityEditor dealId={id} value={deal.winProbability ?? null} />
+              <ExpectedCloseDateEditor dealId={id} value={deal.expectedCloseDate ?? null} />
             </div>
           </div>
 
           {/* Actieknoppen */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button className="flex items-center gap-1.5 border border-slate-300 hover:border-slate-400 bg-white text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-              <FileText className="w-4 h-4" />
-              Offerte maken
-            </button>
-            <button className="flex items-center gap-1.5 border border-slate-300 hover:border-slate-400 bg-white text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-              <Receipt className="w-4 h-4" />
-              Factuur maken
-            </button>
-            <button className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-              <ShoppingCart className="w-4 h-4" />
-              Inkoop maken
-            </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <DealStatusActions dealId={id} currentStatus={deal.status} />
+            <div className="w-px h-6 bg-slate-200" />
+            <CreateQuoteButton dealId={id} />
+            <CreatePoButton dealId={id} suppliers={suppliers} />
           </div>
         </div>
 
-        {/* KPI's */}
-        <div className="grid grid-cols-4 gap-3 mt-5">
-          <KpiCard label="Omzet" value={formatCurrency(omzet)} />
-          <KpiCard label="Verwachte marge" value={formatCurrency(marge)} sub={`${margePct.toFixed(1)}% van omzet`} />
+        {/* Pipeline progress bar — alleen bij open deals */}
+        {isOpenStatus && (
+          <div className="pb-2">
+            <DealPipeline dealId={id} status={deal.status} />
+          </div>
+        )}
+
+        {/* KPI's — gebaseerd op offertes */}
+        <div className="grid grid-cols-3 gap-3 py-4 border-t border-slate-100">
+          <KpiCard
+            label="Offertewaarde"
+            value={formatCurrency(omzet)}
+            sub={omzet === 0 ? "Nog geen offertes" : `${activeQuotes.length} offerte${activeQuotes.length !== 1 ? "s" : ""}`}
+            highlight={omzet > 0}
+          />
           <KpiCard label="Offertes" value={String(deal._count.quotes)} />
           <KpiCard label="Facturen" value={String(deal._count.invoices)} />
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — geen Producten tab */}
         <TabNav tabs={[
-          { label: "Producten",    href: `/deals/${id}/products` },
-          { label: "Offertes",     href: `/deals/${id}/quotes` },
-          { label: "Facturen",     href: `/deals/${id}/invoices` },
-          { label: "Inkoop",       href: `/deals/${id}/purchase-orders` },
-          { label: "Activiteiten", href: `/deals/${id}/activities` },
-          { label: "Bestanden",    href: `/deals/${id}/files` },
+          { label: "Info",             href: `/deals/${id}/info`,               exact: true },
+          { label: "Offertes",         href: `/deals/${id}/quotes` },
+          { label: "Orderbevestiging", href: `/deals/${id}/order-confirmations` },
+          { label: "Verzenddocument",  href: `/deals/${id}/delivery-notes` },
+          { label: "Facturen",         href: `/deals/${id}/invoices` },
+          { label: "Inkoop",           href: `/deals/${id}/purchase-orders` },
+          { label: "E-mails",          href: `/deals/${id}/emails` },
+          { label: "Activiteiten",     href: `/deals/${id}/activities` },
+          { label: "Bestanden",        href: `/deals/${id}/files` },
         ]} />
       </div>
 

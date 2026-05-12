@@ -41,3 +41,11 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# local backups
+node_modules.old/
+*.bak
+setup-server.sh
+
+# turbopack / next dev temp cache
+var/

@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "mcp__Claude_Preview__preview_screenshot",
+      "mcp__Claude_Preview__preview_start",
+      "mcp__Claude_Preview__preview_logs",
+      "mcp__Claude_Preview__preview_click",
+      "mcp__Claude_Preview__preview_stop",
+      "mcp__Claude_Preview__preview_fill",
+      "mcp__Claude_Preview__preview_snapshot",
+      "mcp__Claude_Preview__preview_navigate",
+      "mcp__Claude_Preview__preview_resize",
+      "mcp__ccd_session__mark_chapter",
+      "mcp__ccd_session__spawn_task",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(pkill *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(mv *)",
+      "Bash(cp *)",
+      "Bash(chmod *)",
+      "Bash(ln *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(curl *)",
+      "Bash(psql *)",
+      "Bash(brew *)",
+      "Bash(touch *)"
+    ]
+  }
+}
