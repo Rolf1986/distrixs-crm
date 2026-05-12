@@ -29,9 +29,7 @@ export async function GET(
           },
         },
       },
-      contact: true,
       lines: { orderBy: { createdAt: "asc" } },
-      deal: { select: { language: false } as never },
     },
   });
 
