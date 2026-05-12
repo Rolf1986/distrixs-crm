@@ -43,13 +43,13 @@ export async function GET(
 
   const data = {
     language: "NL",
-    noteNumber: dn.noteNumber,
-    deliveryDate: dn.expectedDelivery ?? new Date(),
+    noteNumber: dn.deliveryNumber,
+    deliveryDate: dn.deliveryDate ?? new Date(),
     notes: dn.notes,
     company,
     customer: {
       companyName: dn.customer.companyName,
-      contactName: dn.contact ? `${dn.contact.firstName} ${dn.contact.lastName}` : null,
+      contactName: null,
       address: defaultAddr ? `${defaultAddr.street} ${defaultAddr.houseNumber}` : null,
       postalCode: defaultAddr?.postalCode ?? null,
       city: defaultAddr?.city ?? null,
@@ -65,7 +65,7 @@ export async function GET(
     lines: dn.lines.map((l) => ({
       skuSnapshot: l.skuSnapshot,
       titleSnapshot: l.titleSnapshot,
-      qty: Number(l.qtyDelivered),
+      qty: Number(l.qty),
     })),
   };
 
@@ -75,7 +75,7 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${dn.noteNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="${dn.deliveryNumber}.pdf"`,
       },
     });
   } catch (err) {
