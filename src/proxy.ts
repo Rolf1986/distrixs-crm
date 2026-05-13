@@ -1,28 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { jwtVerify } from "jose";
+
+async function hasValidSession(req: NextRequest): Promise<boolean> {
+  const token = req.cookies.get("crm-session")?.value;
+  if (!token) return false;
+  try {
+    const secret = new TextEncoder().encode(process.env.AUTH_SECRET ?? "");
+    await jwtVerify(token, secret);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export default async function proxy(req: NextRequest) {
-  const isAuthPage = req.nextUrl.pathname.startsWith("/login");
-  const isApiAuth = req.nextUrl.pathname.startsWith("/api/auth");
-  const isPublicRma =
-    req.nextUrl.pathname.startsWith("/retour") ||
-    req.nextUrl.pathname === "/api/rma" ||
-    req.nextUrl.pathname.startsWith("/api/rma/");
+  const { pathname } = req.nextUrl;
 
-  if (isApiAuth || isPublicRma) return NextResponse.next();
+  // Altijd doorlaten
+  if (
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/retour") ||
+    pathname === "/api/rma" ||
+    pathname.startsWith("/api/rma/") ||
+    pathname.startsWith("/api/")
+  ) {
+    return NextResponse.next();
+  }
 
-  const token = await getToken({
-    req,
-    secret: process.env.AUTH_SECRET,
-  });
+  const isLoginPage = pathname === "/login" || pathname === "/inloggen";
+  const isLoggedIn = await hasValidSession(req);
 
-  const isLoggedIn = !!token;
-
-  if (!isLoggedIn && !isAuthPage) {
+  if (!isLoggedIn && !isLoginPage) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  if (isLoggedIn && isAuthPage) {
+  if (isLoggedIn && isLoginPage) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
