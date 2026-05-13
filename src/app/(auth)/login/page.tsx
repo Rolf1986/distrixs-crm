@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [devCode, setDevCode] = useState("");
 
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault();
@@ -28,10 +29,17 @@ export default function LoginPage() {
 
     setLoading(false);
 
+    const data = await res.json();
+
     if (!res.ok) {
-      const data = await res.json();
       setError(data.error ?? "Er is een fout opgetreden");
       return;
+    }
+
+    // Als er geen email-provider is, staat de code direct in de response
+    if (data.devCode) {
+      setDevCode(data.devCode);
+      setOtp(data.devCode);
     }
 
     setStep("otp");
@@ -121,10 +129,17 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleOtp} className="space-y-4">
               <div className="text-center mb-2">
-                <p className="text-sm text-slate-600">
-                  We hebben een code gestuurd naar
-                </p>
-                <p className="text-sm font-medium text-slate-900">{email}</p>
+                {devCode ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                    <p className="text-xs text-amber-700 font-medium">E-mail niet geconfigureerd — code direct:</p>
+                    <p className="text-2xl font-mono font-bold tracking-widest text-amber-900">{devCode}</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-slate-600">We hebben een code gestuurd naar</p>
+                    <p className="text-sm font-medium text-slate-900">{email}</p>
+                  </>
+                )}
               </div>
 
               <div>
