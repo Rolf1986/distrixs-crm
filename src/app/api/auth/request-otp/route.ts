@@ -23,8 +23,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Onjuiste inloggegevens" }, { status: 401 });
     }
 
-    const otp = await createOtp(user.id);
-    console.log(`OTP voor ${email}: ${otp}`);
+    let otp: string;
+    try {
+      otp = await createOtp(user.id);
+      console.log(`OTP aangemaakt voor ${email}: ${otp}`);
+    } catch (otpErr) {
+      console.error("OTP aanmaken mislukt:", otpErr);
+      return NextResponse.json({ error: "Interne fout bij OTP aanmaken" }, { status: 500 });
+    }
 
     // Stuur via Resend als API key beschikbaar is
     const emailResult = await sendEmail({
