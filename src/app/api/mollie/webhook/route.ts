@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
         amount: paidAmount,
         paymentDate: new Date(),
         method: "BANK_TRANSFER",
-        notes: `Mollie betaling ${paymentId}`,
+        reference: `Mollie ${paymentId}`,
         createdBy: (await prisma.user.findFirst({ select: { id: true } }))!.id,
       },
     });
