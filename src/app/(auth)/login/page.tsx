@@ -16,21 +16,25 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    setLoading(false);
+      if (!result || result.error) {
+        setError("Onjuist e-mailadres of wachtwoord");
+        return;
+      }
 
-    if (result?.error) {
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
       setError("Onjuist e-mailadres of wachtwoord");
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (

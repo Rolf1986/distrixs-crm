@@ -11,15 +11,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Wachtwoord", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        const email = credentials?.email as string;
+        const password = credentials?.password as string;
+        console.log("[auth] authorize aanroep voor:", email, "pass lengte:", password?.length);
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        });
+        if (!email || !password) {
+          console.log("[auth] geen email/wachtwoord");
+          return null;
+        }
+
+        const user = await prisma.user.findUnique({ where: { email } });
+        console.log("[auth] user gevonden:", !!user, "actief:", user?.isActive);
 
         if (!user || !user.isActive) return null;
 
-        const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+        const valid = await bcrypt.compare(password, user.passwordHash);
+        console.log("[auth] wachtwoord geldig:", valid);
+
         if (!valid) return null;
 
         return { id: user.id, email: user.email, name: user.name };
