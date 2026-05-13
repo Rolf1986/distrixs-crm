@@ -17,22 +17,27 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
+      // Valideer eerst via eigen route
+      const check = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
-      console.log("[login] signIn result:", JSON.stringify(result));
-      // v5 beta: result is een URL string bij succes, of heeft .error bij falen
-      if (result && typeof result === "object" && "error" in result && result.error) {
+
+      if (!check.ok) {
         setError("Onjuist e-mailadres of wachtwoord");
-      } else {
-        // succes — navigeer naar dashboard
-        window.location.href = "/dashboard";
+        return;
       }
+
+      // Daarna NextAuth sessie aanmaken (volgt eigen redirect)
+      await signIn("credentials", { email, password, callbackUrl: "/dashboard" });
     } catch (err: unknown) {
-      console.log("[login] signIn exception:", err);
-      setError("Onjuist e-mailadres of wachtwoord");
+      console.log("[login] exception:", err);
+      // Als het een redirect is, is inloggen gelukt
+      const msg = String(err);
+      if (!msg.includes("NEXT_REDIRECT") && !msg.includes("redirect")) {
+        setError("Onjuist e-mailadres of wachtwoord");
+      }
     } finally {
       setLoading(false);
     }
