@@ -31,7 +31,8 @@ export async function POST(req: NextRequest) {
 
     const token = await createSession(user.id);
     const opts = sessionCookieOptions(token);
-    const response = NextResponse.redirect(siteUrl(req, "/dashboard"));
+    // 303 See Other: browser gebruikt GET voor de redirect (correct na form POST)
+    const response = NextResponse.redirect(siteUrl(req, "/dashboard"), { status: 303 });
     response.cookies.set(opts.name, opts.value, {
       httpOnly: opts.httpOnly,
       secure: opts.secure,
