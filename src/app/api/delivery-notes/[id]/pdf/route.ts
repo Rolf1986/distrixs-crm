@@ -72,7 +72,7 @@ export async function GET(
   try {
     const element = createElement(DeliveryNotePdf, { data });
     const buffer = await renderToBuffer(element as never);
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${dn.deliveryNumber}.pdf"`,
