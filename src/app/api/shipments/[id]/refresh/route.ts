@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getShipmentStatus } from "@/lib/myparcel";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // POST /api/shipments/[id]/refresh — fetch fresh status from MyParcel and persist
-export async function POST(_req: NextRequest, { params }: RouteContext) {
-  const session = await auth();
+export async function POST(req: NextRequest, { params }: RouteContext) {
+  const session = await getSession(req);
   if (!session?.user?.id)
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 

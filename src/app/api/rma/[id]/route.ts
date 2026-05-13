@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id } = await params;

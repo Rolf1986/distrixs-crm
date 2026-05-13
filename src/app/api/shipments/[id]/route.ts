@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 // GET /api/shipments/[id] — single shipment
-export async function GET(_req: NextRequest, { params }: RouteContext) {
-  const session = await auth();
+export async function GET(req: NextRequest, { params }: RouteContext) {
+  const session = await getSession(req);
   if (!session?.user?.id)
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
 
 // PATCH /api/shipments/[id] — update tracking fields
 export async function PATCH(req: NextRequest, { params }: RouteContext) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id)
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 

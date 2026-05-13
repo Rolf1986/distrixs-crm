@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
@@ -13,10 +13,10 @@ const PAYMENT_TERM_DAYS: Record<string, number> = {
 };
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }

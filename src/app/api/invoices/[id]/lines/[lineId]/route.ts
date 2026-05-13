@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcTotals, calcLineVat } from "@/lib/recalc";
 
@@ -21,7 +21,7 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; lineId: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: invoiceId, lineId } = await params;
@@ -56,10 +56,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; lineId: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: invoiceId, lineId } = await params;

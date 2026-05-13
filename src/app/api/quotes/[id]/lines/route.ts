@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcTotals, calcLineVat } from "@/lib/recalc";
 
@@ -20,7 +20,7 @@ async function recalcQuoteTotals(quoteId: string) {
 
 // Regel toevoegen
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: quoteId } = await params;

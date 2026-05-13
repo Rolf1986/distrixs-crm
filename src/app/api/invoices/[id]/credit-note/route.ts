@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { nextCreditNoteNumber } from "@/lib/sequences";
 
@@ -7,7 +7,7 @@ export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession(null);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }

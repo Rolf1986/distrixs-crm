@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { calcTotals } from "@/lib/recalc";
@@ -39,8 +39,8 @@ function computeNextRunDate(current: Date, frequency: string): Date {
   return d;
 }
 
-export async function POST(_req: NextRequest, { params }: RouteContext) {
-  const session = await auth();
+export async function POST(req: NextRequest, { params }: RouteContext) {
+  const session = await getSession(req);
   const userId = session?.user?.id;
   if (!userId) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 

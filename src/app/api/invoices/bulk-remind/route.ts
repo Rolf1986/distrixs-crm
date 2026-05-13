@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getCompanyInfo } from "@/lib/companySettings";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
@@ -9,7 +9,7 @@ import { InvoicePdf } from "@/components/InvoicePdf";
 import { formatCurrency } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { invoiceIds } = (await req.json()) as { invoiceIds: string[] };

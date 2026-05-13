@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; installmentId: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { installmentId } = await params;
@@ -33,10 +33,10 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; installmentId: string }> }
 ) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { installmentId } = await params;

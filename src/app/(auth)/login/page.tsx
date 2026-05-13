@@ -1,24 +1,39 @@
 "use client";
 
-import { useActionState } from "react";
-import { loginAction } from "./actions";
+import { useState, FormEvent } from "react";
 
 export default function LoginPage() {
-  const [error, formAction, pending] = useActionState(
-    async (_prev: string, formData: FormData) => {
-      try {
-        await loginAction(
-          formData.get("email") as string,
-          formData.get("password") as string
-        );
-        return "";
-      } catch {
-        // NEXT_REDIRECT — Next.js handelt de redirect af, geen error tonen
-        return "";
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setPending(true);
+    setError("");
+
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement).value;
+    const password = (form.elements.namedItem("password") as HTMLInputElement).value;
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (res.ok) {
+        window.location.href = "/dashboard";
+      } else {
+        const data = await res.json();
+        setError(data.error || "Inloggen mislukt");
       }
-    },
-    ""
-  );
+    } catch {
+      setError("Er is een fout opgetreden. Probeer opnieuw.");
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -28,7 +43,7 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500 mt-1">Log in op je account</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <form action={formAction} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">E-mailadres</label>
               <input

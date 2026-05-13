@@ -1,11 +1,11 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { getShipmentStatus } from "@/lib/myparcel";
 
 // POST /api/shipments/refresh-all — refresh status of all non-delivered shipments
-export async function POST() {
-  const session = await auth();
+export async function POST(req: NextRequest) {
+  const session = await getSession(req);
   if (!session?.user?.id)
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 

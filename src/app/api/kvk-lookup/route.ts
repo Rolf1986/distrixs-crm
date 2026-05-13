@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/session";
 
 /**
  * KvK + VIES BTW lookup endpoint
@@ -105,7 +105,7 @@ async function validateVies(vatNumber: string): Promise<ViesResult> {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
+  const session = await getSession(req);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }
