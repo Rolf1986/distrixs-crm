@@ -17,21 +17,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // NextAuth v5: redirect:false geeft undefined terug bij succes, gooit error bij falen
-      await signIn("credentials", {
+      const result = await signIn("credentials", {
         email,
         password,
-        redirectTo: "/dashboard",
+        redirect: false,
       });
-    } catch (err: unknown) {
-      // NextAuth v5 gooit een redirect-error bij succes (NEXT_REDIRECT)
-      // en een AuthError bij falen
-      const message = err instanceof Error ? err.message : String(err);
-      if (message.includes("NEXT_REDIRECT") || message.includes("redirect")) {
-        router.push("/dashboard");
-        router.refresh();
-        return;
+      console.log("[login] signIn result:", JSON.stringify(result));
+      // v5 beta: result is een URL string bij succes, of heeft .error bij falen
+      if (result && typeof result === "object" && "error" in result && result.error) {
+        setError("Onjuist e-mailadres of wachtwoord");
+      } else {
+        // succes — navigeer naar dashboard
+        window.location.href = "/dashboard";
       }
+    } catch (err: unknown) {
+      console.log("[login] signIn exception:", err);
       setError("Onjuist e-mailadres of wachtwoord");
     } finally {
       setLoading(false);
