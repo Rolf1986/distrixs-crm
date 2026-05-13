@@ -588,6 +588,18 @@ export function QuoteLinesClient({
                 ))}
               </select>
             </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">Inkoopprijs (€)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                className={`${inputClass} w-28`}
+                value={addCostPrice || ""}
+                onChange={(e) => setAddCostPrice(Number(e.target.value))}
+                placeholder="0.00"
+              />
+            </div>
             <div className="ml-auto flex items-end gap-3">
               {addPrice && addQty && (() => {
                 const net = calcNet(Number(addPrice), Number(addQty), Number(addDiscount));
@@ -596,13 +608,12 @@ export function QuoteLinesClient({
                 return (
                   <div className="text-sm pb-2 text-right">
                     <div className="text-slate-500">= {formatCurrency(net)}</div>
-                    {addCostPrice > 0 && (
-                      <div className="text-xs text-slate-400">Ink: {formatCurrency(addCostPrice)}</div>
-                    )}
-                    {margin !== null && (
+                    {margin !== null ? (
                       <div className={`text-xs font-medium ${margin >= 0 ? "text-green-600" : "text-red-600"}`}>
                         Marge: {formatCurrency(margin)} ({marginPct?.toFixed(1)}%)
                       </div>
+                    ) : (
+                      <div className="text-xs text-slate-400">Marge: vul inkoopprijs in</div>
                     )}
                   </div>
                 );
