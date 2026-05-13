@@ -1,30 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState } from "react";
 import { loginAction } from "./actions";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    try {
-      const result = await loginAction(email, password);
-      if (result?.error) {
-        setError(result.error);
+  const [error, formAction, pending] = useActionState(
+    async (_prev: string, formData: FormData) => {
+      try {
+        await loginAction(
+          formData.get("email") as string,
+          formData.get("password") as string
+        );
+        return "";
+      } catch {
+        // NEXT_REDIRECT — Next.js handelt de redirect af, geen error tonen
+        return "";
       }
-    } catch {
-      // NEXT_REDIRECT — inloggen gelukt, Next.js doet de redirect
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    ""
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -34,13 +28,12 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500 mt-1">Log in op je account</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form action={formAction} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">E-mailadres</label>
               <input
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                name="email"
                 required
                 autoFocus
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -51,8 +44,7 @@ export default function LoginPage() {
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Wachtwoord</label>
               <input
                 type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                name="password"
                 required
                 className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="••••••••"
@@ -65,10 +57,10 @@ export default function LoginPage() {
             )}
             <button
               type="submit"
-              disabled={loading}
+              disabled={pending}
               className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors"
             >
-              {loading ? "Inloggen…" : "Inloggen"}
+              {pending ? "Inloggen…" : "Inloggen"}
             </button>
           </form>
         </div>
