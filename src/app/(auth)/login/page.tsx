@@ -17,20 +17,21 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      // NextAuth v5: redirect:false geeft undefined terug bij succes, gooit error bij falen
+      await signIn("credentials", {
         email,
         password,
-        redirect: false,
+        redirectTo: "/dashboard",
       });
-
-      if (!result || result.error) {
-        setError("Onjuist e-mailadres of wachtwoord");
+    } catch (err: unknown) {
+      // NextAuth v5 gooit een redirect-error bij succes (NEXT_REDIRECT)
+      // en een AuthError bij falen
+      const message = err instanceof Error ? err.message : String(err);
+      if (message.includes("NEXT_REDIRECT") || message.includes("redirect")) {
+        router.push("/dashboard");
+        router.refresh();
         return;
       }
-
-      router.push("/dashboard");
-      router.refresh();
-    } catch {
       setError("Onjuist e-mailadres of wachtwoord");
     } finally {
       setLoading(false);
