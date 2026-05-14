@@ -166,6 +166,34 @@ async function findCustomerId(tlCompanyId) {
   return null;
 }
 
+/**
+ * In TL a deal lead can be linked to a contact (person) instead of a company.
+ * If lead.customer.type === 'contact', look up that contact's company.
+ */
+async function findCustomerIdFromLead(lead) {
+  if (!lead?.customer) return null;
+  const { type, id } = lead.customer;
+
+  if (type === 'company' || !type) {
+    // Normal case: lead is a company
+    return findCustomerId(id);
+  }
+
+  if (type === 'contact') {
+    // Lead is a contact — find the contact's company via customer_contacts table
+    const res = await pool.query(
+      `SELECT c.id FROM customers c
+       JOIN customer_contacts cc ON cc.customer_id = c.id
+       WHERE cc.external_id = $1 OR cc.external_id = $2
+       LIMIT 1`,
+      [`tl-contact-${id}`, id]
+    );
+    if (res.rows.length) return res.rows[0].id;
+  }
+
+  return null;
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 // PHASE 1 — CLEANUP
 // ══════════════════════════════════════════════════════════════════════════════
@@ -347,12 +375,8 @@ async function importDeals(token, systemUserId) {
       const dealNumber = `D-${year}-${refPadded}`;
 
       // ── Resolve customer ─────────────────────────────────────────────────
-      // TL deal has lead.customer (type=company, id=<tlCompanyId>)
-      const tlCompanyId =
-        d.lead?.customer?.id ||
-        d.customer?.id ||
-        null;
-      const customerId = await findCustomerId(tlCompanyId);
+      // TL deal lead can be type=company OR type=contact (person without company)
+      const customerId = await findCustomerIdFromLead(d.lead) || await findCustomerId(d.customer?.id);
 
       // ── Status mapping ───────────────────────────────────────────────────
       let status;
@@ -379,7 +403,7 @@ async function importDeals(token, systemUserId) {
            win_probability, expected_close_date, notes,
            created_by, external_id, created_at, updated_at)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-         ON CONFLICT (external_id) DO NOTHING`,
+        `,
         [
           crypto.randomUUID(),
           dealNumber,
@@ -531,8 +555,7 @@ async function importQuotes(token, systemUserId) {
           (id, quote_number, customer_id, deal_id, status,
            quote_date, valid_until, subtotal, vat_amount, total,
            created_by, external_id, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-         ON CONFLICT (external_id) DO NOTHING`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
         [
           quoteId,
           quoteNumber,
@@ -744,8 +767,7 @@ async function importInvoices(token, systemUserId) {
            invoice_date, due_date, subtotal, vat_amount, total,
            open_amount, paid_amount,
            created_by, external_id, created_at, updated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-         ON CONFLICT (external_id) DO NOTHING`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [
           invoiceId,
           invoiceNumber,
