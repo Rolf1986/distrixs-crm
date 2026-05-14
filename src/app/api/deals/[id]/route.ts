@@ -64,6 +64,17 @@ export async function DELETE(
   const deal = await prisma.deal.findUnique({ where: { id } });
   if (!deal) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
 
-  await prisma.deal.delete({ where: { id } });
-  return NextResponse.json({ ok: true });
+  try {
+    // Verwijder eerst records met verplichte dealId (geen cascade in schema)
+    // DeliveryNotes (lines hebben cascade op deliveryNoteId)
+    await prisma.deliveryNote.deleteMany({ where: { dealId: id } });
+    // OrderConfirmations
+    await prisma.orderConfirmation.deleteMany({ where: { dealId: id } });
+    // Deal zelf (DealLines hebben cascade)
+    await prisma.deal.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[deal delete]", err);
+    return NextResponse.json({ error: "Verwijderen mislukt" }, { status: 500 });
+  }
 }

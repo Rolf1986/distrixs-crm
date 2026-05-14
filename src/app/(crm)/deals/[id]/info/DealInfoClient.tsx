@@ -162,9 +162,16 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
 
   async function deleteDeal() {
     if (!window.confirm("Deal verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
-    const res = await fetch(`/api/deals/${deal.id}`, { method: "DELETE" });
-    if (res.ok) {
-      window.location.href = "/deals";
+    try {
+      const res = await fetch(`/api/deals/${deal.id}`, { method: "DELETE" });
+      if (res.ok) {
+        window.location.href = "/deals";
+      } else {
+        const body = await res.json().catch(() => ({}));
+        alert(body.error ?? "Verwijderen mislukt. Probeer opnieuw.");
+      }
+    } catch {
+      alert("Verwijderen mislukt. Controleer de verbinding.");
     }
   }
 
