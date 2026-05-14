@@ -11,6 +11,7 @@ import { ValidUntilEditor } from "@/components/ValidUntilEditor";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ChevronRight, Download } from "lucide-react";
+import { DeleteQuoteButton } from "@/components/DeleteQuoteButton";
 
 async function getQuote(id: string) {
   return prisma.quote.findUnique({
@@ -79,6 +80,7 @@ export default async function QuoteLayout({
 
           {/* Actieknoppen */}
           <div className="flex items-center gap-2">
+            <DeleteQuoteButton quoteId={id} status={quote.status} />
             <LanguageToggle
               documentType="quote"
               documentId={id}

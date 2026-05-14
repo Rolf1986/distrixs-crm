@@ -13,6 +13,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { CreateCreditNoteButton } from "@/components/CreateCreditNoteButton";
+import { DeleteInvoiceButton } from "@/components/DeleteInvoiceButton";
 
 async function getInvoice(id: string) {
   return prisma.invoice.findUnique({
@@ -143,6 +144,7 @@ export default async function InvoiceLayout({
 
           {/* Actieknoppen */}
           <div className="flex items-center gap-2">
+            <DeleteInvoiceButton invoiceId={id} status={invoice.status} />
             <CreateCreditNoteButton
               invoiceId={id}
               invoiceNumber={invoice.invoiceNumber}

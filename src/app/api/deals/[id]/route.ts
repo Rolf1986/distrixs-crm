@@ -49,3 +49,21 @@ export async function GET(
   if (!deal) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
   return NextResponse.json(deal);
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession(req);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const deal = await prisma.deal.findUnique({ where: { id } });
+  if (!deal) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+
+  await prisma.deal.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

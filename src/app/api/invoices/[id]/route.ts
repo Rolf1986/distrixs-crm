@@ -20,3 +20,23 @@ export async function PATCH(
   const invoice = await prisma.invoice.update({ where: { id }, data });
   return NextResponse.json(invoice);
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession(req);
+  if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
+  const { id } = await params;
+
+  const invoice = await prisma.invoice.findUnique({ where: { id } });
+  if (!invoice) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+
+  if (invoice.status !== "DRAFT") {
+    return NextResponse.json({ error: "Alleen conceptfacturen kunnen worden verwijderd" }, { status: 400 });
+  }
+
+  await prisma.invoice.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

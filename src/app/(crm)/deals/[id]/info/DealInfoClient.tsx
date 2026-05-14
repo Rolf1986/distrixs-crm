@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Pencil, Check, X, User, Phone, CalendarDays, CheckSquare,
-  Clock, AlertCircle,
+  Clock, AlertCircle, Trash2,
 } from "lucide-react";
 
 type UpcomingActivity = {
@@ -160,6 +160,12 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
     router.refresh();
   }
 
+  async function deleteDeal() {
+    if (!window.confirm("Deal verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
+    await fetch(`/api/deals/${deal.id}`, { method: "DELETE" });
+    router.push("/deals");
+  }
+
   async function saveTitle(v: string) {
     setTitleState(v);
     await patchDeal({ title: v });
@@ -185,8 +191,15 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
 
         {/* Details card */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-100">
+          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-slate-700">Dealgegevens</h3>
+            <button
+              onClick={deleteDeal}
+              className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Verwijderen
+            </button>
           </div>
           <div className="px-5 py-4 grid grid-cols-1 sm:grid-cols-2 gap-5">
 
