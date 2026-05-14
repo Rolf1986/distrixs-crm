@@ -162,8 +162,10 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
 
   async function deleteDeal() {
     if (!window.confirm("Deal verwijderen? Dit kan niet ongedaan worden gemaakt.")) return;
-    await fetch(`/api/deals/${deal.id}`, { method: "DELETE" });
-    router.push("/deals");
+    const res = await fetch(`/api/deals/${deal.id}`, { method: "DELETE" });
+    if (res.ok) {
+      window.location.href = "/deals";
+    }
   }
 
   async function saveTitle(v: string) {
