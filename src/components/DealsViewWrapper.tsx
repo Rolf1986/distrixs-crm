@@ -74,7 +74,12 @@ export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
   const sorted = [...filtered].sort((a, b) => {
     const da = new Date(a.createdAt).getTime();
     const db = new Date(b.createdAt).getTime();
-    return sortDesc ? db - da : da - db;
+    if (da !== db) return sortDesc ? db - da : da - db;
+    // Tiebreaker: numeriek deel van dealNumber (hogere nummer = nieuwere deal)
+    const getNum = (s: string) => parseInt(s.split("-").pop() ?? "0") || 0;
+    const na = getNum(a.dealNumber ?? "");
+    const nb = getNum(b.dealNumber ?? "");
+    return sortDesc ? nb - na : na - nb;
   });
 
   const totalPages = Math.ceil(sorted.length / pageSize);
