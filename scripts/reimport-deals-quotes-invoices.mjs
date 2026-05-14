@@ -207,14 +207,24 @@ async function runCleanup() {
     );
     console.log(`[cleanup] Deleted ${r.rowCount} quotes`);
 
-    // 3. NULL out ALL FK references to TL deals in optional-FK tables
-    //    (covers non-TL records that might still reference TL deals)
+    // 3. Handle remaining FK references to TL deals.
+    //    quotes.deal_id is NOT NULL → must delete any remaining quotes referencing TL deals
     r = await client.query(
-      `UPDATE quotes SET deal_id = NULL
+      `DELETE FROM quote_lines WHERE quote_id IN (
+         SELECT id FROM quotes WHERE deal_id IN (
+           SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%'
+         )
+       )`
+    );
+    console.log(`[cleanup] Deleted ${r.rowCount} quote_lines for remaining deal-linked quotes`);
+
+    r = await client.query(
+      `DELETE FROM quotes
        WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
     );
-    console.log(`[cleanup] Nulled deal_id on ${r.rowCount} remaining quotes`);
+    console.log(`[cleanup] Deleted ${r.rowCount} remaining deal-linked quotes`);
 
+    // invoices.deal_id is nullable → NULL it out
     r = await client.query(
       `UPDATE invoices SET deal_id = NULL
        WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
