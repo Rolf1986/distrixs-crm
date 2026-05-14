@@ -207,13 +207,47 @@ async function runCleanup() {
     );
     console.log(`[cleanup] Deleted ${r.rowCount} quotes`);
 
-    // 3. NULL out activity deal references so deals can be deleted
+    // 3. NULL out ALL FK references to TL deals in optional-FK tables
+    //    (covers non-TL records that might still reference TL deals)
     r = await client.query(
-      `UPDATE activities
-       SET deal_id = NULL
-       WHERE deal_id IN (
-         SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%'
-       )`
+      `UPDATE quotes SET deal_id = NULL
+       WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
+    );
+    console.log(`[cleanup] Nulled deal_id on ${r.rowCount} remaining quotes`);
+
+    r = await client.query(
+      `UPDATE invoices SET deal_id = NULL
+       WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
+    );
+    console.log(`[cleanup] Nulled deal_id on ${r.rowCount} remaining invoices`);
+
+    r = await client.query(
+      `UPDATE purchase_orders SET deal_id = NULL
+       WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
+    );
+    console.log(`[cleanup] Nulled deal_id on ${r.rowCount} purchase_orders`);
+
+    r = await client.query(
+      `UPDATE recurring_invoices SET deal_id = NULL
+       WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
+    );
+    console.log(`[cleanup] Nulled deal_id on ${r.rowCount} recurring_invoices`);
+
+    r = await client.query(
+      `UPDATE emails SET deal_id = NULL
+       WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
+    );
+    console.log(`[cleanup] Nulled deal_id on ${r.rowCount} emails`);
+
+    r = await client.query(
+      `UPDATE shipments SET deal_id = NULL
+       WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
+    );
+    console.log(`[cleanup] Nulled deal_id on ${r.rowCount} shipments`);
+
+    r = await client.query(
+      `UPDATE activities SET deal_id = NULL
+       WHERE deal_id IN (SELECT id FROM deals WHERE external_id LIKE 'tl-deal-%')`
     );
     console.log(`[cleanup] Nulled deal_id on ${r.rowCount} activities`);
 
