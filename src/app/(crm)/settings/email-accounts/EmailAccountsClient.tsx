@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, RefreshCw, Mail, Check, X, Loader2, Server, Eye, EyeOff } from "lucide-react";
+import { Plus, RefreshCw, Mail, Check, X, Loader2, Server, Eye, EyeOff, Trash2, KeyRound } from "lucide-react";
 
 type Account = {
   id: string;
@@ -21,11 +21,31 @@ const inputClass =
 
 const PRESETS = [
   { label: "Gmail", host: "imap.gmail.com", port: 993, secure: true,
-    hint: "Gebruik een App-wachtwoord (Google → Beveiliging → App-wachtwoorden)" },
+    hint: "Gebruik een App-wachtwoord: Google-account → Beveiliging → App-wachtwoorden (vereist 2-staps-verificatie)" },
   { label: "Outlook / Office 365", host: "outlook.office365.com", port: 993, secure: true,
-    hint: "Gebruik je gewone wachtwoord of app-wachtwoord" },
+    hint: "Gebruik je gewone wachtwoord of een app-wachtwoord" },
   { label: "Eigen IMAP", host: "", port: 993, secure: true, hint: "" },
 ];
+
+/** Vertaal cryptische IMAP-fouten naar begrijpelijke meldingen */
+function friendlyImapError(raw: string): string {
+  const r = raw.toLowerCase();
+  if (r.includes("authentication failed") || r.includes("invalid credentials") ||
+      r.includes("command failed") || r.includes("login failed") ||
+      r.includes("bad credentials")) {
+    return "Inloggen mislukt. Controleer je wachtwoord. Voor Gmail: gebruik een App-wachtwoord (Google-account → Beveiliging → App-wachtwoorden).";
+  }
+  if (r.includes("enotfound") || r.includes("getaddrinfo") || r.includes("econnrefused")) {
+    return "Server niet bereikbaar. Controleer de hostnaam en poort.";
+  }
+  if (r.includes("certificate") || r.includes("ssl") || r.includes("tls")) {
+    return "SSL/TLS-fout. Probeer poort 993 met SSL aan, of poort 143 zonder.";
+  }
+  if (r.includes("timeout")) {
+    return "Verbinding time-out. De server reageert niet.";
+  }
+  return raw.slice(0, 120);
+}
 
 export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Account[] }) {
   const router = useRouter();
@@ -35,6 +55,13 @@ export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Acco
   const [syncResult, setSyncResult] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Wachtwoord-bewerken state
+  const [editingPassword, setEditingPassword] = useState<string | null>(null); // account id
+  const [newPassword, setNewPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [form, setForm] = useState({
     label: "", host: "imap.gmail.com", port: 993, secure: true,
@@ -45,6 +72,11 @@ export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Acco
     setForm((f) => ({ ...f, host: preset.host, port: preset.port, secure: preset.secure,
       label: f.label || preset.label }));
   }
+
+  // Bepaal hint op basis van huidig host
+  const gmailHosts = ["imap.gmail.com", "imap.googlemail.com"];
+  const currentPreset = PRESETS.find(p => p.host === form.host) ??
+    (gmailHosts.includes(form.host) ? PRESETS[0] : null);
 
   async function addAccount() {
     if (!form.host || !form.username || !form.password) return;
@@ -74,7 +106,7 @@ export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Acco
       setSyncResult((r) => ({
         ...r,
         [id]: data.errors.length > 0
-          ? `⚠️ ${data.synced} nieuw, ${data.errors[0]}`
+          ? `⚠️ ${friendlyImapError(data.errors[0])}`
           : [
               `✅ ${data.synced} nieuwe e-mails`,
               data.linked > 0 ? `${data.linked} gekoppeld` : "",
@@ -87,7 +119,35 @@ export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Acco
     }
   }
 
-  const currentPreset = PRESETS.find(p => p.host === form.host);
+  async function deleteAccount(id: string, label: string) {
+    if (!window.confirm(`Mailbox "${label}" verwijderen? Alle gesynchroniseerde e-mails worden ook verwijderd.`)) return;
+    setDeleting(id);
+    try {
+      await fetch(`/api/email-accounts/${id}`, { method: "DELETE" });
+      setAccounts((a) => a.filter((x) => x.id !== id));
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function savePassword(id: string) {
+    if (!newPassword) return;
+    setSavingPassword(true);
+    try {
+      const res = await fetch(`/api/email-accounts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: newPassword }),
+      });
+      if (res.ok) {
+        setEditingPassword(null);
+        setNewPassword("");
+        setSyncResult((r) => ({ ...r, [id]: "✅ Wachtwoord bijgewerkt" }));
+      }
+    } finally {
+      setSavingPassword(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -100,7 +160,7 @@ export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Acco
           <li>Verbind je inbox via IMAP (Gmail, Outlook, of eigen server)</li>
           <li>E-mails worden automatisch gekoppeld aan klanten op basis van e-mailadres</li>
           <li>Je ziet alle e-mails bij de klant en deal in de <strong>E-mails</strong> tab</li>
-          <li>Niet automatisch herkend? Je kunt e-mails handmatig koppelen</li>
+          <li><strong>Gmail:</strong> vereist een App-wachtwoord — gewoon wachtwoord werkt niet</li>
         </ul>
       </div>
 
@@ -108,35 +168,96 @@ export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Acco
       {accounts.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           {accounts.map((acc) => (
-            <div key={acc.id} className="flex items-center justify-between px-5 py-4 border-b border-slate-100 last:border-0">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
-                  <Mail className="w-4 h-4 text-slate-500" />
+            <div key={acc.id} className="border-b border-slate-100 last:border-0">
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center">
+                    <Mail className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{acc.label}</p>
+                    <p className="text-xs text-slate-400">{acc.username} · {acc.host}</p>
+                    {syncResult[acc.id] && (
+                      <p className={`text-xs mt-0.5 ${syncResult[acc.id].startsWith("⚠️") ? "text-orange-600" : "text-slate-500"}`}>
+                        {syncResult[acc.id]}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{acc.label}</p>
-                  <p className="text-xs text-slate-400">{acc.username} · {acc.host}</p>
-                  {syncResult[acc.id] && (
-                    <p className="text-xs text-slate-500 mt-0.5">{syncResult[acc.id]}</p>
-                  )}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-400">
+                    {acc.emailCount} e-mails
+                    {acc.lastSyncAt && ` · ${new Date(acc.lastSyncAt).toLocaleDateString("nl-NL")}`}
+                  </span>
+                  {/* Wachtwoord aanpassen */}
+                  <button
+                    onClick={() => { setEditingPassword(editingPassword === acc.id ? null : acc.id); setNewPassword(""); }}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                    title="Wachtwoord aanpassen"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                  </button>
+                  {/* Verwijderen */}
+                  <button
+                    onClick={() => deleteAccount(acc.id, acc.label)}
+                    disabled={deleting === acc.id}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                    title="Mailbox verwijderen"
+                  >
+                    {deleting === acc.id
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <Trash2 className="w-3.5 h-3.5" />}
+                  </button>
+                  {/* Synchroniseren */}
+                  <button
+                    onClick={() => syncAccount(acc.id)}
+                    disabled={syncing === acc.id}
+                    className="flex items-center gap-1.5 text-xs font-medium text-brand-blue border border-brand-blue/20 bg-brand-blue-light hover:bg-brand-blue/10 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {syncing === acc.id
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      : <RefreshCw className="w-3.5 h-3.5" />}
+                    Synchroniseer
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400">
-                  {acc.emailCount} e-mails
-                  {acc.lastSyncAt && ` · gesynchroniseerd ${new Date(acc.lastSyncAt).toLocaleDateString("nl-NL")}`}
-                </span>
-                <button
-                  onClick={() => syncAccount(acc.id)}
-                  disabled={syncing === acc.id}
-                  className="flex items-center gap-1.5 text-xs font-medium text-brand-blue border border-brand-blue/20 bg-brand-blue-light hover:bg-brand-blue-light px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {syncing === acc.id
-                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    : <RefreshCw className="w-3.5 h-3.5" />}
-                  Synchroniseer
-                </button>
-              </div>
+
+              {/* Wachtwoord bewerken inline */}
+              {editingPassword === acc.id && (
+                <div className="px-5 pb-4 flex items-center gap-2 bg-slate-50 border-t border-slate-100">
+                  <div className="relative flex-1 max-w-xs">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="Nieuw wachtwoord of App-wachtwoord"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      className={`${inputClass} pr-10`}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(s => !s)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => savePassword(acc.id)}
+                    disabled={savingPassword || !newPassword}
+                    className="flex items-center gap-1.5 bg-brand-blue hover:bg-brand-blue-dark disabled:opacity-50 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+                  >
+                    {savingPassword ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                    Opslaan
+                  </button>
+                  <button
+                    onClick={() => { setEditingPassword(null); setNewPassword(""); }}
+                    className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:border-slate-300 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -208,7 +329,9 @@ export function EmailAccountsClient({ initialAccounts }: { initialAccounts: Acco
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-600 mb-1">Wachtwoord / App-wachtwoord</label>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Wachtwoord / App-wachtwoord
+            </label>
             <div className="relative">
               <input
                 className={`${inputClass} pr-10`}
