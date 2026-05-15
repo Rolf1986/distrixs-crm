@@ -40,10 +40,41 @@ async function main() {
   const products = productsRes.rows;
   console.log(`[producten] ${products.length} producten met SKU geladen`);
 
-  // Bouw lookup maps: normalized title → sku
-  const exactMap = new Map(); // lowercase title → sku
+  // Bouw lookup maps
+  const titleMap = new Map();  // normalized title → sku
+  const skuSet = new Set();    // alle bekende sku's (lowercase)
   for (const p of products) {
-    exactMap.set(normalize(p.title), p.sku);
+    titleMap.set(normalize(p.title), p.sku);
+    skuSet.add(p.sku.toLowerCase().trim());
+  }
+
+  /**
+   * Probeer SKU te vinden voor een regelbeschrijving via drie methodes:
+   * 1. Direct: sku_snapshot al gevuld (overgeslagen)
+   * 2. TL-formaat "{SKU}: {omschrijving}" → extraheer prefix als SKU
+   * 3. Exacte match op productnaam
+   */
+  function findSku(titleSnapshot) {
+    // Methode 2: TL-formaat "CODE: omschrijving"
+    const colonIdx = titleSnapshot.indexOf(':');
+    if (colonIdx > 0 && colonIdx < 30) {
+      const prefix = titleSnapshot.slice(0, colonIdx).trim();
+      if (skuSet.has(prefix.toLowerCase())) {
+        // Zoek exacte SKU (bewaar originele casing uit products tabel)
+        const found = products.find(p => p.sku.toLowerCase() === prefix.toLowerCase());
+        if (found) return { sku: found.sku, method: 'colon-prefix' };
+      }
+      // Zelfs als we de SKU niet in products vinden, gebruik de prefix als SKU
+      // (bijv. voor free-text regels met productcode prefix)
+      if (prefix.length > 0 && prefix.length <= 20 && /^[A-Za-z0-9\-_./]+$/.test(prefix)) {
+        return { sku: prefix, method: 'colon-prefix-literal' };
+      }
+    }
+    // Methode 3: exacte naam-match
+    const byTitle = titleMap.get(normalize(titleSnapshot));
+    if (byTitle) return { sku: byTitle, method: 'title-match' };
+
+    return null;
   }
 
   // ── Factuurregels ──────────────────────────────────────────────────────────
@@ -56,22 +87,24 @@ async function main() {
 
   let invMatched = 0;
   let invSkipped = 0;
+  const methodCounts = {};
 
   for (const line of invLinesRes.rows) {
-    const key = normalize(line.title_snapshot);
-    const sku = exactMap.get(key);
-    if (sku) {
+    const result = findSku(line.title_snapshot);
+    if (result) {
       await pool.query(
         `UPDATE invoice_lines SET sku_snapshot = $1 WHERE id = $2`,
-        [sku, line.id]
+        [result.sku, line.id]
       );
       invMatched++;
+      methodCounts[result.method] = (methodCounts[result.method] || 0) + 1;
     } else {
       invSkipped++;
     }
   }
 
   console.log(`[factuurregels] Gematcht: ${invMatched}, Geen match: ${invSkipped}`);
+  console.log(`[factuurregels] Methoden: ${JSON.stringify(methodCounts)}`);
 
   // ── Offerteregels ──────────────────────────────────────────────────────────
   const quoteLinesRes = await pool.query(
@@ -83,20 +116,24 @@ async function main() {
 
   let quoteMatched = 0;
   let quoteSkipped = 0;
+  const quoteMethodCounts = {};
 
   for (const line of quoteLinesRes.rows) {
-    const key = normalize(line.title_snapshot);
-    const sku = exactMap.get(key);
-    if (sku) {
+    const result = findSku(line.title_snapshot);
+    if (result) {
       await pool.query(
         `UPDATE quote_lines SET sku_snapshot = $1 WHERE id = $2`,
-        [sku, line.id]
+        [result.sku, line.id]
       );
       quoteMatched++;
+      quoteMethodCounts[result.method] = (quoteMethodCounts[result.method] || 0) + 1;
     } else {
       quoteSkipped++;
     }
   }
+
+  console.log(`[offerteregels] Gematcht: ${quoteMatched}, Geen match: ${quoteSkipped}`);
+  console.log(`[offerteregels] Methoden: ${JSON.stringify(quoteMethodCounts)}`);
 
   console.log(`[offerteregels] Gematcht: ${quoteMatched}, Geen match: ${quoteSkipped}`);
 
