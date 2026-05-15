@@ -40,7 +40,7 @@ function daysOverdue(dueDateStr: string): number {
 }
 
 export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
-  const [filter, setFilter] = useState("DRAFT");
+  const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sortDesc, setSortDesc] = useState(true); // newest first by default
   const [page, setPage] = useState(1);

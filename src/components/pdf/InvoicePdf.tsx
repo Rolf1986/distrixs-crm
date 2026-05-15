@@ -3,6 +3,7 @@ import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN } from "
 
 export interface InvoicePdfData {
   language?: string;
+  isDraft?: boolean;
   invoiceNumber: string;
   invoiceDate: string | Date;
   dueDate: string | Date;
@@ -76,6 +77,7 @@ const S = StyleSheet.create({
 
 export function InvoicePdf({ data }: { data: InvoicePdfData }) {
   const lang = data.language ?? "NL";
+  const isDraft = data.isDraft ?? false;
   const co = data.company;
   const coName = co?.companyName ?? "Distrixs";
 
@@ -150,7 +152,11 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
               <Text style={shared.metaValue}>{data.customerReference}</Text>
             </View>
           )}
-          <Text style={S.docTypeLabel}>{t("invoice", lang).toUpperCase()}</Text>
+          <Text style={S.docTypeLabel}>
+            {isDraft
+              ? (lang === "EN" ? "PROFORMA INVOICE" : "PROFORMA FACTUUR")
+              : t("invoice", lang).toUpperCase()}
+          </Text>
         </View>
 
         {/* Tabel */}

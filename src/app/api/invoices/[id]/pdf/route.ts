@@ -41,6 +41,7 @@ export async function GET(
 
   const data = {
     language: invoice.language ?? "NL",
+    isDraft: invoice.status === "DRAFT",
     invoiceNumber: invoice.invoiceNumber,
     invoiceDate: invoice.invoiceDate,
     dueDate: invoice.dueDate,
