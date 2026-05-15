@@ -129,7 +129,7 @@ async function createParticulierCustomer(tlContactId, contactData, systemUserId)
       (id, customer_number, company_name, status, default_payment_term,
        external_id, created_at, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-    [customerId, customerNumber, fullName, 'ACTIVE', 30,
+    [customerId, customerNumber, fullName, 'ACTIVE', 'DAYS_30',
      `tl-contact-customer-${tlContactId}`, now, now]
   );
 

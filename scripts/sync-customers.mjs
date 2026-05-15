@@ -167,7 +167,7 @@ async function main() {
           c.national_identification_number || null,
           c.vat_number || null,
           status,
-          c.payment_term_days ? Math.round(c.payment_term_days) : 30,
+          c.payment_term_days && Math.round(c.payment_term_days) === 14 ? 'DAYS_14' : 'DAYS_30',
           extIdNew,
           now,
           now,
