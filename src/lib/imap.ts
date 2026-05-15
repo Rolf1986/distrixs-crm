@@ -130,7 +130,7 @@ function safeParseJson(json: string): string[] {
   try { return JSON.parse(json) as string[]; } catch { return []; }
 }
 
-export async function syncEmailAccount(accountId: string, maxEmails = 100): Promise<SyncResult> {
+export async function syncEmailAccount(accountId: string, maxEmails = 200): Promise<SyncResult> {
   const account = await prisma.emailAccount.findUnique({ where: { id: accountId } });
   if (!account || !account.isActive) {
     return { synced: 0, skipped: 0, linked: 0, errors: ["Account niet gevonden of inactief"] };
@@ -154,15 +154,16 @@ export async function syncEmailAccount(accountId: string, maxEmails = 100): Prom
 
     const lock = await client.getMailboxLock("INBOX");
     try {
-      // Haal de laatste N berichten op
       const status = await client.status("INBOX", { messages: true });
       const total = status.messages ?? 0;
       if (total === 0) {
         return { ...result, linked: 0 };
       }
 
-      const from = Math.max(1, total - maxEmails + 1);
-      const range = `${from}:${total}`;
+      // Eerste sync (nog nooit gesynchroniseerd): haal ALLES op
+      // Volgende syncs: haal alleen de laatste maxEmails op
+      const isFirstSync = !account.lastSyncAt;
+      const range = isFirstSync ? `1:${total}` : `${Math.max(1, total - maxEmails + 1)}:${total}`;
 
       for await (const msg of client.fetch(range, {
         uid: true,
