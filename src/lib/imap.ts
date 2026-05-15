@@ -169,8 +169,7 @@ export async function syncEmailAccount(accountId: string, maxEmails = 200): Prom
         uid: true,
         flags: true,
         envelope: true,
-        bodyStructure: true,
-        source: false,
+        bodyParts: ["TEXT"],
       })) {
         try {
           const env = msg.envelope;
@@ -195,6 +194,11 @@ export async function syncEmailAccount(accountId: string, maxEmails = 200): Prom
           });
           if (existing) { result.skipped++; continue; }
 
+          // Haal body op uit bodyParts
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const bodyPart = (msg as any).bodyParts?.get("TEXT");
+          const bodyText = bodyPart ? Buffer.from(bodyPart).toString("utf-8").slice(0, 10000) : null;
+
           // Zoek klant — alle relevante adressen meegeven
           // Inbound: from-adres + alle cc's  |  Outbound: alle to's + cc's
           const lookupAddrs = direction === "INBOUND"
@@ -213,8 +217,8 @@ export async function syncEmailAccount(accountId: string, maxEmails = 200): Prom
               fromName,
               toAddresses: JSON.stringify(toAddrs),
               ccAddresses: ccAddrs.length > 0 ? JSON.stringify(ccAddrs) : null,
-              bodyText: null, // body wordt apart geladen bij openen
-              snippet: null,
+              bodyText,
+              snippet: makeSnippet(bodyText),
               sentAt,
               isRead: msg.flags?.has("\\Seen") ?? false,
               direction,
