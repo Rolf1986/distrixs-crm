@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle, XCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { CheckCircle, XCircle, AlertCircle, ExternalLink, Send, Loader2 } from "lucide-react";
 
 type InvoiceRow = {
   id: string;
@@ -38,6 +38,26 @@ export function TwinfieldSettingsClient({
   const [officeCode, setOfficeCode] = useState(initialOfficeCode);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [syncResults, setSyncResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
+
+  async function handleManualSync(invoiceId: string) {
+    setSyncingId(invoiceId);
+    setSyncResults(r => ({ ...r, [invoiceId]: { ok: false, msg: "Bezig…" } }));
+    try {
+      const res = await fetch(`/api/invoices/${invoiceId}/twinfield-sync`, { method: "POST" });
+      const data = await res.json() as { success?: boolean; reference?: string; error?: string };
+      if (data.success) {
+        setSyncResults(r => ({ ...r, [invoiceId]: { ok: true, msg: `✅ Gesynchroniseerd${data.reference ? ` — ref: ${data.reference}` : ""}` } }));
+      } else {
+        setSyncResults(r => ({ ...r, [invoiceId]: { ok: false, msg: `❌ ${data.error ?? "Fout"}` } }));
+      }
+    } catch {
+      setSyncResults(r => ({ ...r, [invoiceId]: { ok: false, msg: "❌ Netwerkfout" } }));
+    } finally {
+      setSyncingId(null);
+    }
+  }
 
   async function handleSaveOfficeCode(e: React.FormEvent) {
     e.preventDefault();
@@ -172,7 +192,8 @@ export function TwinfieldSettingsClient({
                 <th className="pb-2 pr-4">Status</th>
                 <th className="pb-2 pr-4">Twinfield</th>
                 <th className="pb-2 pr-4">Referentie</th>
-                <th className="pb-2">Gewijzigd</th>
+                <th className="pb-2 pr-4">Gewijzigd</th>
+                <th className="pb-2">Actie</th>
               </tr>
             </thead>
             <tbody>
@@ -200,8 +221,28 @@ export function TwinfieldSettingsClient({
                     <td className="py-2 pr-4 text-xs text-slate-500 font-mono">
                       {inv.twinfieldReference ?? "—"}
                     </td>
-                    <td className="py-2 text-xs text-slate-400">
+                    <td className="py-2 pr-4 text-xs text-slate-400">
                       {new Date(inv.updatedAt).toLocaleDateString("nl-NL")}
+                    </td>
+                    <td className="py-2">
+                      {syncResults[inv.id] ? (
+                        <span className={`text-xs ${syncResults[inv.id].ok ? "text-green-600" : "text-red-600"}`}>
+                          {syncResults[inv.id].msg}
+                        </span>
+                      ) : !inv.twinfieldLocked && connected ? (
+                        <button
+                          onClick={() => handleManualSync(inv.id)}
+                          disabled={syncingId === inv.id}
+                          className="inline-flex items-center gap-1 text-xs text-brand-blue hover:text-brand-blue-dark disabled:opacity-50 border border-brand-blue/30 rounded px-2 py-1 transition-colors"
+                        >
+                          {syncingId === inv.id
+                            ? <Loader2 className="w-3 h-3 animate-spin" />
+                            : <Send className="w-3 h-3" />}
+                          Stuur naar Twinfield
+                        </button>
+                      ) : inv.twinfieldLocked ? (
+                        <span className="text-xs text-slate-400">Geblokkeerd</span>
+                      ) : null}
                     </td>
                   </tr>
                 );
