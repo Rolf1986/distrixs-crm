@@ -38,6 +38,7 @@ export function getAuthorizationUrl(state: string): string {
     redirect_uri: REDIRECT_URI,
     scope: "openid twf.user twf.organisation twf.organisationUser",
     state,
+    nonce: state, // Twinfield vereist nonce voor OpenID Connect
   });
   return `${TF_AUTH_URL}?${params.toString()}`;
 }
