@@ -875,6 +875,11 @@ model CompanySetting {
   reminderEmailBody    String?  @map("reminder_email_body")
   reminderEmailSubjectEn String? @map("reminder_email_subject_en")
   reminderEmailBodyEn  String?  @map("reminder_email_body_en")
+  // Twinfield OAuth2 tokens
+  twinfieldAccessToken    String?   @map("twinfield_access_token")
+  twinfieldRefreshToken   String?   @map("twinfield_refresh_token")
+  twinfieldTokenExpiresAt DateTime? @map("twinfield_token_expires_at")
+  twinfieldOfficeCode     String?   @map("twinfield_office_code")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@map("company_settings")

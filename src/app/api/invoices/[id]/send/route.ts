@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { syncInvoiceToTwinfield } from "@/lib/twinfield";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { InvoicePdf } from "@/components/InvoicePdf";
@@ -138,7 +139,15 @@ export async function POST(
 
   // Status DRAFT → SENT
   if (invoice.status === "DRAFT") {
-    await prisma.invoice.update({ where: { id }, data: { status: "SENT" } });
+    await prisma.invoice.update({
+      where: { id },
+      data: { status: "SENT", twinfieldSyncStatus: "PENDING" },
+    });
+
+    // Twinfield sync (async, don't block the response)
+    syncInvoiceToTwinfield(id).catch((err) =>
+      console.error("[twinfield] Sync failed for invoice", id, err)
+    );
   }
 
   return NextResponse.json({
