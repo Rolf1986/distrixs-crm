@@ -169,9 +169,10 @@ export async function POST(req: Request) {
       },
     });
 
-    // Stuur bevestigingsmail naar de klant
     const lang = (language === "en" ? "en" : "nl");
-    const { subject, html } = buildConfirmationEmail({
+
+    // 1. Bevestigingsmail naar de klant
+    const { subject: custSubject, html: custHtml } = buildConfirmationEmail({
       lang,
       name: submittedName,
       rmaNumber,
@@ -179,8 +180,82 @@ export async function POST(req: Request) {
       reason,
       orderReference: orderReference || null,
     });
+    await sendEmail({ to: submittedEmail, subject: custSubject, html: custHtml });
 
-    await sendEmail({ to: submittedEmail, subject, html });
+    // 2. Interne notificatie
+    const reasonNl = REASON_LABELS.nl[reason] ?? reason;
+    const internalHtml = `<!DOCTYPE html>
+<html lang="nl">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+    <div style="background:#dc2626;padding:20px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:16px;font-weight:700;">🔔 Nieuw retourverzoek — ${rmaNumber}</h1>
+    </div>
+    <div style="padding:28px 32px;">
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;width:40%;vertical-align:top;">RMA-nummer</td>
+          <td style="padding:10px 0;font-weight:700;font-family:monospace;font-size:16px;color:#1e293b;">${rmaNumber}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;vertical-align:top;">Naam</td>
+          <td style="padding:10px 0;color:#1e293b;">${submittedName}</td>
+        </tr>
+        ${submittedCompany ? `<tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;">Bedrijf</td>
+          <td style="padding:10px 0;color:#1e293b;">${submittedCompany}</td>
+        </tr>` : ""}
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;">E-mail</td>
+          <td style="padding:10px 0;"><a href="mailto:${submittedEmail}" style="color:#2563eb;">${submittedEmail}</a></td>
+        </tr>
+        ${submittedPhone ? `<tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;">Telefoon</td>
+          <td style="padding:10px 0;color:#1e293b;">${submittedPhone}</td>
+        </tr>` : ""}
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;vertical-align:top;">Product</td>
+          <td style="padding:10px 0;color:#1e293b;font-weight:500;">${productDescription}</td>
+        </tr>
+        ${orderReference ? `<tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;">Ordernummer</td>
+          <td style="padding:10px 0;color:#1e293b;">${orderReference}</td>
+        </tr>` : ""}
+        ${serialNumber ? `<tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;">Serienummer</td>
+          <td style="padding:10px 0;color:#1e293b;">${serialNumber}</td>
+        </tr>` : ""}
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;">Aantal</td>
+          <td style="padding:10px 0;color:#1e293b;">${quantity ?? 1}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #e2e8f0;">
+          <td style="padding:10px 0;color:#64748b;">Reden</td>
+          <td style="padding:10px 0;color:#1e293b;">${reasonNl}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 0;color:#64748b;vertical-align:top;">Toelichting</td>
+          <td style="padding:10px 0;color:#1e293b;white-space:pre-wrap;">${description}</td>
+        </tr>
+      </table>
+      <div style="margin-top:24px;">
+        <a href="${process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl"}/rma/${rma.id}"
+           style="background:#1e40af;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:600;font-size:13px;display:inline-block;">
+          Bekijk in CRM →
+        </a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    const internalTo = process.env.RMA_NOTIFY_EMAIL ?? "info@distrixs.nl";
+    await sendEmail({
+      to: internalTo,
+      subject: `[RMA] Nieuw retourverzoek — ${rmaNumber} — ${submittedName}`,
+      html: internalHtml,
+    });
 
     return NextResponse.json({ success: true, id: rma.id, rmaNumber: rma.rmaNumber });
   } catch (error) {
