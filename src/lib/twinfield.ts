@@ -32,26 +32,35 @@ type TokenResponse = {
 // ─── OAuth2 helpers ───────────────────────────────────────────────────────────
 
 export function getAuthorizationUrl(state: string): string {
+  // offline_access is required for refresh tokens (valid 25 years)
+  // twf.organisationUser is mandatory for login
+  // Scope separator must be space (URLSearchParams encodes to +)
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: "code",
     redirect_uri: REDIRECT_URI,
-    scope: "openid twf.user twf.organisation twf.organisationUser",
+    scope: "openid offline_access twf.user twf.organisation twf.organisationUser",
     state,
-    nonce: state, // Twinfield vereist nonce voor OpenID Connect
+    nonce: state,
   });
   return `${TF_AUTH_URL}?${params.toString()}`;
+}
+
+/** Base64-encoded "client_id:client_secret" — vereist door Twinfield als Authorization header */
+function basicAuthHeader(): string {
+  return "Basic " + Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString("base64");
 }
 
 export async function exchangeCode(code: string): Promise<TokenResponse> {
   const res = await fetch(TF_TOKEN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": basicAuthHeader(), // Twinfield vereist Basic auth header
+    },
     body: new URLSearchParams({
       grant_type: "authorization_code",
       code,
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
       redirect_uri: REDIRECT_URI,
     }).toString(),
   });
@@ -69,12 +78,13 @@ export async function refreshToken(
 ): Promise<TokenResponse> {
   const res = await fetch(TF_TOKEN_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Authorization": basicAuthHeader(),
+    },
     body: new URLSearchParams({
       grant_type: "refresh_token",
       refresh_token: refreshTokenValue,
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
     }).toString(),
   });
 
