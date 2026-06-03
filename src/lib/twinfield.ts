@@ -23,6 +23,14 @@ export type TwinfieldSyncResult = {
   error?: string;
 };
 
+export type TwinfieldSettings = {
+  officeCode: string;
+  transactionType: string;
+  debtorAccount: string;
+  revenueAccount: string;
+  vatCode: string;
+};
+
 type TokenResponse = {
   access_token: string;
   refresh_token: string;
@@ -56,7 +64,7 @@ export async function exchangeCode(code: string): Promise<TokenResponse> {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      "Authorization": basicAuthHeader(), // Twinfield vereist Basic auth header
+      "Authorization": basicAuthHeader(),
     },
     body: new URLSearchParams({
       grant_type: "authorization_code",
@@ -142,14 +150,23 @@ export async function getValidToken(): Promise<string> {
 
 // ─── XML webservice ───────────────────────────────────────────────────────────
 
-export async function callXml(token: string, xml: string): Promise<string> {
+export async function callXml(
+  token: string,
+  officeCode: string,
+  xml: string
+): Promise<string> {
+  const body = new URLSearchParams({
+    xmlRequest: xml,
+    companyCode: officeCode,
+  }).toString();
+
   const res = await fetch(XML_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       Authorization: `Bearer ${token}`,
     },
-    body: new URLSearchParams({ xmlRequest: xml }).toString(),
+    body,
   });
 
   if (!res.ok) {
@@ -160,21 +177,80 @@ export async function callXml(token: string, xml: string): Promise<string> {
   return res.text();
 }
 
+// ─── Setup discovery ──────────────────────────────────────────────────────────
+
+export async function fetchTwinfieldSetup(
+  officeCode: string
+): Promise<{ transactionTypes: string[]; vatCodes: string[] }> {
+  const token = await getValidToken();
+
+  // List all activities (transaction types)
+  const actXml = `<list><type>ACT</type><office>${escapeXml(officeCode)}</office></list>`;
+  const actResponse = await callXml(token, officeCode, actXml);
+
+  // Extract codes from <dimension><code>...</code><category>...</category></dimension>
+  const transactionTypes: string[] = [];
+  const actMatches = [...actResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)];
+  for (const m of actMatches) {
+    const block = m[1];
+    const category = block.match(/<category>(.*?)<\/category>/i)?.[1]?.toLowerCase() ?? "";
+    const code = block.match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
+    // Keep sales-related types: category "sales", "verkopen", "sis", etc.
+    if (code && (category === "sales" || category === "sis" || category === "verkopen")) {
+      transactionTypes.push(code);
+    }
+  }
+  // If nothing matched by category, return all codes so user can pick
+  if (transactionTypes.length === 0) {
+    for (const m of actMatches) {
+      const code = m[1].match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
+      if (code) transactionTypes.push(code);
+    }
+  }
+
+  // List VAT codes (type VTC = btw-codes)
+  const vatXml = `<list><type>VTC</type><office>${escapeXml(officeCode)}</office></list>`;
+  const vatResponse = await callXml(token, officeCode, vatXml);
+
+  const vatCodes: string[] = [];
+  const vatMatches = [...vatResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)];
+  for (const m of vatMatches) {
+    const block = m[1];
+    const code = block.match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
+    if (code) vatCodes.push(code);
+  }
+
+  return { transactionTypes, vatCodes };
+}
+
 // ─── Debtor helpers ───────────────────────────────────────────────────────────
 
-export async function findDebtor(
+export async function findOrCreateDebtor(
   token: string,
-  officeCode: string,
-  vatNumber?: string | null,
-  companyName?: string
-): Promise<string | null> {
-  const xml = `<list><type>DEB</type><office>${officeCode}</office></list>`;
+  settings: TwinfieldSettings,
+  customer: {
+    id: string;
+    companyName: string;
+    vatNumber?: string | null;
+  }
+): Promise<string> {
+  // 1. Check if already stored in our DB
+  const existing = await prisma.$queryRaw<
+    Array<{ twinfield_debtor_code: string | null }>
+  >`SELECT twinfield_debtor_code FROM customers WHERE id = ${customer.id} LIMIT 1`;
+
+  const storedCode = existing[0]?.twinfield_debtor_code;
+  if (storedCode) return storedCode;
+
+  const { officeCode } = settings;
+
+  // 2. Search Twinfield by name
+  const searchXml = `<list><type>DEB</type><office>${escapeXml(officeCode)}</office><filters><filter field="name" operator="like">${escapeXml(customer.companyName)}</filter></filters></list>`;
+  let foundCode: string | null = null;
 
   try {
-    const response = await callXml(token, xml);
-    // Parse debtors from XML response
-    // Expected response: <dimension><code>...</code><name>...</name><vatno>...</vatno></dimension> per debtor
-    const debtors = [...response.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)].map(
+    const searchResponse = await callXml(token, officeCode, searchXml);
+    const debtors = [...searchResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)].map(
       (m) => m[1]
     );
 
@@ -186,86 +262,60 @@ export async function findDebtor(
         "";
       const name = debtor.match(/<name>(.*?)<\/name>/i)?.[1] ?? "";
 
-      if (vatNumber && vatno) {
-        const normalizedVat = vatNumber.replace(/\s/g, "").toUpperCase();
+      // Match by VAT number first (most reliable)
+      if (customer.vatNumber && vatno) {
+        const normalizedVat = customer.vatNumber.replace(/\s/g, "").toUpperCase();
         const normalizedVatno = vatno.replace(/\s/g, "").toUpperCase();
-        if (normalizedVat === normalizedVatno) return code;
+        if (normalizedVat === normalizedVatno) {
+          foundCode = code;
+          break;
+        }
       }
 
-      if (companyName) {
-        const normalizedName = companyName.trim().toLowerCase();
-        const normalizedDbName = name.trim().toLowerCase();
-        if (normalizedName === normalizedDbName) return code;
+      // Match by exact company name
+      if (name.trim().toLowerCase() === customer.companyName.trim().toLowerCase()) {
+        foundCode = code;
+        break;
       }
     }
   } catch (err) {
-    console.error("[twinfield] findDebtor error:", err);
+    console.error("[twinfield] findOrCreateDebtor search error:", err);
   }
 
-  return null;
-}
+  // 3. If not found, create a new debtor — let Twinfield auto-assign code
+  if (!foundCode) {
+    const createXml = `<dimensions>
+  <dimension>
+    <name>${escapeXml(customer.companyName)}</name>
+    <type>DEB</type>
+    <financials>
+      <paymentcondition>30</paymentcondition>
+    </financials>
+  </dimension>
+</dimensions>`;
 
-function generateDebtorCode(companyName: string): string {
-  return companyName
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 6)
-    .padEnd(3, "X");
-}
+    const createResponse = await callXml(token, officeCode, createXml);
 
-export async function createDebtor(
-  token: string,
-  officeCode: string,
-  customer: {
-    companyName: string;
-    vatNumber?: string | null;
-    email?: string | null;
-    phone?: string | null;
-  }
-): Promise<string> {
-  const baseCode = generateDebtorCode(customer.companyName);
-
-  // Try base code first, then with numeric suffix
-  let debtorCode = baseCode;
-  for (let i = 1; i <= 99; i++) {
-    const xml = `<read><type>DEB</type><office>${officeCode}</office><code>${debtorCode}</code></read>`;
-    try {
-      const checkRes = await callXml(token, xml);
-      if (checkRes.includes("<msgtype>error</msgtype>")) {
-        // Code doesn't exist, use it
-        break;
-      }
-    } catch {
-      break;
+    if (createResponse.includes("<msgtype>error</msgtype>")) {
+      const msg = createResponse.match(/<msg>(.*?)<\/msg>/i)?.[1] ?? createResponse;
+      throw new Error(`Twinfield debtor create failed: ${msg}`);
     }
-    debtorCode = `${baseCode.slice(0, 4)}${i.toString().padStart(2, "0")}`;
+
+    // Parse auto-assigned code from response
+    foundCode =
+      createResponse.match(/<code>(.*?)<\/code>/i)?.[1] ?? null;
+
+    if (!foundCode) {
+      throw new Error("Twinfield returned no debtor code after creation");
+    }
   }
 
-  const vatLine = customer.vatNumber
-    ? `<vatno>${escapeXml(customer.vatNumber)}</vatno>`
-    : "";
+  // 4. Save to our DB
+  await prisma.$executeRaw`
+    UPDATE customers SET twinfield_debtor_code = ${foundCode} WHERE id = ${customer.id}
+  `;
 
-  const xml = `<dimension>
-  <office>${escapeXml(officeCode)}</office>
-  <type>DEB</type>
-  <code>${escapeXml(debtorCode)}</code>
-  <name>${escapeXml(customer.companyName)}</name>
-  ${vatLine}
-  <financials>
-    <paymentcondition>30</paymentcondition>
-    <vatcode>VH</vatcode>
-    <ebilling>false</ebilling>
-  </financials>
-</dimension>`;
-
-  const response = await callXml(token, xml);
-
-  if (response.includes("<msgtype>error</msgtype>")) {
-    const msg = response.match(/<msg>(.*?)<\/msg>/i)?.[1] ?? response;
-    throw new Error(`Twinfield debtor create failed: ${msg}`);
-  }
-
-  return debtorCode;
+  return foundCode;
 }
 
 // ─── Invoice sync ─────────────────────────────────────────────────────────────
@@ -274,7 +324,7 @@ export async function syncInvoiceToTwinfield(
   invoiceId: string
 ): Promise<TwinfieldSyncResult> {
   try {
-    // 1. Get invoice
+    // 1. Get invoice with customer and lines
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
@@ -291,90 +341,103 @@ export async function syncInvoiceToTwinfield(
     // 2. Get valid OAuth token
     const token = await getValidToken();
 
-    // 3. Get office code
+    // 3. Get all Twinfield settings
     const settingsRows = await prisma.$queryRaw<
-      Array<{ twinfield_office_code: string | null }>
-    >`SELECT twinfield_office_code FROM company_settings WHERE id = 'singleton' LIMIT 1`;
-    const officeCode = settingsRows[0]?.twinfield_office_code;
+      Array<{
+        twinfield_office_code: string | null;
+        twinfield_transaction_type: string | null;
+        twinfield_debtor_account: string | null;
+        twinfield_revenue_account: string | null;
+        twinfield_vat_code: string | null;
+      }>
+    >`SELECT
+        twinfield_office_code,
+        twinfield_transaction_type,
+        twinfield_debtor_account,
+        twinfield_revenue_account,
+        twinfield_vat_code
+      FROM company_settings WHERE id = 'singleton' LIMIT 1`;
 
-    if (!officeCode) {
+    const row = settingsRows[0];
+
+    if (!row?.twinfield_office_code) {
       throw new Error(
         "Twinfield office code niet ingesteld. Ga naar Instellingen → Twinfield."
       );
     }
 
-    // 4. Find or create debtor
-    let debtorCode = await findDebtor(
-      token,
-      officeCode,
-      invoice.customer.vatNumber,
-      invoice.customer.companyName
-    );
+    const tfSettings: TwinfieldSettings = {
+      officeCode: row.twinfield_office_code,
+      transactionType: row.twinfield_transaction_type ?? "VRK",
+      debtorAccount: row.twinfield_debtor_account ?? "1300",
+      revenueAccount: row.twinfield_revenue_account ?? "8000",
+      vatCode: row.twinfield_vat_code ?? "VH",
+    };
 
-    if (!debtorCode) {
-      debtorCode = await createDebtor(token, officeCode, {
-        companyName: invoice.customer.companyName,
-        vatNumber: invoice.customer.vatNumber,
-      });
-    }
+    // 4. Find or create debtor
+    const customerCode = await findOrCreateDebtor(token, tfSettings, {
+      id: invoice.customer.id,
+      companyName: invoice.customer.companyName,
+      vatNumber: invoice.customer.vatNumber,
+    });
 
     // 5. Build transaction XML
     const invoiceDate = formatTwinfieldDate(invoice.invoiceDate);
-    const dueDate = formatTwinfieldDate(invoice.dueDate);
     const period = formatTwinfieldPeriod(invoice.invoiceDate);
-
-    const subtotal = Number(invoice.subtotal).toFixed(2);
-    const vatAmount = Number(invoice.vatAmount).toFixed(2);
     const total = Number(invoice.total).toFixed(2);
 
-    const description = invoice.lines
-      .map((l) => l.titleSnapshot)
-      .join(", ")
-      .slice(0, 40);
+    // Build detail lines for each invoice line
+    const detailLines = invoice.lines
+      .map((line, i) => {
+        const netValue = Number(line.netLineTotal).toFixed(2);
+        const desc = (line.titleSnapshot ?? "").slice(0, 40);
+        return `      <line type="detail" id="${2 + i}">
+        <dim1>${escapeXml(tfSettings.revenueAccount)}</dim1>
+        <value>${netValue}</value>
+        <vatcode>${escapeXml(tfSettings.vatCode)}</vatcode>
+        <description>${escapeXml(desc)}</description>
+      </line>`;
+      })
+      .join("\n");
 
-    const transactionXml = `<transaction>
-  <header>
-    <office>${escapeXml(officeCode)}</office>
-    <code>VRK</code>
-    <currency>EUR</currency>
-    <date>${invoiceDate}</date>
-    <period>${period}</period>
-    <invoicenumber>${escapeXml(invoice.invoiceNumber)}</invoicenumber>
-    <due>${dueDate}</due>
-  </header>
-  <lines>
-    <line type="total">
-      <dim1>1300</dim1>
-      <dim2>${escapeXml(debtorCode)}</dim2>
-      <value>${total}</value>
+    const transactionXml = `<transactions>
+  <transaction destiny="final" autobalancevat="true" raisewarning="false">
+    <header>
+      <office>${escapeXml(tfSettings.officeCode)}</office>
+      <code>${escapeXml(tfSettings.transactionType)}</code>
+      <currency>EUR</currency>
+      <date>${invoiceDate}</date>
+      <period>${period}</period>
+      <invoicenumber>${escapeXml(invoice.invoiceNumber)}</invoicenumber>
       <description>${escapeXml(invoice.invoiceNumber)}</description>
-      <matchlevel>2</matchlevel>
-    </line>
-    <line type="detail">
-      <dim1>8000</dim1>
-      <value>${subtotal}</value>
-      <vatcode>VH</vatcode>
-      <vatvalue>${vatAmount}</vatvalue>
-      <description>${escapeXml(description)}</description>
-    </line>
-  </lines>
-</transaction>`;
+    </header>
+    <lines>
+      <line type="total" id="1">
+        <dim1>${escapeXml(tfSettings.debtorAccount)}</dim1>
+        <dim2>${escapeXml(customerCode)}</dim2>
+        <value>${total}</value>
+        <description>${escapeXml(invoice.invoiceNumber)}</description>
+      </line>
+${detailLines}
+    </lines>
+  </transaction>
+</transactions>`;
 
-    // 6. Call Twinfield
-    const response = await callXml(token, transactionXml);
+    // 6. POST to Twinfield
+    const response = await callXml(token, tfSettings.officeCode, transactionXml);
 
     if (response.includes("<msgtype>error</msgtype>")) {
       const msg = response.match(/<msg>(.*?)<\/msg>/i)?.[1] ?? "Onbekende fout";
       throw new Error(`Twinfield transactie mislukt: ${msg}`);
     }
 
-    // 7. Parse reference from response
+    // 7. Parse transaction reference from response
     const reference =
       response.match(/<number>(.*?)<\/number>/i)?.[1] ??
       response.match(/<transaction[^>]*\s+number="([^"]+)"/i)?.[1] ??
       invoice.invoiceNumber;
 
-    // 8. Update invoice
+    // 8. Update invoice status
     await prisma.$executeRaw`
       UPDATE invoices SET
         twinfield_sync_status = 'SYNCED',

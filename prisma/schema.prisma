@@ -230,6 +230,7 @@ model Customer {
   notes              String?
   status             CustomerStatus @default(ACTIVE)
   externalId         String?        @unique @map("external_id")
+  twinfieldDebtorCode String?       @map("twinfield_debtor_code")
   createdAt          DateTime       @default(now()) @map("created_at")
   updatedAt          DateTime       @updatedAt @map("updated_at")
 
@@ -880,6 +881,11 @@ model CompanySetting {
   twinfieldRefreshToken   String?   @map("twinfield_refresh_token")
   twinfieldTokenExpiresAt DateTime? @map("twinfield_token_expires_at")
   twinfieldOfficeCode     String?   @map("twinfield_office_code")
+  // Twinfield boekhoudingsinstellingen
+  twinfieldTransactionType String?  @default("VRK") @map("twinfield_transaction_type")
+  twinfieldDebtorAccount   String?  @default("1300") @map("twinfield_debtor_account")
+  twinfieldRevenueAccount  String?  @default("8000") @map("twinfield_revenue_account")
+  twinfieldVatCode         String?  @default("VH") @map("twinfield_vat_code")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@map("company_settings")

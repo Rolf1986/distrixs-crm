@@ -17,8 +17,19 @@ async function getData() {
       twinfield_access_token: string | null;
       twinfield_token_expires_at: Date | null;
       twinfield_office_code: string | null;
+      twinfield_transaction_type: string | null;
+      twinfield_debtor_account: string | null;
+      twinfield_revenue_account: string | null;
+      twinfield_vat_code: string | null;
     }>
-  >`SELECT twinfield_access_token, twinfield_token_expires_at, twinfield_office_code
+  >`SELECT
+      twinfield_access_token,
+      twinfield_token_expires_at,
+      twinfield_office_code,
+      twinfield_transaction_type,
+      twinfield_debtor_account,
+      twinfield_revenue_account,
+      twinfield_vat_code
     FROM company_settings WHERE id = 'singleton' LIMIT 1`;
 
   const settings = settingsRows[0] ?? null;
@@ -52,6 +63,10 @@ export default async function TwinfieldSettingsPage({
     <TwinfieldSettingsClient
       connected={!!settings?.twinfield_access_token}
       officeCode={settings?.twinfield_office_code ?? ""}
+      transactionType={settings?.twinfield_transaction_type ?? "VRK"}
+      debtorAccount={settings?.twinfield_debtor_account ?? "1300"}
+      revenueAccount={settings?.twinfield_revenue_account ?? "8000"}
+      vatCode={settings?.twinfield_vat_code ?? "VH"}
       tokenExpiresAt={settings?.twinfield_token_expires_at?.toISOString() ?? null}
       recentInvoices={invoices.map((inv) => ({
         id: inv.id,
