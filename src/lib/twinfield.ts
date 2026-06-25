@@ -399,7 +399,7 @@ function getVatMapping(country: string, defaultSettings: TwinfieldSettings): Vat
     return { revenueAccount: "8600", vatCode: "ICL" };
   }
   // Buiten EU
-  return { revenueAccount: "8500", vatCode: null };
+  return { revenueAccount: "8500", vatCode: "VN" };
 }
 
 // ─── Invoice sync ─────────────────────────────────────────────────────────────
