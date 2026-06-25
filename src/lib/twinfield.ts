@@ -6,14 +6,20 @@ const TF_AUTH_URL =
   "https://login.twinfield.com/auth/authentication/connect/authorize";
 const TF_TOKEN_URL =
   "https://login.twinfield.com/auth/authentication/connect/token";
+const TF_VALIDATE_URL =
+  "https://login.twinfield.com/auth/authentication/connect/accesstokenvalidation";
 const CLIENT_ID = process.env.TWINFIELD_CLIENT_ID ?? "";
 const CLIENT_SECRET = process.env.TWINFIELD_CLIENT_SECRET ?? "";
 const REDIRECT_URI = `${
   process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl"
 }/api/twinfield/callback`;
-const CLUSTER =
-  process.env.TWINFIELD_CLUSTER ?? "accounting.twinfield.com";
-const XML_ENDPOINT = `https://${CLUSTER}/webservices/processxml.asmx/ProcessXmlString`;
+
+// ─── EU-landen (ISO 3166-1 alpha-2, excl. NL) ────────────────────────────────
+const EU_COUNTRIES = new Set([
+  "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "ES", "FI",
+  "FR", "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT",
+  "PL", "PT", "RO", "SE", "SI", "SK",
+]);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,6 +35,7 @@ export type TwinfieldSettings = {
   debtorAccount: string;
   revenueAccount: string;
   vatCode: string;
+  cluster: string;
 };
 
 type TokenResponse = {
@@ -42,7 +49,6 @@ type TokenResponse = {
 export function getAuthorizationUrl(state: string): string {
   // offline_access is required for refresh tokens (valid 25 years)
   // twf.organisationUser is mandatory for login
-  // Scope separator must be space (URLSearchParams encodes to +)
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: "code",
@@ -104,6 +110,52 @@ export async function refreshToken(
   return res.json() as Promise<TokenResponse>;
 }
 
+/**
+ * Haal cluster URL op via token validation endpoint en sla op in DB.
+ * Geeft de cluster-hostname terug (bv. "accounting.twinfield.com").
+ */
+export async function fetchAndStoreCluster(accessToken: string): Promise<string> {
+  const res = await fetch(`${TF_VALIDATE_URL}?token=${encodeURIComponent(accessToken)}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  const defaultCluster = process.env.TWINFIELD_CLUSTER ?? "accounting.twinfield.com";
+
+  if (!res.ok) {
+    console.warn("[twinfield] Token validation failed, using default cluster");
+    return defaultCluster;
+  }
+
+  const data = (await res.json()) as Record<string, unknown>;
+  // Response bevat "twf.clusterUrl": "https://accounting.twinfield.com"
+  const clusterUrl = (data["twf.clusterUrl"] as string | undefined) ?? "";
+  const cluster = clusterUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+  if (cluster) {
+    await prisma.$executeRaw`
+      UPDATE company_settings SET twinfield_cluster = ${cluster} WHERE id = 'singleton'
+    `;
+    return cluster;
+  }
+
+  return defaultCluster;
+}
+
+async function getCluster(): Promise<string> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ twinfield_cluster: string | null }>>`
+      SELECT twinfield_cluster FROM company_settings WHERE id = 'singleton' LIMIT 1
+    `;
+    return (
+      rows[0]?.twinfield_cluster ??
+      process.env.TWINFIELD_CLUSTER ??
+      "accounting.twinfield.com"
+    );
+  } catch {
+    return process.env.TWINFIELD_CLUSTER ?? "accounting.twinfield.com";
+  }
+}
+
 export async function getValidToken(): Promise<string> {
   const settings = await prisma.$queryRaw<
     Array<{
@@ -119,10 +171,8 @@ export async function getValidToken(): Promise<string> {
     throw new Error("Twinfield is niet verbonden. Ga naar Instellingen → Twinfield.");
   }
 
-  // Check if token is expired (with 60s buffer)
   const expiresAt = row.twinfield_token_expires_at;
-  const isExpired =
-    !expiresAt || expiresAt.getTime() - 60_000 < Date.now();
+  const isExpired = !expiresAt || expiresAt.getTime() - 60_000 < Date.now();
 
   if (isExpired) {
     if (!row.twinfield_refresh_token) {
@@ -150,31 +200,61 @@ export async function getValidToken(): Promise<string> {
 
 // ─── XML webservice ───────────────────────────────────────────────────────────
 
+/**
+ * POST XML naar Twinfield webservice.
+ * - Handelt HTTP 429 af met één retry na de retry-after wachttijd.
+ * - Controleert result="0" in de XML-response en gooit een duidelijke fout.
+ */
 export async function callXml(
   token: string,
   officeCode: string,
-  xml: string
+  xml: string,
+  cluster?: string
 ): Promise<string> {
-  const body = new URLSearchParams({
-    xmlRequest: xml,
-    companyCode: officeCode,
-  }).toString();
+  const clusterHost = cluster ?? await getCluster();
+  const endpoint = `https://${clusterHost}/webservices/processxml.asmx/ProcessXmlString`;
 
-  const res = await fetch(XML_ENDPOINT, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: `Bearer ${token}`,
-    },
-    body,
-  });
+  const doRequest = async (): Promise<Response> => {
+    return fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Authorization: `Bearer ${token}`,
+      },
+      body: new URLSearchParams({
+        xmlRequest: xml,
+        companyCode: officeCode,
+      }).toString(),
+    });
+  };
+
+  let res = await doRequest();
+
+  // Rate limiting: wacht retry-after seconden en probeer één keer opnieuw
+  if (res.status === 429) {
+    const retryAfter = parseInt(res.headers.get("retry-after") ?? "5", 10);
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+    res = await doRequest();
+  }
 
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Twinfield XML call failed (${res.status}): ${text}`);
   }
 
-  return res.text();
+  const responseText = await res.text();
+
+  // Twinfield stuurt HTTP 200 ook bij fouten — controleer result attribuut
+  if (/result\s*=\s*["']0["']/i.test(responseText)) {
+    // Probeer foutmelding te extraheren
+    const msg =
+      responseText.match(/<msg[^>]*>(.*?)<\/msg>/i)?.[1] ??
+      responseText.match(/<message[^>]*>(.*?)<\/message>/i)?.[1] ??
+      "Onbekende Twinfield fout";
+    throw new Error(`Twinfield fout: ${msg}`);
+  }
+
+  return responseText;
 }
 
 // ─── Setup discovery ──────────────────────────────────────────────────────────
@@ -184,23 +264,19 @@ export async function fetchTwinfieldSetup(
 ): Promise<{ transactionTypes: string[]; vatCodes: string[] }> {
   const token = await getValidToken();
 
-  // List all activities (transaction types)
   const actXml = `<list><type>ACT</type><office>${escapeXml(officeCode)}</office></list>`;
   const actResponse = await callXml(token, officeCode, actXml);
 
-  // Extract codes from <dimension><code>...</code><category>...</category></dimension>
   const transactionTypes: string[] = [];
   const actMatches = [...actResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)];
   for (const m of actMatches) {
     const block = m[1];
     const category = block.match(/<category>(.*?)<\/category>/i)?.[1]?.toLowerCase() ?? "";
     const code = block.match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
-    // Keep sales-related types: category "sales", "verkopen", "sis", etc.
     if (code && (category === "sales" || category === "sis" || category === "verkopen")) {
       transactionTypes.push(code);
     }
   }
-  // If nothing matched by category, return all codes so user can pick
   if (transactionTypes.length === 0) {
     for (const m of actMatches) {
       const code = m[1].match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
@@ -208,15 +284,12 @@ export async function fetchTwinfieldSetup(
     }
   }
 
-  // List VAT codes (type VTC = btw-codes)
   const vatXml = `<list><type>VTC</type><office>${escapeXml(officeCode)}</office></list>`;
   const vatResponse = await callXml(token, officeCode, vatXml);
 
   const vatCodes: string[] = [];
-  const vatMatches = [...vatResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)];
-  for (const m of vatMatches) {
-    const block = m[1];
-    const code = block.match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
+  for (const m of [...vatResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)]) {
+    const code = m[1].match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
     if (code) vatCodes.push(code);
   }
 
@@ -242,14 +315,14 @@ export async function findOrCreateDebtor(
   const storedCode = existing[0]?.twinfield_debtor_code;
   if (storedCode) return storedCode;
 
-  const { officeCode } = settings;
+  const { officeCode, cluster } = settings;
 
   // 2. Search Twinfield by name
   const searchXml = `<list><type>DEB</type><office>${escapeXml(officeCode)}</office><filters><filter field="name" operator="like">${escapeXml(customer.companyName)}</filter></filters></list>`;
   let foundCode: string | null = null;
 
   try {
-    const searchResponse = await callXml(token, officeCode, searchXml);
+    const searchResponse = await callXml(token, officeCode, searchXml, cluster);
     const debtors = [...searchResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)].map(
       (m) => m[1]
     );
@@ -262,7 +335,6 @@ export async function findOrCreateDebtor(
         "";
       const name = debtor.match(/<name>(.*?)<\/name>/i)?.[1] ?? "";
 
-      // Match by VAT number first (most reliable)
       if (customer.vatNumber && vatno) {
         const normalizedVat = customer.vatNumber.replace(/\s/g, "").toUpperCase();
         const normalizedVatno = vatno.replace(/\s/g, "").toUpperCase();
@@ -272,7 +344,6 @@ export async function findOrCreateDebtor(
         }
       }
 
-      // Match by exact company name
       if (name.trim().toLowerCase() === customer.companyName.trim().toLowerCase()) {
         foundCode = code;
         break;
@@ -282,7 +353,7 @@ export async function findOrCreateDebtor(
     console.error("[twinfield] findOrCreateDebtor search error:", err);
   }
 
-  // 3. If not found, create a new debtor — let Twinfield auto-assign code
+  // 3. If not found, create a new debtor — Twinfield kent automatisch een code toe
   if (!foundCode) {
     const createXml = `<dimensions>
   <dimension>
@@ -294,16 +365,9 @@ export async function findOrCreateDebtor(
   </dimension>
 </dimensions>`;
 
-    const createResponse = await callXml(token, officeCode, createXml);
+    const createResponse = await callXml(token, officeCode, createXml, cluster);
 
-    if (createResponse.includes("<msgtype>error</msgtype>")) {
-      const msg = createResponse.match(/<msg>(.*?)<\/msg>/i)?.[1] ?? createResponse;
-      throw new Error(`Twinfield debtor create failed: ${msg}`);
-    }
-
-    // Parse auto-assigned code from response
-    foundCode =
-      createResponse.match(/<code>(.*?)<\/code>/i)?.[1] ?? null;
+    foundCode = createResponse.match(/<code>(.*?)<\/code>/i)?.[1] ?? null;
 
     if (!foundCode) {
       throw new Error("Twinfield returned no debtor code after creation");
@@ -318,17 +382,45 @@ export async function findOrCreateDebtor(
   return foundCode;
 }
 
+// ─── BTW-logica op basis van land ─────────────────────────────────────────────
+
+type VatMapping = {
+  revenueAccount: string;
+  vatCode: string | null;
+};
+
+function getVatMapping(country: string, defaultSettings: TwinfieldSettings): VatMapping {
+  const c = country.trim().toUpperCase();
+
+  if (c === "NL") {
+    return { revenueAccount: "8100", vatCode: "VH" };
+  }
+  if (EU_COUNTRIES.has(c)) {
+    return { revenueAccount: "8600", vatCode: "ICL" };
+  }
+  // Buiten EU
+  return { revenueAccount: "8500", vatCode: null };
+}
+
 // ─── Invoice sync ─────────────────────────────────────────────────────────────
 
 export async function syncInvoiceToTwinfield(
   invoiceId: string
 ): Promise<TwinfieldSyncResult> {
   try {
-    // 1. Get invoice with customer and lines
+    // 1. Get invoice with customer (incl. adressen) en regels
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
-        customer: true,
+        customer: {
+          include: {
+            addresses: {
+              where: { type: "BILLING" },
+              orderBy: { isDefault: "desc" },
+              take: 1,
+            },
+          },
+        },
         lines: { orderBy: { createdAt: "asc" } },
         deal: { select: { dealNumber: true } },
       },
@@ -341,7 +433,7 @@ export async function syncInvoiceToTwinfield(
     // 2. Get valid OAuth token
     const token = await getValidToken();
 
-    // 3. Get all Twinfield settings
+    // 3. Get all Twinfield settings (incl. cluster)
     const settingsRows = await prisma.$queryRaw<
       Array<{
         twinfield_office_code: string | null;
@@ -349,13 +441,15 @@ export async function syncInvoiceToTwinfield(
         twinfield_debtor_account: string | null;
         twinfield_revenue_account: string | null;
         twinfield_vat_code: string | null;
+        twinfield_cluster: string | null;
       }>
     >`SELECT
         twinfield_office_code,
         twinfield_transaction_type,
         twinfield_debtor_account,
         twinfield_revenue_account,
-        twinfield_vat_code
+        twinfield_vat_code,
+        twinfield_cluster
       FROM company_settings WHERE id = 'singleton' LIMIT 1`;
 
     const row = settingsRows[0];
@@ -366,35 +460,47 @@ export async function syncInvoiceToTwinfield(
       );
     }
 
+    const cluster =
+      row.twinfield_cluster ??
+      process.env.TWINFIELD_CLUSTER ??
+      "accounting.twinfield.com";
+
     const tfSettings: TwinfieldSettings = {
       officeCode: row.twinfield_office_code,
       transactionType: row.twinfield_transaction_type ?? "VRK",
       debtorAccount: row.twinfield_debtor_account ?? "1300",
       revenueAccount: row.twinfield_revenue_account ?? "8000",
       vatCode: row.twinfield_vat_code ?? "VH",
+      cluster,
     };
 
-    // 4. Find or create debtor
+    // 4. Bepaal BTW/omzetrekening op basis van klantland
+    const billingCountry =
+      invoice.customer.addresses[0]?.country?.toUpperCase().trim() ?? "NL";
+    const vatMapping = getVatMapping(billingCountry, tfSettings);
+
+    // 5. Find or create debtor
     const customerCode = await findOrCreateDebtor(token, tfSettings, {
       id: invoice.customer.id,
       companyName: invoice.customer.companyName,
       vatNumber: invoice.customer.vatNumber,
     });
 
-    // 5. Build transaction XML
+    // 6. Build transaction XML
     const invoiceDate = formatTwinfieldDate(invoice.invoiceDate);
     const period = formatTwinfieldPeriod(invoice.invoiceDate);
     const total = Number(invoice.total).toFixed(2);
 
-    // Build detail lines for each invoice line
     const detailLines = invoice.lines
       .map((line, i) => {
         const netValue = Number(line.netLineTotal).toFixed(2);
         const desc = (line.titleSnapshot ?? "").slice(0, 40);
+        const vatLine = vatMapping.vatCode
+          ? `\n        <vatcode>${escapeXml(vatMapping.vatCode)}</vatcode>`
+          : "";
         return `      <line type="detail" id="${2 + i}">
-        <dim1>${escapeXml(tfSettings.revenueAccount)}</dim1>
-        <value>${netValue}</value>
-        <vatcode>${escapeXml(tfSettings.vatCode)}</vatcode>
+        <dim1>${escapeXml(vatMapping.revenueAccount)}</dim1>
+        <value>${netValue}</value>${vatLine}
         <description>${escapeXml(desc)}</description>
       </line>`;
       })
@@ -423,21 +529,16 @@ ${detailLines}
   </transaction>
 </transactions>`;
 
-    // 6. POST to Twinfield
-    const response = await callXml(token, tfSettings.officeCode, transactionXml);
+    // 7. POST to Twinfield
+    const response = await callXml(token, tfSettings.officeCode, transactionXml, cluster);
 
-    if (response.includes("<msgtype>error</msgtype>")) {
-      const msg = response.match(/<msg>(.*?)<\/msg>/i)?.[1] ?? "Onbekende fout";
-      throw new Error(`Twinfield transactie mislukt: ${msg}`);
-    }
-
-    // 7. Parse transaction reference from response
+    // 8. Parse transaction reference from response
     const reference =
       response.match(/<number>(.*?)<\/number>/i)?.[1] ??
       response.match(/<transaction[^>]*\s+number="([^"]+)"/i)?.[1] ??
       invoice.invoiceNumber;
 
-    // 8. Update invoice status
+    // 9. Update invoice status
     await prisma.$executeRaw`
       UPDATE invoices SET
         twinfield_sync_status = 'SYNCED',

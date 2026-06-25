@@ -881,6 +881,7 @@ model CompanySetting {
   twinfieldRefreshToken   String?   @map("twinfield_refresh_token")
   twinfieldTokenExpiresAt DateTime? @map("twinfield_token_expires_at")
   twinfieldOfficeCode     String?   @map("twinfield_office_code")
+  twinfieldCluster        String?   @map("twinfield_cluster")
   // Twinfield boekhoudingsinstellingen
   twinfieldTransactionType String?  @default("VRK") @map("twinfield_transaction_type")
   twinfieldDebtorAccount   String?  @default("1300") @map("twinfield_debtor_account")
