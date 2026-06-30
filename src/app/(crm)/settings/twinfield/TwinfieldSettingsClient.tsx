@@ -271,7 +271,7 @@ export function TwinfieldSettingsClient({
               </p>
             )}
             {discovered.transactionTypes.length === 0 && discovered.vatCodes.length === 0 && (
-              <p className="text-slate-500">Geen codes gevonden. Controleer de office code.</p>
+              <p className="text-slate-500">Automatisch ophalen niet beschikbaar voor deze administratie. Vul de codes handmatig in.</p>
             )}
           </div>
         )}
