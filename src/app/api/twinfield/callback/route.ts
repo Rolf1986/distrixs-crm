@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { exchangeCode, fetchAndStoreCluster } from "@/lib/twinfield";
 import { prisma } from "@/lib/prisma";
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl";
+
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const code = searchParams.get("code");
@@ -10,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (error || !code) {
     const msg = error ?? "Geen authorization code ontvangen";
     return NextResponse.redirect(
-      `${req.nextUrl.origin}/settings/twinfield?error=${encodeURIComponent(msg)}`
+      `${BASE_URL}/settings/twinfield?error=${encodeURIComponent(msg)}`
     );
   }
 
@@ -18,7 +20,6 @@ export async function GET(req: NextRequest) {
     const tokens = await exchangeCode(code);
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
-    // Sla tokens op
     await prisma.$executeRaw`
       UPDATE company_settings SET
         twinfield_access_token = ${tokens.access_token},
@@ -27,17 +28,14 @@ export async function GET(req: NextRequest) {
       WHERE id = 'singleton'
     `;
 
-    // Haal cluster URL op via token validation en sla op in DB
     await fetchAndStoreCluster(tokens.access_token);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Onbekende fout";
     console.error("[twinfield] OAuth callback error:", err);
     return NextResponse.redirect(
-      `${req.nextUrl.origin}/settings/twinfield?error=${encodeURIComponent(msg)}`
+      `${BASE_URL}/settings/twinfield?error=${encodeURIComponent(msg)}`
     );
   }
 
-  return NextResponse.redirect(
-    `${req.nextUrl.origin}/settings/twinfield?connected=true`
-  );
+  return NextResponse.redirect(`${BASE_URL}/settings/twinfield?connected=true`);
 }
