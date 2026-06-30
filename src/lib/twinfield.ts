@@ -117,48 +117,29 @@ export async function refreshToken(
 export async function fetchAndStoreCluster(accessToken: string): Promise<string> {
   const defaultCluster = process.env.TWINFIELD_CLUSTER ?? "accounting.twinfield.com";
 
-  // Probeer POST (veilig: token in body ipv URL), val terug op GET
-  const tryFetch = async (usePost: boolean): Promise<Response> => {
-    if (usePost) {
-      return fetch(TF_VALIDATE_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: new URLSearchParams({ token: accessToken }).toString(),
-      });
+  try {
+    // De cluster URL zit in de JWT payload als "twf.clusterUrl"
+    // JWT = base64(header).base64(payload).base64(signature)
+    const payloadBase64 = accessToken.split(".")[1];
+    if (!payloadBase64) throw new Error("Invalid JWT");
+
+    const payload = JSON.parse(
+      Buffer.from(payloadBase64, "base64url").toString("utf-8")
+    ) as Record<string, unknown>;
+
+    const clusterUrl = (payload["twf.clusterUrl"] as string | undefined) ?? "";
+    const cluster = clusterUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+    console.log(`[twinfield] Cluster uit JWT: "${cluster}"`);
+
+    if (cluster) {
+      await prisma.$executeRaw`
+        UPDATE company_settings SET twinfield_cluster = ${cluster} WHERE id = 'singleton'
+      `;
+      return cluster;
     }
-    return fetch(`${TF_VALIDATE_URL}?token=${encodeURIComponent(accessToken)}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-  };
-
-  let res = await tryFetch(true);
-  if (!res.ok) {
-    console.warn(`[twinfield] Token validation POST failed (${res.status}), retrying with GET`);
-    res = await tryFetch(false);
-  }
-
-  if (!res.ok) {
-    console.warn(`[twinfield] Token validation failed (${res.status}), using default cluster`);
-    return defaultCluster;
-  }
-
-  const data = (await res.json()) as Record<string, unknown>;
-  console.log("[twinfield] Token validation response keys:", Object.keys(data));
-
-  // Response bevat "twf.clusterUrl": "https://c3.twinfield.com"
-  const clusterUrl = (data["twf.clusterUrl"] as string | undefined) ?? "";
-  const cluster = clusterUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
-
-  console.log(`[twinfield] Cluster URL from validation: "${clusterUrl}" → "${cluster}"`);
-
-  if (cluster) {
-    await prisma.$executeRaw`
-      UPDATE company_settings SET twinfield_cluster = ${cluster} WHERE id = 'singleton'
-    `;
-    return cluster;
+  } catch (err) {
+    console.warn("[twinfield] Cluster uit JWT lezen mislukt:", err);
   }
 
   return defaultCluster;
