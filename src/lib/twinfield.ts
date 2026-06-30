@@ -216,19 +216,20 @@ export async function callXml(
   cluster?: string
 ): Promise<string> {
   const clusterHost = cluster ?? await getCluster();
-  const endpoint = `https://${clusterHost}/webservices/processxml.asmx/ProcessXmlString`;
+  // SOAP endpoint — zonder /ProcessXmlString suffix; CompanyCode gaat in SOAP header
+  const endpoint = `https://${clusterHost}/webservices/processxml.asmx`;
+
+  const soapEnvelope = `<?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="http://www.twinfield.com/"><soap:Header><tns:Header><tns:AccessToken>${token}</tns:AccessToken><tns:CompanyCode>${officeCode}</tns:CompanyCode></tns:Header></soap:Header><soap:Body><tns:ProcessXmlString><tns:xmlRequest>${xml.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</tns:xmlRequest></tns:ProcessXmlString></soap:Body></soap:Envelope>`;
 
   const doRequest = async (): Promise<Response> => {
     return fetch(endpoint, {
       method: "POST",
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Type": "text/xml; charset=utf-8",
+        "SOAPAction": '"http://www.twinfield.com/ProcessXmlString"',
         Authorization: `Bearer ${token}`,
       },
-      body: new URLSearchParams({
-        xmlRequest: xml,
-        companyCode: officeCode,
-      }).toString(),
+      body: soapEnvelope,
     });
   };
 
@@ -246,11 +247,21 @@ export async function callXml(
     throw new Error(`Twinfield XML call failed (${res.status}): ${text}`);
   }
 
-  const responseText = await res.text();
+  const soapResponse = await res.text();
+
+  // Extraheer inner XML uit SOAP envelope <ProcessXmlStringResult>...</ProcessXmlStringResult>
+  const innerMatch = soapResponse.match(/<ProcessXmlStringResult[^>]*>([\s\S]*?)<\/ProcessXmlStringResult>/i);
+  const innerEscaped = innerMatch?.[1] ?? soapResponse;
+  // HTML-entities terugzetten naar XML
+  const responseText = innerEscaped
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
 
   // Twinfield stuurt HTTP 200 ook bij fouten — controleer result attribuut
   if (/result\s*=\s*["']0["']/i.test(responseText)) {
-    // Probeer foutmelding te extraheren
     const msg =
       responseText.match(/<msg[^>]*>(.*?)<\/msg>/i)?.[1] ??
       responseText.match(/<message[^>]*>(.*?)<\/message>/i)?.[1] ??
