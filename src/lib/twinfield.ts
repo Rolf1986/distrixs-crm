@@ -263,6 +263,7 @@ export async function callXml(
   // Twinfield stuurt HTTP 200 ook bij fouten — controleer result attribuut
   if (/result\s*=\s*["']0["']/i.test(responseText)) {
     const msg =
+      responseText.match(/\bmsg\s*=\s*["']([^"']+)["']/i)?.[1] ??
       responseText.match(/<msg[^>]*>(.*?)<\/msg>/i)?.[1] ??
       responseText.match(/<message[^>]*>(.*?)<\/message>/i)?.[1] ??
       "Onbekende Twinfield fout";
@@ -279,33 +280,40 @@ export async function fetchTwinfieldSetup(
 ): Promise<{ transactionTypes: string[]; vatCodes: string[] }> {
   const token = await getValidToken();
 
-  const actXml = `<list><type>ACT</type><office>${escapeXml(officeCode)}</office></list>`;
-  const actResponse = await callXml(token, officeCode, actXml);
-
   const transactionTypes: string[] = [];
-  const actMatches = [...actResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)];
-  for (const m of actMatches) {
-    const block = m[1];
-    const category = block.match(/<category>(.*?)<\/category>/i)?.[1]?.toLowerCase() ?? "";
-    const code = block.match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
-    if (code && (category === "sales" || category === "sis" || category === "verkopen")) {
-      transactionTypes.push(code);
-    }
-  }
-  if (transactionTypes.length === 0) {
-    for (const m of actMatches) {
-      const code = m[1].match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
-      if (code) transactionTypes.push(code);
-    }
-  }
-
-  const vatXml = `<list><type>VTC</type><office>${escapeXml(officeCode)}</office></list>`;
-  const vatResponse = await callXml(token, officeCode, vatXml);
-
   const vatCodes: string[] = [];
-  for (const m of [...vatResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)]) {
-    const code = m[1].match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
-    if (code) vatCodes.push(code);
+
+  try {
+    const actXml = `<list><type>ACT</type><office>${escapeXml(officeCode)}</office></list>`;
+    const actResponse = await callXml(token, officeCode, actXml);
+    const actMatches = [...actResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)];
+    for (const m of actMatches) {
+      const block = m[1];
+      const category = block.match(/<category>(.*?)<\/category>/i)?.[1]?.toLowerCase() ?? "";
+      const code = block.match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
+      if (code && (category === "sales" || category === "sis" || category === "verkopen")) {
+        transactionTypes.push(code);
+      }
+    }
+    if (transactionTypes.length === 0) {
+      for (const m of actMatches) {
+        const code = m[1].match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
+        if (code) transactionTypes.push(code);
+      }
+    }
+  } catch (e) {
+    console.warn("[twinfield/setup] transaction types niet opgehaald:", e instanceof Error ? e.message : e);
+  }
+
+  try {
+    const vatXml = `<list><type>VTC</type><office>${escapeXml(officeCode)}</office></list>`;
+    const vatResponse = await callXml(token, officeCode, vatXml);
+    for (const m of [...vatResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)]) {
+      const code = m[1].match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
+      if (code) vatCodes.push(code);
+    }
+  } catch (e) {
+    console.warn("[twinfield/setup] BTW codes niet opgehaald:", e instanceof Error ? e.message : e);
   }
 
   return { transactionTypes, vatCodes };
