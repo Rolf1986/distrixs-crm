@@ -115,8 +115,14 @@ export async function refreshToken(
  * Geeft de cluster-hostname terug (bv. "accounting.twinfield.com").
  */
 export async function fetchAndStoreCluster(accessToken: string): Promise<string> {
-  const res = await fetch(`${TF_VALIDATE_URL}?token=${encodeURIComponent(accessToken)}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
+  // POST ipv GET om access token niet te exposen in access-logs/proxies
+  const res = await fetch(TF_VALIDATE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ token: accessToken }),
   });
 
   const defaultCluster = process.env.TWINFIELD_CLUSTER ?? "accounting.twinfield.com";
@@ -507,7 +513,7 @@ export async function syncInvoiceToTwinfield(
       .join("\n");
 
     const transactionXml = `<transactions>
-  <transaction destiny="final" autobalancevat="true" raisewarning="false">
+  <transaction destiny="final" autobalancevat="true" raisewarning="true">
     <header>
       <office>${escapeXml(tfSettings.officeCode)}</office>
       <code>${escapeXml(tfSettings.transactionType)}</code>
