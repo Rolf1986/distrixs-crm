@@ -115,27 +115,44 @@ export async function refreshToken(
  * Geeft de cluster-hostname terug (bv. "accounting.twinfield.com").
  */
 export async function fetchAndStoreCluster(accessToken: string): Promise<string> {
-  // POST ipv GET om access token niet te exposen in access-logs/proxies
-  const res = await fetch(TF_VALIDATE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ token: accessToken }),
-  });
-
   const defaultCluster = process.env.TWINFIELD_CLUSTER ?? "accounting.twinfield.com";
 
+  // Probeer POST (veilig: token in body ipv URL), val terug op GET
+  const tryFetch = async (usePost: boolean): Promise<Response> => {
+    if (usePost) {
+      return fetch(TF_VALIDATE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: new URLSearchParams({ token: accessToken }).toString(),
+      });
+    }
+    return fetch(`${TF_VALIDATE_URL}?token=${encodeURIComponent(accessToken)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  };
+
+  let res = await tryFetch(true);
   if (!res.ok) {
-    console.warn("[twinfield] Token validation failed, using default cluster");
+    console.warn(`[twinfield] Token validation POST failed (${res.status}), retrying with GET`);
+    res = await tryFetch(false);
+  }
+
+  if (!res.ok) {
+    console.warn(`[twinfield] Token validation failed (${res.status}), using default cluster`);
     return defaultCluster;
   }
 
   const data = (await res.json()) as Record<string, unknown>;
-  // Response bevat "twf.clusterUrl": "https://accounting.twinfield.com"
+  console.log("[twinfield] Token validation response keys:", Object.keys(data));
+
+  // Response bevat "twf.clusterUrl": "https://c3.twinfield.com"
   const clusterUrl = (data["twf.clusterUrl"] as string | undefined) ?? "";
   const cluster = clusterUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+  console.log(`[twinfield] Cluster URL from validation: "${clusterUrl}" → "${cluster}"`);
 
   if (cluster) {
     await prisma.$executeRaw`
