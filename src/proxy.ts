@@ -18,6 +18,7 @@ export default async function proxy(req: NextRequest) {
 
   // Altijd doorlaten
   if (
+    pathname === "/track.js" || // publiek analytics-snippet (webshop laadt dit anoniem)
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/retour") ||
     pathname === "/api/rma" ||
