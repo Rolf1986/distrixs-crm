@@ -378,38 +378,33 @@ export async function findOrCreateDebtor(
 
   // 3. If not found, create a new debtor
   // Debitor code format in this admin: 1[0-9]{4} (10000-19999)
+  // Gebruik sequentiële code op basis van hoogste bestaande code in onze DB
+  // zodat we nooit een code tweemaal aanmaken (Twinfield geeft geen fout bij dubbele code maar overschrijft)
   if (!foundCode) {
-    const hex = customer.id.replace(/-/g, "").slice(0, 4);
-    const baseNum = (parseInt(hex, 16) % 9000) + 10000;
+    const usedRows = await prisma.$queryRaw<Array<{ twinfield_debtor_code: string }>>`
+      SELECT twinfield_debtor_code FROM customers
+      WHERE twinfield_debtor_code IS NOT NULL AND twinfield_debtor_code ~ '^1[0-9]{4}$'
+    `;
+    const usedCodes = new Set(usedRows.map((r) => r.twinfield_debtor_code));
 
-    let created = false;
-    for (let attempt = 0; attempt < 20 && !created; attempt++) {
-      const candidateCode = String(baseNum + attempt);
-      const shortname = customer.companyName
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 8) || "DEBITOR";
-
-      const createXml = `<dimension><office>${escapeXml(officeCode)}</office><type>DEB</type><code>${candidateCode}</code><name>${escapeXml(customer.companyName)}</name><shortname>${escapeXml(shortname)}</shortname></dimension>`;
-
-      try {
-        const createResponse = await callXml(token, officeCode, createXml, cluster);
-        const code = createResponse.match(/<code[^>]*>(.*?)<\/code>/i)?.[1] ?? null;
-        if (code) {
-          foundCode = code;
-          created = true;
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg.includes("al in gebruik") || msg.includes("already in use") || msg.includes("bestaat al")) {
-          continue;
-        }
-        throw err;
-      }
+    let nextCode = 10000;
+    while (usedCodes.has(String(nextCode)) && nextCode < 19999) {
+      nextCode++;
     }
+    const candidateCode = String(nextCode);
+
+    const shortname = customer.companyName
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 8) || "DEBITOR";
+
+    const createXml = `<dimension><office>${escapeXml(officeCode)}</office><type>DEB</type><code>${candidateCode}</code><name>${escapeXml(customer.companyName)}</name><shortname>${escapeXml(shortname)}</shortname></dimension>`;
+
+    const createResponse = await callXml(token, officeCode, createXml, cluster);
+    foundCode = createResponse.match(/<code[^>]*>(.*?)<\/code>/i)?.[1] ?? null;
 
     if (!foundCode) {
-      throw new Error("Kon geen unieke Twinfield debitor code aanmaken na 20 pogingen");
+      throw new Error("Twinfield gaf geen debitor code terug na aanmaken");
     }
   }
 
