@@ -546,7 +546,7 @@ export async function syncInvoiceToTwinfield(
       .join("\n");
 
     const transactionXml = `<transactions>
-  <transaction destiny="final" autobalancevat="true" raisewarning="true">
+  <transaction destiny="concept" autobalancevat="true" raisewarning="true">
     <header>
       <office>${escapeXml(tfSettings.officeCode)}</office>
       <code>${escapeXml(tfSettings.transactionType)}</code>
