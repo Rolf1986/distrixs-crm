@@ -281,6 +281,7 @@ export async function POST(): Promise<Response> {
     // ── 4. Deals ─────────────────────────────────────────────────────────────
     const tlDeals = await fetchDeals(accessToken);
     let dealsSkippedExisting = 0, dealsSkippedNoCustomer = 0;
+    let dealsSkipTypeCompany = 0, dealsSkipTypeContact = 0, dealsSkipTypeNone = 0;
     console.log(`[import] Teamleader deals opgehaald: ${tlDeals.length}, in DB: ${dealIdToLocalId.size}`);
 
     for (const d of tlDeals) {
@@ -301,7 +302,13 @@ export async function POST(): Promise<Response> {
           customerId = contact?.customerId ?? undefined;
         }
       }
-      if (!customerId) { dealsSkippedNoCustomer++; continue; } // cannot resolve — skip
+      if (!customerId) {
+        dealsSkippedNoCustomer++;
+        if (!d.customer) dealsSkipTypeNone++;
+        else if (d.customer.type === "company") dealsSkipTypeCompany++;
+        else dealsSkipTypeContact++;
+        continue;
+      }
 
       const dealNumber = await nextDealNumber(year);
       const deal = await prisma.deal.create({
@@ -320,7 +327,7 @@ export async function POST(): Promise<Response> {
       dealIdToLocalId.set(d.id, deal.id);
       counts.deals++;
     }
-    console.log(`[import] Deals: ${counts.deals} nieuw, ${dealsSkippedExisting} al aanwezig, ${dealsSkippedNoCustomer} geen klant gevonden`);
+    console.log(`[import] Deals: ${counts.deals} nieuw, ${dealsSkippedExisting} al aanwezig, ${dealsSkippedNoCustomer} geen klant (company=${dealsSkipTypeCompany}, contact=${dealsSkipTypeContact}, geen=${dealsSkipTypeNone})`);
 
     // ── 5. Quotations → Quotes ───────────────────────────────────────────────
     const tlQuotations = await fetchQuotations(accessToken);
