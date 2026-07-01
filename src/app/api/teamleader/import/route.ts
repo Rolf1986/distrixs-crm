@@ -280,10 +280,12 @@ export async function POST(): Promise<Response> {
 
     // ── 4. Deals ─────────────────────────────────────────────────────────────
     const tlDeals = await fetchDeals(accessToken);
+    let dealsSkippedExisting = 0, dealsSkippedNoCustomer = 0;
+    console.log(`[import] Teamleader deals opgehaald: ${tlDeals.length}, in DB: ${dealIdToLocalId.size}`);
 
     for (const d of tlDeals) {
       const externalId = `tl-deal-${d.id}`;
-      if (dealIdToLocalId.has(d.id)) continue;
+      if (dealIdToLocalId.has(d.id)) { dealsSkippedExisting++; continue; }
 
       // Resolve customer: company first, then contact fallback
       let customerId: string | undefined;
@@ -299,7 +301,7 @@ export async function POST(): Promise<Response> {
           customerId = contact?.customerId ?? undefined;
         }
       }
-      if (!customerId) continue; // cannot resolve — skip
+      if (!customerId) { dealsSkippedNoCustomer++; continue; } // cannot resolve — skip
 
       const dealNumber = await nextDealNumber(year);
       const deal = await prisma.deal.create({
@@ -318,13 +320,16 @@ export async function POST(): Promise<Response> {
       dealIdToLocalId.set(d.id, deal.id);
       counts.deals++;
     }
+    console.log(`[import] Deals: ${counts.deals} nieuw, ${dealsSkippedExisting} al aanwezig, ${dealsSkippedNoCustomer} geen klant gevonden`);
 
     // ── 5. Quotations → Quotes ───────────────────────────────────────────────
     const tlQuotations = await fetchQuotations(accessToken);
+    let quotesSkippedExisting = 0, quotesSkippedNoCustomer = 0;
+    console.log(`[import] Teamleader offertes opgehaald: ${tlQuotations.length}, in DB: ${quotationIdToLocalId.size}`);
 
     for (const q of tlQuotations) {
       const externalId = `tl-quotation-${q.id}`;
-      if (quotationIdToLocalId.has(q.id)) continue;
+      if (quotationIdToLocalId.has(q.id)) { quotesSkippedExisting++; continue; }
 
       // Resolve customer: company first, then contact fallback
       let customerId: string | undefined;
@@ -340,7 +345,7 @@ export async function POST(): Promise<Response> {
           customerId = contact?.customerId ?? undefined;
         }
       }
-      if (!customerId) continue;
+      if (!customerId) { quotesSkippedNoCustomer++; continue; }
 
       const dealId = q.deal?.id ? (dealIdToLocalId.get(q.deal.id) ?? null) : null;
       const total    = q.total?.tax_inclusive?.amount ?? 0;
@@ -364,6 +369,7 @@ export async function POST(): Promise<Response> {
       quotationIdToLocalId.set(q.id, quote.id);
       counts.quotes++;
     }
+    console.log(`[import] Offertes: ${counts.quotes} nieuw, ${quotesSkippedExisting} al aanwezig, ${quotesSkippedNoCustomer} geen klant gevonden`);
 
     // ── 6. Invoices ──────────────────────────────────────────────────────────
     const tlInvoices = await fetchInvoices(accessToken);
