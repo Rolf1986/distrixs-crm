@@ -8,7 +8,7 @@ async function getCustomers() {
     include: {
       _count: { select: { deals: true, contacts: true } },
     },
-    orderBy: { companyName: "asc" },
+    orderBy: { createdAt: "desc" },
   });
 }
 
