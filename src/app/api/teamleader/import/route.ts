@@ -170,14 +170,16 @@ export async function POST(): Promise<Response> {
       quotationIdToLocalId.set(tlId, q.id);
     }
 
-    // Customer number counter — numeriek max bepalen (string-volgorde werkt niet voor >999)
+    // Customer number counter — numeriek max bepalen in JS (string-sort werkt niet voor >999)
     const prefix = `K-${year}-`;
-    const seqResult = await prisma.$queryRaw<Array<{ seq: number }>>`
-      SELECT COALESCE(MAX(CAST(SUBSTRING(customer_number FROM ${prefix.length + 1}) AS INTEGER)), 0) AS seq
-      FROM customers
-      WHERE customer_number LIKE ${prefix + "%"}
-    `;
-    let customerSeq = seqResult[0]?.seq ?? 0;
+    const allNums = await prisma.customer.findMany({
+      where: { customerNumber: { startsWith: prefix } },
+      select: { customerNumber: true },
+    });
+    let customerSeq = allNums.reduce((max, r) => {
+      const n = parseInt(r.customerNumber.replace(prefix, ""), 10);
+      return isNaN(n) ? max : Math.max(max, n);
+    }, 0);
 
     // SKU lookup set to avoid duplicate sku conflicts
     const existingSkus = new Set(
