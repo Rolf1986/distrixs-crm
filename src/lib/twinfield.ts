@@ -376,24 +376,40 @@ export async function findOrCreateDebtor(
     console.error("[twinfield] findOrCreateDebtor search error:", err);
   }
 
-  // 3. If not found, create a new debtor — Twinfield kent automatisch een code toe
+  // 3. If not found, create a new debtor
+  // Debitor code format in this admin: 1[0-9]{4} (10000-19999)
   if (!foundCode) {
-    const createXml = `<dimensions>
-  <dimension>
-    <name>${escapeXml(customer.companyName)}</name>
-    <type>DEB</type>
-    <financials>
-      <paymentcondition>30</paymentcondition>
-    </financials>
-  </dimension>
-</dimensions>`;
+    const hex = customer.id.replace(/-/g, "").slice(0, 4);
+    const baseNum = (parseInt(hex, 16) % 9000) + 10000;
 
-    const createResponse = await callXml(token, officeCode, createXml, cluster);
+    let created = false;
+    for (let attempt = 0; attempt < 20 && !created; attempt++) {
+      const candidateCode = String(baseNum + attempt);
+      const shortname = customer.companyName
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 8) || "DEBITOR";
 
-    foundCode = createResponse.match(/<code>(.*?)<\/code>/i)?.[1] ?? null;
+      const createXml = `<dimension><office>${escapeXml(officeCode)}</office><type>DEB</type><code>${candidateCode}</code><name>${escapeXml(customer.companyName)}</name><shortname>${escapeXml(shortname)}</shortname></dimension>`;
+
+      try {
+        const createResponse = await callXml(token, officeCode, createXml, cluster);
+        const code = createResponse.match(/<code[^>]*>(.*?)<\/code>/i)?.[1] ?? null;
+        if (code) {
+          foundCode = code;
+          created = true;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("al in gebruik") || msg.includes("already in use") || msg.includes("bestaat al")) {
+          continue;
+        }
+        throw err;
+      }
+    }
 
     if (!foundCode) {
-      throw new Error("Twinfield returned no debtor code after creation");
+      throw new Error("Kon geen unieke Twinfield debitor code aanmaken na 20 pogingen");
     }
   }
 
