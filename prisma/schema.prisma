@@ -249,6 +249,7 @@ model Customer {
   recurringInvoices  RecurringInvoice[]
   convertedLeads     Lead[]
   shipments          Shipment[]
+  webshopAccounts    WebshopAccount[]
 
   @@map("customers")
 }
@@ -291,6 +292,7 @@ model CustomerContact {
   invoices          Invoice[]
   activities        Activity[]
   recurringInvoices RecurringInvoice[]
+  webshopAccounts   WebshopAccount[]
 
   @@map("customer_contacts")
 }
@@ -1196,4 +1198,100 @@ model Shipment {
   deal         Deal?         @relation(fields: [dealId], references: [id])
 
   @@map("shipments")
+}
+
+// ─── Webshop-analytics ─────────────────────────────────────────────────────────
+// Gedrags-tracking voor distrixs.nl (WooCommerce). De data wordt op de webshop
+// verzameld en via POST /api/track opgeslagen. Identiteit-van-record is het
+// WooCommerce-account; koppeling naar CRM (Customer/Contact) is optioneel en
+// handmatig te bevestigen — nooit automatisch gokken (e-mails kunnen verschillen).
+
+enum WebshopLinkStatus {
+  UNLINKED  // webshop-account nog niet aan CRM gekoppeld
+  SUGGESTED // systeem stelt een match voor, wacht op bevestiging
+  CONFIRMED // handmatig bevestigde koppeling
+}
+
+model WebshopAccount {
+  id          String            @id @default(cuid())
+  wcUserId    Int               @unique @map("wc_user_id") // WooCommerce user ID = identiteit-van-record
+  email       String?
+  displayName String?           @map("display_name")
+  customerId  String?           @map("customer_id") // optionele CRM-koppeling (bedrijf)
+  contactId   String?           @map("contact_id")  // optionele CRM-koppeling (persoon)
+  linkStatus  WebshopLinkStatus @default(UNLINKED) @map("link_status")
+  firstSeenAt DateTime          @default(now()) @map("first_seen_at")
+  lastSeenAt  DateTime          @default(now()) @map("last_seen_at")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  customer Customer?          @relation(fields: [customerId], references: [id])
+  contact  CustomerContact?   @relation(fields: [contactId], references: [id])
+  visitors AnalyticsVisitor[]
+
+  @@index([customerId])
+  @@index([contactId])
+  @@map("webshop_accounts")
+}
+
+model AnalyticsVisitor {
+  id          String   @id @default(cuid())
+  vid         String   @unique // first-party bezoeker-id (localStorage op de webshop)
+  accountId   String?  @map("account_id") // gezet zodra de bezoeker inlogt
+  userAgent   String?  @map("user_agent")
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  account  WebshopAccount?    @relation(fields: [accountId], references: [id])
+  sessions AnalyticsSession[]
+  events   AnalyticsEvent[]
+
+  @@index([accountId])
+  @@map("analytics_visitors")
+}
+
+model AnalyticsSession {
+  id          String   @id @default(cuid())
+  visitorId   String   @map("visitor_id")
+  landingPath String?  @map("landing_path")
+  referrer    String?
+  utmSource   String?  @map("utm_source")
+  utmMedium   String?  @map("utm_medium")
+  utmCampaign String?  @map("utm_campaign")
+  utmContent  String?  @map("utm_content")
+  utmTerm     String?  @map("utm_term")
+  device      String? // mobile / desktop / tablet
+  startedAt   DateTime @default(now()) @map("started_at")
+  lastEventAt DateTime @default(now()) @map("last_event_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  visitor AnalyticsVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  events  AnalyticsEvent[]
+
+  @@index([visitorId])
+  @@index([startedAt])
+  @@index([utmCampaign])
+  @@map("analytics_sessions")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  sessionId  String   @map("session_id")
+  visitorId  String   @map("visitor_id")
+  type       String // pageview, product_view, add_to_cart, login, search, click
+  path       String?
+  title      String?
+  productSku String?  @map("product_sku")
+  metadata   Json?
+  occurredAt DateTime @default(now()) @map("occurred_at")
+
+  session AnalyticsSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  visitor AnalyticsVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([visitorId])
+  @@index([type])
+  @@index([occurredAt])
+  @@map("analytics_events")
 }
