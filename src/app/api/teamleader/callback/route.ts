@@ -2,6 +2,8 @@ import { type NextRequest } from "next/server";
 import { exchangeCode } from "@/lib/teamleader";
 import { prisma } from "@/lib/prisma";
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl";
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
@@ -9,14 +11,12 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return Response.redirect(
-      new URL(`/settings/import?error=${encodeURIComponent(error)}`, request.url)
+      `${BASE_URL}/settings/import?error=${encodeURIComponent(error)}`
     );
   }
 
   if (!code) {
-    return Response.redirect(
-      new URL("/settings/import?error=missing_code", request.url)
-    );
+    return Response.redirect(`${BASE_URL}/settings/import?error=missing_code`);
   }
 
   try {
@@ -34,13 +34,9 @@ export async function GET(request: NextRequest) {
         updated_at                  = NOW()
     `;
 
-    return Response.redirect(
-      new URL("/settings/import?connected=true", request.url)
-    );
+    return Response.redirect(`${BASE_URL}/settings/import?connected=true`);
   } catch (err) {
     console.error("Teamleader OAuth callback error:", err);
-    return Response.redirect(
-      new URL("/settings/import?error=exchange_failed", request.url)
-    );
+    return Response.redirect(`${BASE_URL}/settings/import?error=exchange_failed`);
   }
 }
