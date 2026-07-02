@@ -136,7 +136,7 @@ export async function POST(): Promise<Response> {
       prisma.customerContact.findMany({ where: { externalId: { startsWith: "tl-contact-" } }, select: { id: true, externalId: true } }),
       prisma.deal.findMany({ where: { externalId: { startsWith: "tl-deal-" } }, select: { id: true, externalId: true } }),
       prisma.quote.findMany({ where: { externalId: { startsWith: "tl-quotation-" } }, select: { id: true, externalId: true } }),
-      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { id: true, externalId: true, status: true, total: true } }),
+      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { id: true, externalId: true, status: true, total: true, dealId: true } }),
     ]);
 
     // externalId → local id / boolean
@@ -429,7 +429,10 @@ export async function POST(): Promise<Response> {
       if (existingInv) {
         // Status bijwerken als die in Teamleader is veranderd (bv. betaald)
         const newStatus = mapInvoiceStatus(inv.status);
-        if (existingInv.status !== newStatus) {
+        // Dealkoppeling alsnog leggen als de deal inmiddels wél geïmporteerd is
+        const resolvedDealId = inv.deal?.id ? (dealIdToLocalId.get(inv.deal.id) ?? null) : null;
+        const needsDealLink = !existingInv.dealId && !!resolvedDealId;
+        if (existingInv.status !== newStatus || needsDealLink) {
           const invTotal = inv.total?.tax_inclusive?.amount ?? Number(existingInv.total);
           const newPaid = newStatus === "PAID" ? invTotal : 0;
           await prisma.invoice.update({
@@ -438,6 +441,7 @@ export async function POST(): Promise<Response> {
               status: newStatus,
               paidAmount: newPaid,
               openAmount: invTotal - newPaid,
+              ...(needsDealLink ? { dealId: resolvedDealId } : {}),
             },
           });
           counts.invoicesUpdated++;
