@@ -236,6 +236,7 @@ export interface TLLineItem {
   description?: string;
   unit_price?: { amount: number; tax: string };
   discount?: { value?: number; type?: string } | null;
+  purchase_price?: { amount: number; currency: string };
   total?: {
     tax_exclusive?: { amount: number };
     tax_inclusive?: { amount: number };
@@ -247,19 +248,34 @@ export interface TLInvoiceInfo {
   grouped_lines?: Array<{ line_items?: TLLineItem[] }>;
 }
 
-export async function fetchInvoiceInfo(
+async function fetchDetailInfo(
   accessToken: string,
-  invoiceId: string
+  endpoint: string,
+  id: string
 ): Promise<TLInvoiceInfo | null> {
-  const res = await fetch(`${API_BASE}/invoices.info`, {
+  const res = await fetch(`${API_BASE}/${endpoint}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ id: invoiceId }),
+    body: JSON.stringify({ id }),
   });
   if (!res.ok) return null;
   const json = (await res.json()) as { data: TLInvoiceInfo };
   return json.data;
+}
+
+export async function fetchInvoiceInfo(
+  accessToken: string,
+  invoiceId: string
+): Promise<TLInvoiceInfo | null> {
+  return fetchDetailInfo(accessToken, "invoices.info", invoiceId);
+}
+
+export async function fetchQuotationInfo(
+  accessToken: string,
+  quotationId: string
+): Promise<TLInvoiceInfo | null> {
+  return fetchDetailInfo(accessToken, "quotations.info", quotationId);
 }
