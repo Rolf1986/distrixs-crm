@@ -283,9 +283,8 @@ export async function POST(): Promise<Response> {
     let dealsSkippedExisting = 0, dealsSkippedNoCustomer = 0;
     let dealsSkipTypeCompany = 0, dealsSkipTypeContact = 0, dealsSkipTypeNone = 0;
     console.log(`[import] Teamleader deals opgehaald: ${tlDeals.length}, in DB: ${dealIdToLocalId.size}`);
-    // Log eerste 3 en laatste 3 deals om sortering/inhoud te zien
-    const sampleDeals = [...tlDeals.slice(0, 3), ...tlDeals.slice(-3)];
-    sampleDeals.forEach((d, i) => console.log(`[import] deal sample[${i}]: id=${d.id} created=${d.created_at ?? "?"} title=${d.title} customer=${d.customer?.type ?? "geen"}/${d.customer?.id ?? "-"}`));
+    // Log eerste deal volledig om structuur te zien
+    if (tlDeals[0]) console.log(`[import] deal[0] volledig:`, JSON.stringify(tlDeals[0]));
 
     for (const d of tlDeals) {
       const externalId = `tl-deal-${d.id}`;
