@@ -242,6 +242,7 @@ export async function POST(): Promise<Response> {
           vatNumber: c.vat_number ?? null,
           status: "ACTIVE",
           externalId,
+          ...(c.added_at ? { createdAt: new Date(c.added_at) } : {}),
         },
       });
       companyIdToCustomerId.set(c.id, customer.id);
@@ -331,6 +332,7 @@ export async function POST(): Promise<Response> {
             : null,
           createdBy: systemUserId,
           externalId,
+          ...(d.created_at ? { createdAt: new Date(d.created_at) } : {}),
         },
       });
       dealIdToLocalId.set(d.id, deal.id);
@@ -410,6 +412,7 @@ export async function POST(): Promise<Response> {
           total,
           createdBy: systemUserId,
           externalId,
+          ...(q.created_at ? { createdAt: new Date(q.created_at) } : {}),
         },
       });
       quotationIdToLocalId.set(q.id, quote.id);

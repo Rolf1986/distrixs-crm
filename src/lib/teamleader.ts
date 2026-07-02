@@ -20,6 +20,7 @@ export interface TLTokenResponse {
 export interface TLCompany {
   id: string;
   name: string;
+  added_at?: string;
   vat_number?: string;
   emails?: Array<{ type: string; email: string }>;
   telephones?: Array<{ type: string; number: string }>;
