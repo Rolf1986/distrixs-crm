@@ -45,18 +45,21 @@ export interface TLContact {
 export interface TLDeal {
   id: string;
   title: string;
-  status: "open" | "won" | "lost";
-  customer?: { type: string; id: string };
+  status: "new" | "open" | "won" | "lost";
+  lead?: { customer?: { type: string; id: string }; contact_person?: { type: string; id: string } };
+  customer?: { type: string; id: string }; // legacy veld, nieuwe deals gebruiken lead.customer
   responsible_user?: { type: string; id: string };
   estimated_closing_date?: string;
   created_at?: string;
+  reference?: string;
 }
 
 export interface TLQuotation {
   id: string;
   quotation_number?: { id: string; number: number };
   deal?: { type: string; id: string };
-  customer?: { type: string; id: string };
+  lead?: { customer?: { type: string; id: string } };
+  customer?: { type: string; id: string }; // legacy
   status: "draft" | "sent" | "accepted" | "rejected";
   total?: { tax_exclusive?: { amount: number; currency: string }; tax_inclusive?: { amount: number; currency: string } };
   created_at?: string;
