@@ -8,6 +8,8 @@ import {
   fetchQuotations,
   fetchInvoices,
   fetchInvoiceInfo,
+  fetchQuotationInfo,
+  type TLLineItem,
   fetchProducts,
   fetchCreditNotes,
 } from "@/lib/teamleader";
@@ -91,6 +93,37 @@ function mapInvoiceStatus(status: string): InvoiceStatus {
     case "overdue":            return "OVERDUE";
     default:                   return "DRAFT";
   }
+}
+
+// ─── Regel-mapping (invoices.info / quotations.info) ──────────────────────────
+
+function mapTlLineItem(
+  item: TLLineItem,
+  productByTlId: Map<string, { id: string; sku: string }>
+) {
+  const qty = Number(item.quantity ?? 0);
+  const unit = Number(item.unit_price?.amount ?? 0);
+  const excl = Number(item.total?.tax_exclusive?.amount ?? qty * unit);
+  const incl = Number(item.total?.tax_inclusive?.amount ?? excl);
+  const vatAmount = Math.round((incl - excl) * 100) / 100;
+  let vatRate = excl > 0.001 ? Math.round(((incl / excl) - 1) * 10000) / 100 : 0;
+  for (const known of [0, 6, 9, 21]) {
+    if (Math.abs(vatRate - known) < 0.5) { vatRate = known; break; }
+  }
+  const discountPercent =
+    item.discount?.type === "percentage" ? Number(item.discount.value ?? 0) : 0;
+  const prod = item.product?.id ? productByTlId.get(item.product.id) : undefined;
+  return {
+    productId: prod?.id ?? null,
+    skuSnapshot: prod?.sku ?? "TL",
+    titleSnapshot: (item.description ?? "Regel").slice(0, 500),
+    qty,
+    grossUnitPrice: unit,
+    discountPercent,
+    netLineTotal: excl,
+    vatRate,
+    vatAmount,
+  };
 }
 
 // ─── Customer number helper ───────────────────────────────────────────────────
@@ -420,6 +453,28 @@ export async function POST(): Promise<Response> {
           ...(q.created_at ? { createdAt: new Date(q.created_at) } : {}),
         },
       });
+      // Regels ophalen — die zitten niet in de list-response
+      try {
+        const info = await fetchQuotationInfo(accessToken, q.id);
+        const items = (info?.grouped_lines ?? []).flatMap((g) => g.line_items ?? []);
+        if (items.length > 0) {
+          await prisma.quoteLine.createMany({
+            data: items.map((item) => {
+              const base = mapTlLineItem(item, productByTlId);
+              const cost = Number(item.purchase_price?.amount ?? 0);
+              return {
+                quoteId: quote.id,
+                ...base,
+                costSnapshot: cost,
+                expectedMarginSnapshot: Math.round((base.netLineTotal - base.qty * cost) * 100) / 100,
+              };
+            }),
+          });
+        }
+      } catch (e) {
+        console.warn(`[import] regels ophalen mislukt voor offerte ${q.id}:`, e instanceof Error ? e.message : e);
+      }
+
       quotationIdToLocalId.set(q.id, quote.id);
       counts.quotes++;
     }
@@ -510,31 +565,10 @@ export async function POST(): Promise<Response> {
         const items = (info?.grouped_lines ?? []).flatMap((g) => g.line_items ?? []);
         if (items.length > 0) {
           await prisma.invoiceLine.createMany({
-            data: items.map((item) => {
-              const qty = Number(item.quantity ?? 0);
-              const unit = Number(item.unit_price?.amount ?? 0);
-              const excl = Number(item.total?.tax_exclusive?.amount ?? qty * unit);
-              const incl = Number(item.total?.tax_inclusive?.amount ?? excl);
-              const lineVat = Math.round((incl - excl) * 100) / 100;
-              let rate = excl > 0.001 ? Math.round(((incl / excl) - 1) * 10000) / 100 : 0;
-              for (const known of [0, 6, 9, 21]) {
-                if (Math.abs(rate - known) < 0.5) { rate = known; break; }
-              }
-              const discountPct = item.discount?.type === "percentage" ? Number(item.discount.value ?? 0) : 0;
-              const prod = item.product?.id ? productByTlId.get(item.product.id) : undefined;
-              return {
-                invoiceId: createdInvoice.id,
-                productId: prod?.id ?? null,
-                skuSnapshot: prod?.sku ?? "TL",
-                titleSnapshot: (item.description ?? "Regel").slice(0, 500),
-                qty,
-                grossUnitPrice: unit,
-                discountPercent: discountPct,
-                netLineTotal: excl,
-                vatRate: rate,
-                vatAmount: lineVat,
-              };
-            }),
+            data: items.map((item) => ({
+              invoiceId: createdInvoice.id,
+              ...mapTlLineItem(item, productByTlId),
+            })),
           });
         }
       } catch (e) {
