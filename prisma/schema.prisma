@@ -914,6 +914,7 @@ model CreditNote {
   language         String      @default("NL")
   creditNoteDate   DateTime    @default(now()) @map("credit_note_date")
   createdBy        String      @map("created_by")
+  externalId       String?     @unique @map("external_id")
   createdAt        DateTime    @default(now()) @map("created_at")
   updatedAt        DateTime    @updatedAt @map("updated_at")
 

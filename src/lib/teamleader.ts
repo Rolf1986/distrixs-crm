@@ -77,6 +77,18 @@ export interface TLInvoice {
   total?: { tax_exclusive?: { amount: number; currency: string }; tax_inclusive?: { amount: number; currency: string } };
 }
 
+export interface TLCreditNote {
+  id: string;
+  credit_note_number?: { id?: string; number?: number } | string | number;
+  credit_note_date?: string;
+  status?: string;
+  invoice?: { type: string; id: string };
+  customer?: { type: string; id: string };
+  invoicee?: { customer?: { type: string; id: string } };
+  total?: { tax_exclusive?: { amount: number; currency: string }; tax_inclusive?: { amount: number; currency: string } };
+  created_at?: string;
+}
+
 export interface TLProduct {
   id: string;
   name: string;
@@ -209,4 +221,8 @@ export async function fetchInvoices(accessToken: string): Promise<TLInvoice[]> {
 
 export async function fetchProducts(accessToken: string): Promise<TLProduct[]> {
   return fetchAllPages<TLProduct>(accessToken, "products.list");
+}
+
+export async function fetchCreditNotes(accessToken: string): Promise<TLCreditNote[]> {
+  return fetchAllPages<TLCreditNote>(accessToken, "creditNotes.list");
 }
