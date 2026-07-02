@@ -99,7 +99,7 @@ function makeCustomerNumber(year: number, seq: number): string {
 // ─── POST handler ─────────────────────────────────────────────────────────────
 
 export async function POST(): Promise<Response> {
-  const counts = { products: 0, customers: 0, contacts: 0, deals: 0, quotes: 0, invoices: 0 };
+  const counts = { products: 0, customers: 0, contacts: 0, deals: 0, quotes: 0, invoices: 0, invoicesUpdated: 0 };
 
   try {
     const accessToken = await getValidAccessToken();
@@ -134,12 +134,12 @@ export async function POST(): Promise<Response> {
       prisma.customerContact.findMany({ where: { externalId: { startsWith: "tl-contact-" } }, select: { id: true, externalId: true } }),
       prisma.deal.findMany({ where: { externalId: { startsWith: "tl-deal-" } }, select: { id: true, externalId: true } }),
       prisma.quote.findMany({ where: { externalId: { startsWith: "tl-quotation-" } }, select: { id: true, externalId: true } }),
-      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { externalId: true } }),
+      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { id: true, externalId: true, status: true, total: true } }),
     ]);
 
     // externalId → local id / boolean
     const existingProductIds  = new Set(existingProducts.map(r => r.externalId!));
-    const existingInvoiceIds  = new Set(existingInvoices.map(r => r.externalId!));
+    const existingInvoiceByExt = new Map(existingInvoices.map(r => [r.externalId!, r]));
 
     // tlCompanyId → customerId  (populated as we import)
     const companyIdToCustomerId = new Map<string, string>();
@@ -313,7 +313,11 @@ export async function POST(): Promise<Response> {
         continue;
       }
 
-      const dealNumber = await nextDealNumber(year);
+      // Nummer overnemen uit TL-referentie (zoals bestaande data: D-<aanmaakjaar>-<ref, 4 cijfers>)
+      const dealYear = d.created_at ? new Date(d.created_at).getFullYear() : year;
+      const dealNumber = d.reference
+        ? `D-${dealYear}-${String(d.reference).padStart(4, "0")}`
+        : await nextDealNumber(year);
       const deal = await prisma.deal.create({
         data: {
           dealNumber,
@@ -335,11 +339,17 @@ export async function POST(): Promise<Response> {
     // ── 5. Quotations → Quotes ───────────────────────────────────────────────
     const tlQuotations = await fetchQuotations(accessToken);
     let quotesSkippedExisting = 0, quotesSkippedNoCustomer = 0;
+    let quoteSampleLogged = false;
     console.log(`[import] Teamleader offertes opgehaald: ${tlQuotations.length}, in DB: ${quotationIdToLocalId.size}`);
 
     for (const q of tlQuotations) {
       const externalId = `tl-quotation-${q.id}`;
       if (quotationIdToLocalId.has(q.id)) { quotesSkippedExisting++; continue; }
+
+      if (!quoteSampleLogged) {
+        console.log(`[import] eerste nieuwe offerte volledig:`, JSON.stringify(q));
+        quoteSampleLogged = true;
+      }
 
       // Resolve customer: nieuwe TL-offertes gebruiken lead.customer, oude offertes customer
       const qCustomerRef = q.lead?.customer ?? q.customer;
@@ -363,7 +373,11 @@ export async function POST(): Promise<Response> {
       const subtotal = q.total?.tax_exclusive?.amount ?? 0;
       const vatAmount = Math.max(total - subtotal, 0);
 
-      const quoteNumber = await nextQuoteNumber(year);
+      // Nummer overnemen uit TL (zoals bestaande data: Q-<aanmaakjaar>-<nummer, 4 cijfers>)
+      const quoteYear = q.created_at ? new Date(q.created_at).getFullYear() : year;
+      const quoteNumber = q.quotation_number?.number
+        ? `Q-${quoteYear}-${String(q.quotation_number.number).padStart(4, "0")}`
+        : await nextQuoteNumber(year);
       const quote = await prisma.quote.create({
         data: {
           quoteNumber,
@@ -387,7 +401,25 @@ export async function POST(): Promise<Response> {
 
     for (const inv of tlInvoices) {
       const externalId = `tl-invoice-${inv.id}`;
-      if (existingInvoiceIds.has(externalId)) continue;
+      const existingInv = existingInvoiceByExt.get(externalId);
+      if (existingInv) {
+        // Status bijwerken als die in Teamleader is veranderd (bv. betaald)
+        const newStatus = mapInvoiceStatus(inv.status);
+        if (existingInv.status !== newStatus) {
+          const invTotal = inv.total?.tax_inclusive?.amount ?? Number(existingInv.total);
+          const newPaid = newStatus === "PAID" ? invTotal : 0;
+          await prisma.invoice.update({
+            where: { id: existingInv.id },
+            data: {
+              status: newStatus,
+              paidAmount: newPaid,
+              openAmount: invTotal - newPaid,
+            },
+          });
+          counts.invoicesUpdated++;
+        }
+        continue;
+      }
 
       // Resolve customer: invoicee first, then direct customer, then contact fallback
       const customerRef = inv.invoicee?.customer ?? inv.customer;
