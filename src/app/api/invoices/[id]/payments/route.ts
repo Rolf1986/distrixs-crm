@@ -29,49 +29,62 @@ export async function POST(
   const body = await req.json();
   const { amount, paymentDate, method, reference } = body;
 
-  if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+  const parsedAmount = Math.round(Number(amount) * 100) / 100;
+  if (!amount || isNaN(parsedAmount) || parsedAmount <= 0) {
     return NextResponse.json({ error: "Geldig bedrag is verplicht" }, { status: 400 });
+  }
+  // Ruime bovengrens: niet meer dan het factuurtotaal + 1 euro marge
+  if (parsedAmount > Number(invoice.total) + 1) {
+    return NextResponse.json(
+      { error: "Bedrag is hoger dan het factuurtotaal" },
+      { status: 400 }
+    );
   }
 
   const resolvedDate = paymentDate ? new Date(paymentDate) : new Date();
   const resolvedMethod = method ?? "BANK_TRANSFER";
 
-  const payment = await prisma.payment.create({
-    data: {
-      invoiceId,
-      amount: Number(amount),
-      paymentDate: resolvedDate,
-      method: resolvedMethod,
-      reference: reference?.trim() || null,
-      source: "MANUAL",
-      createdBy: session.user.id,
-    },
-  });
+  // Atomair: betaling aanmaken en totalen herberekenen in één transactie,
+  // zodat gelijktijdige registraties elkaar niet overschrijven
+  const payment = await prisma.$transaction(async (tx) => {
+    const created = await tx.payment.create({
+      data: {
+        invoiceId,
+        amount: parsedAmount,
+        paymentDate: resolvedDate,
+        method: resolvedMethod,
+        reference: reference?.trim() || null,
+        source: "MANUAL",
+        createdBy: session.user.id,
+      },
+    });
 
-  // Recalculate paidAmount and openAmount
-  const allPayments = await prisma.payment.findMany({
-    where: { invoiceId },
-    select: { amount: true },
-  });
+    const allPayments = await tx.payment.findMany({
+      where: { invoiceId },
+      select: { amount: true },
+    });
 
-  const paidAmount = allPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const total = Number(invoice.total);
-  const openAmount = Math.max(0, total - paidAmount);
+    const paidAmount = Math.round(allPayments.reduce((s, p) => s + Number(p.amount), 0) * 100) / 100;
+    const total = Number(invoice.total);
+    const openAmount = Math.max(0, Math.round((total - paidAmount) * 100) / 100);
 
-  let newStatus = invoice.status;
-  if (openAmount <= 0) {
-    newStatus = "PAID";
-  } else if (paidAmount > 0) {
-    newStatus = "PARTIALLY_PAID";
-  }
+    let newStatus = invoice.status;
+    if (openAmount <= 0) {
+      newStatus = "PAID";
+    } else if (paidAmount > 0) {
+      newStatus = "PARTIALLY_PAID";
+    }
 
-  await prisma.invoice.update({
-    where: { id: invoiceId },
-    data: {
-      paidAmount,
-      openAmount,
-      status: newStatus,
-    },
+    await tx.invoice.update({
+      where: { id: invoiceId },
+      data: {
+        paidAmount,
+        openAmount,
+        status: newStatus,
+      },
+    });
+
+    return created;
   });
 
   await logAudit({
@@ -79,7 +92,7 @@ export async function POST(
     action: "payment.created",
     entityType: "Invoice",
     entityId: invoiceId,
-    newValue: { paymentId: payment.id, amount: Number(amount) },
+    newValue: { paymentId: payment.id, amount: parsedAmount },
   });
 
   return NextResponse.json(payment, { status: 201 });

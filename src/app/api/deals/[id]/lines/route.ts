@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { resolveUnitPrice, calcNetLineTotal } from "@/lib/pricing";
-import { calcExpectedMargin } from "@/lib/margin";
+import { calcExpectedMargin, CHINA_COST_MULTIPLIER } from "@/lib/margin";
 
 export async function POST(
   req: NextRequest,
@@ -48,7 +48,7 @@ export async function POST(
   const { expectedMargin: marginPerUnit } = calcExpectedMargin(netUnitPrice, baseCostPerUnit, isChina);
 
   const baseCostSnapshot = baseCostPerUnit;
-  const chinaFactor = isChina ? 1.14 : 1; // 8% shipping + 6% import
+  const chinaFactor = isChina ? CHINA_COST_MULTIPLIER : 1;
   const expectedCostTotal = baseCostPerUnit * chinaFactor * qtyNum;
   const expectedMarginTotal = netLineTotal - expectedCostTotal;
 

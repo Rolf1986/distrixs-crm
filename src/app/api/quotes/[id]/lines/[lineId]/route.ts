@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcTotals, calcLineVat } from "@/lib/recalc";
+import { assertQuoteEditable } from "@/lib/document-guard";
 
 function calcNetLineTotal(grossUnitPrice: number, qty: number, discountPercent: number) {
   return grossUnitPrice * qty * (1 - discountPercent / 100);
@@ -23,6 +24,9 @@ export async function PATCH(
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: quoteId, lineId } = await params;
+  const guardError = await assertQuoteEditable(quoteId);
+  if (guardError) return NextResponse.json({ error: guardError }, { status: 409 });
+
   const body = await req.json();
 
   const existing = await prisma.quoteLine.findUnique({ where: { id: lineId } });
@@ -66,6 +70,9 @@ export async function DELETE(
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: quoteId, lineId } = await params;
+  const guardError = await assertQuoteEditable(quoteId);
+  if (guardError) return NextResponse.json({ error: guardError }, { status: 409 });
+
   await prisma.quoteLine.delete({ where: { id: lineId } });
   await recalcQuoteTotals(quoteId);
   return NextResponse.json({ success: true });

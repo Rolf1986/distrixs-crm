@@ -3,8 +3,11 @@
  * China-opslag: ~8% shipping + ~6% invoerrechten (configureerbaar)
  */
 
-const CHINA_SHIPPING_FACTOR = 0.08;
-const CHINA_IMPORT_DUTIES_FACTOR = 0.06;
+export const CHINA_SHIPPING_FACTOR = 0.08;
+export const CHINA_IMPORT_DUTIES_FACTOR = 0.06;
+
+/** Totale kostenvermenigvuldiger voor China-inkoop (1 + shipping + invoerrechten) */
+export const CHINA_COST_MULTIPLIER = 1 + CHINA_SHIPPING_FACTOR + CHINA_IMPORT_DUTIES_FACTOR;
 
 export interface MarginResult {
   expectedMargin: number;

@@ -65,12 +65,15 @@ export async function POST(
       lines: {
         create: quote.lines.map((l) => ({
           quoteLineId: l.id,
+          productId: l.productId ?? null,
           skuSnapshot: l.skuSnapshot,
           titleSnapshot: l.titleSnapshot,
           qty: l.qty,
           grossUnitPrice: l.grossUnitPrice,
           discountPercent: l.discountPercent,
           netLineTotal: l.netLineTotal,
+          vatRate: l.vatRate,
+          vatAmount: l.vatAmount,
         })),
       },
     },

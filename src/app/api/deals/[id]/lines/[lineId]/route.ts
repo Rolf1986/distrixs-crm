@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcNetLineTotal } from "@/lib/pricing";
-import { calcExpectedMargin } from "@/lib/margin";
+import { calcExpectedMargin, CHINA_COST_MULTIPLIER } from "@/lib/margin";
 
 export async function PATCH(
   req: NextRequest,
@@ -32,7 +32,7 @@ export async function PATCH(
   const netUnitPrice = grossUnitPrice * (1 - discountPercent / 100);
   const isChina = existing.product.supplier.supplierType === "CHINA";
   const baseCostPerUnit = Number(existing.baseCostSnapshot);
-  const chinaFactor = isChina ? 1.14 : 1;
+  const chinaFactor = isChina ? CHINA_COST_MULTIPLIER : 1;
   const expectedCostTotal = baseCostPerUnit * chinaFactor * qty;
   const expectedMarginTotal = netLineTotal - expectedCostTotal;
 
