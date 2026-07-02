@@ -38,8 +38,18 @@ function computeNextRunDate(current: Date, frequency: string): Date {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession(req);
-  const userId = session?.user?.id;
+  // Auth: ingelogde gebruiker óf cron met geheime header
+  const cronSecret = process.env.CRON_SECRET;
+  const isCron = !!cronSecret && req.headers.get("x-cron-secret") === cronSecret;
+
+  let userId: string | undefined;
+  if (isCron) {
+    const systemUser = await prisma.user.findFirst({ select: { id: true } });
+    userId = systemUser?.id;
+  } else {
+    const session = await getSession(req);
+    userId = session?.user?.id;
+  }
   if (!userId) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const today = new Date();

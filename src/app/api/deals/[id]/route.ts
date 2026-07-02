@@ -61,8 +61,28 @@ export async function DELETE(
 
   const { id } = await params;
 
-  const deal = await prisma.deal.findUnique({ where: { id } });
+  const deal = await prisma.deal.findUnique({
+    where: { id },
+    include: {
+      _count: { select: { invoices: true } },
+      purchaseOrders: { where: { status: { not: "DRAFT" } }, select: { id: true }, take: 1 },
+    },
+  });
   if (!deal) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+
+  // Bescherming: geen deal wissen waar al facturen of geplaatste inkooporders aan hangen
+  if (deal._count.invoices > 0) {
+    return NextResponse.json(
+      { error: "Deal heeft facturen en kan niet worden verwijderd" },
+      { status: 409 }
+    );
+  }
+  if (deal.purchaseOrders.length > 0) {
+    return NextResponse.json(
+      { error: "Deal heeft geplaatste inkooporders en kan niet worden verwijderd" },
+      { status: 409 }
+    );
+  }
 
   try {
     // Verwijder eerst records met verplichte dealId (geen cascade in schema)

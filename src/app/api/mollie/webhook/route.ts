@@ -63,33 +63,52 @@ export async function POST(req: NextRequest) {
 
   // Verwerk betaling op basis van Mollie status
   if (payment.status === "paid") {
-    const paidAmount = parseFloat(payment.amount.value);
-    const newPaid = Number(invoice.paidAmount) + paidAmount;
-    const newOpen = Math.max(0, Number(invoice.total) - newPaid);
-    const newStatus = newOpen <= 0.01 ? "PAID" : "PARTIALLY_PAID";
+    const reference = `Mollie ${paymentId}`;
 
-    await prisma.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        paidAmount: newPaid,
-        openAmount: newOpen,
-        status: newStatus,
-      },
+    // Idempotent: Mollie herhaalt webhooks — zelfde betaling nooit dubbel registreren
+    const alreadyProcessed = await prisma.payment.findFirst({
+      where: { invoiceId, reference },
+      select: { id: true },
     });
+    if (alreadyProcessed) {
+      return NextResponse.json({ ok: true });
+    }
 
-    // Leg betaling vast
-    await prisma.payment.create({
-      data: {
-        invoiceId,
-        amount: paidAmount,
-        paymentDate: new Date(),
-        method: "BANK_TRANSFER",
-        reference: `Mollie ${paymentId}`,
-        createdBy: (await prisma.user.findFirst({ select: { id: true } }))!.id,
-      },
+    const paidAmount = Math.round(parseFloat(payment.amount.value) * 100) / 100;
+    const systemUser = await prisma.user.findFirst({ select: { id: true } });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.create({
+        data: {
+          invoiceId,
+          amount: paidAmount,
+          paymentDate: new Date(),
+          method: "BANK_TRANSFER",
+          reference,
+          createdBy: systemUser!.id,
+        },
+      });
+
+      // Totaal herberekenen uit álle betalingen (niet optellen bij oude stand)
+      const allPayments = await tx.payment.findMany({
+        where: { invoiceId },
+        select: { amount: true },
+      });
+      const newPaid = Math.round(allPayments.reduce((s, p) => s + Number(p.amount), 0) * 100) / 100;
+      const newOpen = Math.max(0, Math.round((Number(invoice.total) - newPaid) * 100) / 100);
+      const newStatus = newOpen <= 0.01 ? "PAID" : "PARTIALLY_PAID";
+
+      await tx.invoice.update({
+        where: { id: invoiceId },
+        data: {
+          paidAmount: newPaid,
+          openAmount: newOpen,
+          status: newStatus,
+        },
+      });
+
+      console.log(`Mollie webhook: factuur ${invoice.invoiceNumber} → ${newStatus} (€ ${paidAmount})`);
     });
-
-    console.log(`Mollie webhook: factuur ${invoice.invoiceNumber} → ${newStatus} (€ ${paidAmount})`);
   }
 
   return NextResponse.json({ ok: true });

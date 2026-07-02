@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcTotals, calcLineVat } from "@/lib/recalc";
+import { assertQuoteEditable } from "@/lib/document-guard";
 
 function calcNetLineTotal(grossUnitPrice: number, qty: number, discountPercent: number) {
   return grossUnitPrice * qty * (1 - discountPercent / 100);
@@ -24,6 +25,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: quoteId } = await params;
+  const guardError = await assertQuoteEditable(quoteId);
+  if (guardError) return NextResponse.json({ error: guardError }, { status: 409 });
+
   const { productId, skuSnapshot, titleSnapshot, qty, grossUnitPrice, discountPercent, vatRate } = await req.json();
 
   if (!skuSnapshot || !titleSnapshot || !qty || grossUnitPrice === undefined) {
