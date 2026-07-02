@@ -290,12 +290,13 @@ export async function POST(): Promise<Response> {
       const externalId = `tl-deal-${d.id}`;
       if (dealIdToLocalId.has(d.id)) { dealsSkippedExisting++; continue; }
 
-      // Resolve customer: company first, then contact fallback
+      // Resolve customer: nieuwe TL-deals gebruiken lead.customer, oude deals customer
+      const customerRef = d.lead?.customer ?? d.customer;
       let customerId: string | undefined;
-      if (d.customer?.type === "company") {
-        customerId = companyIdToCustomerId.get(d.customer.id);
-      } else if (d.customer?.type === "contact") {
-        const localContactId = contactIdToLocalId.get(d.customer.id);
+      if (customerRef?.type === "company") {
+        customerId = companyIdToCustomerId.get(customerRef.id);
+      } else if (customerRef?.type === "contact") {
+        const localContactId = contactIdToLocalId.get(customerRef.id);
         if (localContactId) {
           const contact = await prisma.customerContact.findUnique({
             where: { id: localContactId },
@@ -306,8 +307,8 @@ export async function POST(): Promise<Response> {
       }
       if (!customerId) {
         dealsSkippedNoCustomer++;
-        if (!d.customer) dealsSkipTypeNone++;
-        else if (d.customer.type === "company") dealsSkipTypeCompany++;
+        if (!customerRef) dealsSkipTypeNone++;
+        else if (customerRef.type === "company") dealsSkipTypeCompany++;
         else dealsSkipTypeContact++;
         continue;
       }
@@ -340,12 +341,13 @@ export async function POST(): Promise<Response> {
       const externalId = `tl-quotation-${q.id}`;
       if (quotationIdToLocalId.has(q.id)) { quotesSkippedExisting++; continue; }
 
-      // Resolve customer: company first, then contact fallback
+      // Resolve customer: nieuwe TL-offertes gebruiken lead.customer, oude offertes customer
+      const qCustomerRef = q.lead?.customer ?? q.customer;
       let customerId: string | undefined;
-      if (q.customer?.type === "company") {
-        customerId = companyIdToCustomerId.get(q.customer.id);
-      } else if (q.customer?.type === "contact") {
-        const localContactId = contactIdToLocalId.get(q.customer.id);
+      if (qCustomerRef?.type === "company") {
+        customerId = companyIdToCustomerId.get(qCustomerRef.id);
+      } else if (qCustomerRef?.type === "contact") {
+        const localContactId = contactIdToLocalId.get(qCustomerRef.id);
         if (localContactId) {
           const contact = await prisma.customerContact.findUnique({
             where: { id: localContactId },
