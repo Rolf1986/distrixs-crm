@@ -8,11 +8,13 @@ import {
   fetchQuotations,
   fetchInvoices,
   fetchProducts,
+  fetchCreditNotes,
 } from "@/lib/teamleader";
 import {
   nextDealNumber,
   nextInvoiceNumber,
   nextQuoteNumber,
+  nextCreditNoteNumber,
 } from "@/lib/sequences";
 import type { DealStatus, InvoiceStatus, QuoteStatus } from "@/generated/prisma";
 
@@ -99,7 +101,7 @@ function makeCustomerNumber(year: number, seq: number): string {
 // ─── POST handler ─────────────────────────────────────────────────────────────
 
 export async function POST(): Promise<Response> {
-  const counts = { products: 0, customers: 0, contacts: 0, deals: 0, quotes: 0, invoices: 0, invoicesUpdated: 0 };
+  const counts = { products: 0, customers: 0, contacts: 0, deals: 0, quotes: 0, invoices: 0, invoicesUpdated: 0, creditNotes: 0 };
 
   try {
     const accessToken = await getValidAccessToken();
@@ -368,24 +370,35 @@ export async function POST(): Promise<Response> {
       }
       const dealId = q.deal?.id ? (dealIdToLocalId.get(q.deal.id) ?? null) : null;
 
-      // Fallback: klant via de gekoppelde deal (offerte-response bevat vaak geen klant)
-      if (!customerId && dealId) {
+      // Deal ophalen voor klant-fallback én dealnummer (offertenummer volgt de deal)
+      let linkedDealNumber: string | null = null;
+      if (dealId) {
         const deal = await prisma.deal.findUnique({
           where: { id: dealId },
-          select: { customerId: true },
+          select: { customerId: true, dealNumber: true },
         });
-        customerId = deal?.customerId ?? undefined;
+        if (!customerId) customerId = deal?.customerId ?? undefined;
+        linkedDealNumber = deal?.dealNumber ?? null;
       }
       if (!customerId) { quotesSkippedNoCustomer++; continue; }
       const total    = q.total?.tax_inclusive?.amount ?? 0;
       const subtotal = q.total?.tax_exclusive?.amount ?? 0;
       const vatAmount = Math.max(total - subtotal, 0);
 
-      // Nummer overnemen uit TL (zoals bestaande data: Q-<aanmaakjaar>-<nummer, 4 cijfers>)
-      const quoteYear = q.created_at ? new Date(q.created_at).getFullYear() : year;
-      const quoteNumber = q.quotation_number?.number
-        ? `Q-${quoteYear}-${String(q.quotation_number.number).padStart(4, "0")}`
-        : await nextQuoteNumber(year);
+      // Offertenummer volgt de deal (TL toont "Offerte <dealref>"): Q-<jaar>-<dealref>
+      // Bij meerdere offertes op één deal of botsing: suffix -2, -3, ...
+      let quoteNumber: string;
+      const dealNumMatch = linkedDealNumber?.match(/^D-(\d{4})-(\d+)$/);
+      if (dealNumMatch) {
+        const base = `Q-${dealNumMatch[1]}-${dealNumMatch[2].padStart(4, "0")}`;
+        let cand = base;
+        for (let n = 2; await prisma.quote.findUnique({ where: { quoteNumber: cand }, select: { id: true } }); n++) {
+          cand = `${base}-${n}`;
+        }
+        quoteNumber = cand;
+      } else {
+        quoteNumber = await nextQuoteNumber(year);
+      }
       const quote = await prisma.quote.create({
         data: {
           quoteNumber,
@@ -480,6 +493,72 @@ export async function POST(): Promise<Response> {
       });
       counts.invoices++;
     }
+
+    // ── 7. Credit notes ──────────────────────────────────────────────────────
+    const tlCreditNotes = await fetchCreditNotes(accessToken);
+    const existingCns = await prisma.creditNote.findMany({
+      where: { externalId: { startsWith: "tl-creditnote-" } },
+      select: { externalId: true },
+    });
+    const existingCnIds = new Set(existingCns.map((r) => r.externalId!));
+    let cnSampleLogged = false;
+    console.log(`[import] Teamleader creditnota's opgehaald: ${tlCreditNotes.length}, in DB: ${existingCnIds.size}`);
+
+    for (const cn of tlCreditNotes) {
+      const cnExternalId = `tl-creditnote-${cn.id}`;
+      if (existingCnIds.has(cnExternalId)) continue;
+
+      if (!cnSampleLogged) {
+        console.log(`[import] eerste nieuwe creditnota volledig:`, JSON.stringify(cn));
+        cnSampleLogged = true;
+      }
+
+      // Factuurkoppeling is verplicht in ons model
+      const cnInvoice = cn.invoice?.id
+        ? await prisma.invoice.findUnique({
+            where: { externalId: `tl-invoice-${cn.invoice.id}` },
+            select: { id: true, customerId: true },
+          })
+        : null;
+      if (!cnInvoice) continue;
+
+      const cnTotal    = cn.total?.tax_inclusive?.amount ?? 0;
+      const cnSubtotal = cn.total?.tax_exclusive?.amount ?? 0;
+      const cnVat      = Math.max(cnTotal - cnSubtotal, 0);
+      const cnDate     = cn.credit_note_date ? new Date(cn.credit_note_date) : new Date();
+      const cnYear     = cnDate.getFullYear();
+
+      const tlCnNum = typeof cn.credit_note_number === "object"
+        ? cn.credit_note_number?.number
+        : cn.credit_note_number;
+      let creditNoteNumber: string;
+      if (tlCnNum) {
+        const base = `CN-${cnYear}-${String(tlCnNum).padStart(3, "0")}`;
+        let cand = base;
+        for (let n = 2; await prisma.creditNote.findUnique({ where: { creditNoteNumber: cand }, select: { id: true } }); n++) {
+          cand = `${base}-${n}`;
+        }
+        creditNoteNumber = cand;
+      } else {
+        creditNoteNumber = await nextCreditNoteNumber(cnYear);
+      }
+
+      await prisma.creditNote.create({
+        data: {
+          creditNoteNumber,
+          invoiceId: cnInvoice.id,
+          customerId: cnInvoice.customerId,
+          subtotal: cnSubtotal,
+          vatAmount: cnVat,
+          total: cnTotal,
+          creditNoteDate: cnDate,
+          createdBy: systemUserId,
+          externalId: cnExternalId,
+        },
+      });
+      counts.creditNotes++;
+    }
+    console.log(`[import] Creditnota's: ${counts.creditNotes} nieuw`);
 
     return NextResponse.json({ imported: counts });
   } catch (err) {

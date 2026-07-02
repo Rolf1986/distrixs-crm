@@ -12,6 +12,8 @@ interface ImportCounts {
   deals: number;
   quotes: number;
   invoices: number;
+  invoicesUpdated?: number;
+  creditNotes?: number;
 }
 
 interface ImportResult {
@@ -128,18 +130,20 @@ function ImportPageInner() {
                   <tbody>
                     {(
                       [
-                        ["Producten", result.imported.products],
-                        ["Klanten", result.imported.customers],
-                        ["Contacten", result.imported.contacts],
-                        ["Deals", result.imported.deals],
-                        ["Offertes", result.imported.quotes],
-                        ["Facturen", result.imported.invoices],
-                      ] as [string, number][]
-                    ).map(([label, count]) => (
+                        ["Producten", result.imported.products, "nieuw"],
+                        ["Klanten", result.imported.customers, "nieuw"],
+                        ["Contacten", result.imported.contacts, "nieuw"],
+                        ["Deals", result.imported.deals, "nieuw"],
+                        ["Offertes", result.imported.quotes, "nieuw"],
+                        ["Facturen", result.imported.invoices, "nieuw"],
+                        ["Facturen bijgewerkt", result.imported.invoicesUpdated ?? 0, "bijgewerkt"],
+                        ["Creditnota's", result.imported.creditNotes ?? 0, "nieuw"],
+                      ] as [string, number, string][]
+                    ).map(([label, count, suffix]) => (
                       <tr key={label} className="border-b border-slate-100 last:border-0">
                         <td className="py-1.5 text-slate-600">{label}</td>
                         <td className="py-1.5 text-right font-mono font-medium text-slate-900">
-                          {count} nieuw
+                          {count} {suffix}
                         </td>
                       </tr>
                     ))}
