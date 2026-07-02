@@ -366,9 +366,17 @@ export async function POST(): Promise<Response> {
           customerId = contact?.customerId ?? undefined;
         }
       }
-      if (!customerId) { quotesSkippedNoCustomer++; continue; }
-
       const dealId = q.deal?.id ? (dealIdToLocalId.get(q.deal.id) ?? null) : null;
+
+      // Fallback: klant via de gekoppelde deal (offerte-response bevat vaak geen klant)
+      if (!customerId && dealId) {
+        const deal = await prisma.deal.findUnique({
+          where: { id: dealId },
+          select: { customerId: true },
+        });
+        customerId = deal?.customerId ?? undefined;
+      }
+      if (!customerId) { quotesSkippedNoCustomer++; continue; }
       const total    = q.total?.tax_inclusive?.amount ?? 0;
       const subtotal = q.total?.tax_exclusive?.amount ?? 0;
       const vatAmount = Math.max(total - subtotal, 0);
