@@ -227,3 +227,39 @@ export async function fetchProducts(accessToken: string): Promise<TLProduct[]> {
 export async function fetchCreditNotes(accessToken: string): Promise<TLCreditNote[]> {
   return fetchAllPages<TLCreditNote>(accessToken, "creditNotes.list");
 }
+
+// ─── Detail-info (regels zitten niet in de list-response) ────────────────────
+
+export interface TLLineItem {
+  product?: { type: string; id: string };
+  quantity?: number;
+  description?: string;
+  unit_price?: { amount: number; tax: string };
+  discount?: { value?: number; type?: string } | null;
+  total?: {
+    tax_exclusive?: { amount: number };
+    tax_inclusive?: { amount: number };
+  };
+}
+
+export interface TLInvoiceInfo {
+  id: string;
+  grouped_lines?: Array<{ line_items?: TLLineItem[] }>;
+}
+
+export async function fetchInvoiceInfo(
+  accessToken: string,
+  invoiceId: string
+): Promise<TLInvoiceInfo | null> {
+  const res = await fetch(`${API_BASE}/invoices.info`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ id: invoiceId }),
+  });
+  if (!res.ok) return null;
+  const json = (await res.json()) as { data: TLInvoiceInfo };
+  return json.data;
+}
