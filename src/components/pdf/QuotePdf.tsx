@@ -39,6 +39,8 @@ export interface QuotePdfData {
     postalCode?: string | null;
     city?: string | null;
     country?: string | null;
+    vatNumber?: string | null;
+    kvkNumber?: string | null;
   };
   lines: Array<{
     skuSnapshot: string;
@@ -94,6 +96,8 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
       ? `${data.customer.postalCode} ${data.customer.city}`
       : data.customer.city,
     data.customer.country,
+    data.customer.vatNumber ? `${lang === "EN" ? "VAT" : "BTW"}: ${data.customer.vatNumber}` : null,
+    data.customer.kvkNumber ? `${lang === "EN" ? "CoC" : "KvK"}: ${data.customer.kvkNumber}` : null,
   ].filter(Boolean).join("\n");
 
   const footerIds = [

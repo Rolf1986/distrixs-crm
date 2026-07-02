@@ -27,7 +27,11 @@ export async function GET(
     where: { id },
     include: {
       customer: {
-        include: { addresses: { where: { type: "BILLING", isDefault: true }, take: 1 } },
+        include: {
+          addresses: {
+            orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+          },
+        },
       },
       contact: true,
       lines: { orderBy: { createdAt: "asc" } },
@@ -37,7 +41,10 @@ export async function GET(
   if (!invoice) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
 
   const company = await getCompanyInfo();
-  const addr = invoice.customer.addresses[0];
+  // Voorkeur: default factuuradres, anders eerste beschikbare adres
+  const addr =
+    invoice.customer.addresses.find((a) => a.type === "BILLING" && a.isDefault) ??
+    invoice.customer.addresses[0];
 
   const data = {
     language: invoice.language ?? "NL",
@@ -57,10 +64,12 @@ export async function GET(
       contactName: invoice.contact
         ? `${invoice.contact.firstName} ${invoice.contact.lastName}`
         : null,
-      address: addr ? `${addr.street} ${addr.houseNumber}` : null,
+      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
       postalCode: addr?.postalCode ?? null,
       city: addr?.city ?? null,
       country: addr?.country ?? null,
+      vatNumber: invoice.customer.vatNumber ?? null,
+      kvkNumber: invoice.customer.kvkNumber ?? null,
     },
     lines: invoice.lines.map((l) => ({
       skuSnapshot: l.skuSnapshot,
