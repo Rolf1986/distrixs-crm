@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { DealInfoClient } from "./DealInfoClient";
+import { calcDealNacalculatie } from "@/lib/nacalculatie";
+import { NacalculatieCard } from "@/components/NacalculatieCard";
 
 async function getDealInfo(id: string) {
   const deal = await prisma.deal.findUnique({
@@ -39,10 +41,11 @@ export default async function DealInfoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const deal = await getDealInfo(id);
+  const [deal, nacalculatie] = await Promise.all([getDealInfo(id), calcDealNacalculatie(id)]);
   if (!deal) notFound();
 
   return (
+    <div className="space-y-6">
     <DealInfoClient
       deal={{
         id: deal.id,
@@ -75,5 +78,7 @@ export default async function DealInfoPage({
         })),
       }}
     />
+    <NacalculatieCard data={nacalculatie} />
+    </div>
   );
 }
