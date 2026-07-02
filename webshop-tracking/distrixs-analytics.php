@@ -20,9 +20,10 @@ if (!defined('DX_CRM_BASE')) {
     define('DX_CRM_BASE', 'https://crm.distrixs.nl');
 }
 // Onder welke "GDPR Cookie Compliance"-categorie valt statistiek?
-// Mogelijke waarden: strictly | thirdparty | advanced  (moet matchen met track.js).
+// Distrixs-config heeft: strict | thirdparty | advanced | performance | preference.
+// Analytics/statistiek hoort onder 'performance' (standaard-benaming voor statistiek-cookies).
 if (!defined('DX_CONSENT_CATEGORY')) {
-    define('DX_CONSENT_CATEGORY', 'thirdparty');
+    define('DX_CONSENT_CATEGORY', 'performance');
 }
 
 add_action('wp_enqueue_scripts', function () {
