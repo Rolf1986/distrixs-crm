@@ -273,14 +273,33 @@ export async function POST(): Promise<Response> {
       customerSeq++;
       const customerNumber = makeCustomerNumber(year, customerSeq);
 
+      const pa = c.primary_address;
+      const addrLine1 = pa?.line_1?.trim() ?? "";
+      const addrMatch = addrLine1.match(/^(.*?)\s+(\d[\w\s\-/]*)$/);
       const customer = await prisma.customer.create({
         data: {
           customerNumber,
           companyName: c.name,
           vatNumber: c.vat_number ?? null,
+          kvkNumber: c.national_identification_number ?? null,
           status: "ACTIVE",
           externalId,
           ...(c.added_at ? { createdAt: new Date(c.added_at) } : {}),
+          ...(addrLine1
+            ? {
+                addresses: {
+                  create: {
+                    type: "BILLING",
+                    isDefault: true,
+                    street: addrMatch ? addrMatch[1] : addrLine1,
+                    houseNumber: addrMatch ? addrMatch[2].trim() : "",
+                    postalCode: pa?.postal_code ?? "",
+                    city: pa?.city ?? "",
+                    country: pa?.country ?? "NL",
+                  },
+                },
+              }
+            : {}),
         },
       });
       companyIdToCustomerId.set(c.id, customer.id);

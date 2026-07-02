@@ -22,6 +22,7 @@ export interface TLCompany {
   name: string;
   added_at?: string;
   vat_number?: string;
+  national_identification_number?: string;
   emails?: Array<{ type: string; email: string }>;
   telephones?: Array<{ type: string; number: string }>;
   invoice_emails?: Array<{ email: string }>;
