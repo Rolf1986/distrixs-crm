@@ -7,6 +7,7 @@ import {
   fetchDeals,
   fetchQuotations,
   fetchInvoices,
+  fetchInvoiceInfo,
   fetchProducts,
   fetchCreditNotes,
 } from "@/lib/teamleader";
@@ -131,7 +132,7 @@ export async function POST(): Promise<Response> {
       existingQuotes,
       existingInvoices,
     ] = await Promise.all([
-      prisma.product.findMany({ where: { externalId: { startsWith: "tl-product-" } }, select: { externalId: true } }),
+      prisma.product.findMany({ where: { externalId: { startsWith: "tl-product-" } }, select: { id: true, sku: true, externalId: true } }),
       prisma.customer.findMany({ where: { externalId: { startsWith: "tl-company-" } }, select: { id: true, externalId: true, customerNumber: true } }),
       prisma.customerContact.findMany({ where: { externalId: { startsWith: "tl-contact-" } }, select: { id: true, externalId: true } }),
       prisma.deal.findMany({ where: { externalId: { startsWith: "tl-deal-" } }, select: { id: true, externalId: true } }),
@@ -141,6 +142,10 @@ export async function POST(): Promise<Response> {
 
     // externalId → local id / boolean
     const existingProductIds  = new Set(existingProducts.map(r => r.externalId!));
+    // tlProductId → { id, sku } voor factuurregel-koppeling
+    const productByTlId = new Map(
+      existingProducts.map(r => [r.externalId!.replace("tl-product-", ""), { id: r.id, sku: r.sku }])
+    );
     const existingInvoiceByExt = new Map(existingInvoices.map(r => [r.externalId!, r]));
 
     // tlCompanyId → customerId  (populated as we import)
@@ -480,7 +485,7 @@ export async function POST(): Promise<Response> {
         : null;
 
       const invoiceNumber = await nextInvoiceNumber(year);
-      await prisma.invoice.create({
+      const createdInvoice = await prisma.invoice.create({
         data: {
           invoiceNumber,
           dealId,
@@ -498,6 +503,43 @@ export async function POST(): Promise<Response> {
           ...(ourReference ? { ourReference } : {}),
         },
       });
+
+      // Regels ophalen — die zitten niet in de list-response
+      try {
+        const info = await fetchInvoiceInfo(accessToken, inv.id);
+        const items = (info?.grouped_lines ?? []).flatMap((g) => g.line_items ?? []);
+        if (items.length > 0) {
+          await prisma.invoiceLine.createMany({
+            data: items.map((item) => {
+              const qty = Number(item.quantity ?? 0);
+              const unit = Number(item.unit_price?.amount ?? 0);
+              const excl = Number(item.total?.tax_exclusive?.amount ?? qty * unit);
+              const incl = Number(item.total?.tax_inclusive?.amount ?? excl);
+              const lineVat = Math.round((incl - excl) * 100) / 100;
+              let rate = excl > 0.001 ? Math.round(((incl / excl) - 1) * 10000) / 100 : 0;
+              for (const known of [0, 6, 9, 21]) {
+                if (Math.abs(rate - known) < 0.5) { rate = known; break; }
+              }
+              const discountPct = item.discount?.type === "percentage" ? Number(item.discount.value ?? 0) : 0;
+              const prod = item.product?.id ? productByTlId.get(item.product.id) : undefined;
+              return {
+                invoiceId: createdInvoice.id,
+                productId: prod?.id ?? null,
+                skuSnapshot: prod?.sku ?? "TL",
+                titleSnapshot: (item.description ?? "Regel").slice(0, 500),
+                qty,
+                grossUnitPrice: unit,
+                discountPercent: discountPct,
+                netLineTotal: excl,
+                vatRate: rate,
+                vatAmount: lineVat,
+              };
+            }),
+          });
+        }
+      } catch (e) {
+        console.warn(`[import] regels ophalen mislukt voor factuur ${inv.id}:`, e instanceof Error ? e.message : e);
+      }
       counts.invoices++;
     }
 
