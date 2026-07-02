@@ -71,6 +71,12 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       return matchesFilter && matchesSearch;
     })
     .sort((a, b) => {
+      // In "Alle": concepten altijd bovenaan
+      if (filter === "all") {
+        const aDraft = a.status === "DRAFT" ? 1 : 0;
+        const bDraft = b.status === "DRAFT" ? 1 : 0;
+        if (aDraft !== bDraft) return bDraft - aDraft;
+      }
       const da = new Date(a.invoiceDate).getTime();
       const db = new Date(b.invoiceDate).getTime();
       return sortDesc ? db - da : da - db;
