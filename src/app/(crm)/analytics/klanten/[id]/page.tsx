@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { CrmLinkPanel } from "@/components/analytics/CrmLinkPanel";
+import { ExcludeAccountButton } from "@/components/analytics/ExcludeAccountButton";
 import { SessionTimeline } from "@/components/analytics/SessionTimeline";
 import { ArrowLeft } from "lucide-react";
 
@@ -115,6 +116,8 @@ export default async function AnalyticsKlantDetailPage({
             customers={customers}
             suggestion={suggestion}
           />
+
+          <ExcludeAccountButton accountId={account.id} excluded={account.excluded} />
 
           <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-50">
             <div className="px-4 py-3 flex items-center justify-between">

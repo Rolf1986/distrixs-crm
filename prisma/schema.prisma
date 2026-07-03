@@ -1221,6 +1221,7 @@ model WebshopAccount {
   customerId  String?           @map("customer_id") // optionele CRM-koppeling (bedrijf)
   contactId   String?           @map("contact_id")  // optionele CRM-koppeling (persoon)
   linkStatus  WebshopLinkStatus @default(UNLINKED) @map("link_status")
+  excluded    Boolean           @default(false) // intern account — niet meetellen in analytics
   firstSeenAt DateTime          @default(now()) @map("first_seen_at")
   lastSeenAt  DateTime          @default(now()) @map("last_seen_at")
   createdAt   DateTime          @default(now()) @map("created_at")
