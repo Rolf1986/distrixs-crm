@@ -21,6 +21,7 @@ import {
   UserPlus,
   RefreshCw,
   Navigation,
+  Activity,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ const navItems = [
   { label: "Activiteiten",   href: "/activities",       icon: Calendar },
   { label: "Bestanden",      href: "/files",            icon: FolderOpen },
   { label: "Rapportages",    href: "/reports",          icon: BarChart2 },
+  { label: "Analytics",      href: "/analytics",        icon: Activity },
   { label: "Instellingen",   href: "/settings",         icon: Settings },
 ];
 
