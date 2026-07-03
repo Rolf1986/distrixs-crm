@@ -29,6 +29,7 @@ async function getAccounts() {
     LEFT JOIN analytics_visitors v ON v.account_id = a.id
     LEFT JOIN analytics_sessions s ON s.visitor_id = v.id
     LEFT JOIN analytics_events e   ON e.visitor_id = v.id
+    WHERE a.excluded = false
     GROUP BY a.id, c.company_name
     ORDER BY a.last_seen_at DESC
     LIMIT 200`;

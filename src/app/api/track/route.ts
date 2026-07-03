@@ -95,6 +95,34 @@ export async function POST(req: NextRequest) {
   const now = new Date();
 
   try {
+    // 0. Uitgesloten accounts (eigen/interne accounts) niet tracken.
+    const wcId =
+      body.user && typeof body.user.wcId === "number" && Number.isFinite(body.user.wcId)
+        ? Math.trunc(body.user.wcId)
+        : null;
+    if (wcId && wcId > 0) {
+      const existingAccount = await prisma.webshopAccount.findUnique({
+        where: { wcUserId: wcId },
+        select: { excluded: true },
+      });
+      if (existingAccount?.excluded) {
+        return new NextResponse(null, { status: 204, headers });
+      }
+    }
+    const knownVisitor = await prisma.analyticsVisitor.findUnique({
+      where: { vid },
+      select: { accountId: true },
+    });
+    if (knownVisitor?.accountId) {
+      const linkedAccount = await prisma.webshopAccount.findUnique({
+        where: { id: knownVisitor.accountId },
+        select: { excluded: true },
+      });
+      if (linkedAccount?.excluded) {
+        return new NextResponse(null, { status: 204, headers });
+      }
+    }
+
     // 1. Bezoeker vinden of aanmaken (op vid).
     const visitor = await prisma.analyticsVisitor.upsert({
       where: { vid },
@@ -104,10 +132,6 @@ export async function POST(req: NextRequest) {
 
     // 2. Ingelogde klant? Koppel het WooCommerce-account aan de bezoeker (identify).
     let accountId = visitor.accountId;
-    const wcId =
-      body.user && typeof body.user.wcId === "number" && Number.isFinite(body.user.wcId)
-        ? Math.trunc(body.user.wcId)
-        : null;
     if (wcId && wcId > 0) {
       const account = await prisma.webshopAccount.upsert({
         where: { wcUserId: wcId },
