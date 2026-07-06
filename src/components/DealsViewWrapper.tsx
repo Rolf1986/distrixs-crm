@@ -157,15 +157,25 @@ export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
               <tbody className="divide-y divide-slate-100">
                 {paginated.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
-                      Nog geen deals aangemaakt
+                    <td colSpan={8} className="px-4 py-14 text-center">
+                      <p className="text-3xl mb-2">🤝</p>
+                      <p className="text-slate-500 font-medium">Nog geen deals aangemaakt</p>
+                      <p className="text-xs text-slate-400 mt-1">Maak een deal aan via de knop rechtsboven</p>
                     </td>
                   </tr>
                 )}
                 {paginated.map((d) => (
                   <tr
                     key={d.id}
-                    className="hover:bg-slate-50 cursor-pointer transition-colors group relative"
+                    className={`border-l-4 ${
+                      d.status === "WON"
+                        ? "border-l-green-500"
+                        : d.status === "LOST"
+                        ? "border-l-red-400"
+                        : d.status === "QUOTE_SENT"
+                        ? "border-l-brand-blue"
+                        : "border-l-slate-200"
+                    } hover:bg-slate-50 cursor-pointer transition-colors group relative`}
                   >
                     <td className="px-4 py-3 text-center">
                       <Link href={`/deals/${d.id}/quotes`} className="absolute inset-0" aria-label={d.dealNumber} />

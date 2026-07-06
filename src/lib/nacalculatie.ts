@@ -49,7 +49,8 @@ export async function calcDealNacalculatie(dealId: string): Promise<DealNacalcul
     where: { id: dealId },
     select: {
       quotes: {
-        where: { status: { not: "REJECTED" } },
+        // Alleen verzonden/geaccepteerde offertes tellen als omzet (concepten niet)
+        where: { status: { in: ["SENT", "ACCEPTED"] } },
         select: {
           subtotal: true,
           lines: { select: { netLineTotal: true, expectedMarginSnapshot: true } },

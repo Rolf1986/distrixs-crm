@@ -111,16 +111,10 @@ export async function POST(req: NextRequest) {
     }
     const knownVisitor = await prisma.analyticsVisitor.findUnique({
       where: { vid },
-      select: { accountId: true },
+      select: { accountId: true, account: { select: { excluded: true } } },
     });
-    if (knownVisitor?.accountId) {
-      const linkedAccount = await prisma.webshopAccount.findUnique({
-        where: { id: knownVisitor.accountId },
-        select: { excluded: true },
-      });
-      if (linkedAccount?.excluded) {
-        return new NextResponse(null, { status: 204, headers });
-      }
+    if (knownVisitor?.account?.excluded) {
+      return new NextResponse(null, { status: 204, headers });
     }
 
     // 1. Bezoeker vinden of aanmaken (op vid).

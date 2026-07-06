@@ -39,6 +39,12 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
   const [saving, setSaving] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function readError(res: Response): Promise<string> {
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    return data.error ?? "Er ging iets mis";
+  }
 
   // Nieuwe termijn form
   const today = new Date();
@@ -53,9 +59,11 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
   // Preset knoppen
   async function applyPreset(parts: number[]) {
     setSaving(true);
+    setError(null);
     try {
       // Reset eerst
-      await fetch(`/api/invoices/${invoiceId}/installments`, { method: "DELETE" });
+      const resetRes = await fetch(`/api/invoices/${invoiceId}/installments`, { method: "DELETE" });
+      if (!resetRes.ok) { setError(await readError(resetRes)); return; }
       const created: Installment[] = [];
       for (let i = 0; i < parts.length; i++) {
         const res = await fetch(`/api/invoices/${invoiceId}/installments`, {
@@ -71,6 +79,8 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
         if (res.ok) {
           const data = await res.json() as Installment;
           created.push({ ...data, dueDate: new Date(data.dueDate).toISOString() });
+        } else {
+          setError(await readError(res));
         }
       }
       setInstallments(created);
@@ -86,6 +96,7 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
     if (!form.usePercent && !form.amount) return;
 
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch(`/api/invoices/${invoiceId}/installments`, {
         method: "POST",
@@ -104,6 +115,8 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
         setForm({ dueDate: addMonths(today, installments.length + 2), usePercent: true, percentage: "", amount: "", notes: "" });
         setShowForm(false);
         router.refresh();
+      } else {
+        setError(await readError(res));
       }
     } finally {
       setSaving(false);
@@ -112,6 +125,7 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
 
   async function togglePaid(inst: Installment) {
     setTogglingId(inst.id);
+    setError(null);
     try {
       const res = await fetch(`/api/invoices/${invoiceId}/installments/${inst.id}`, {
         method: "PATCH",
@@ -123,6 +137,8 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
           prev.map(i => i.id === inst.id ? { ...i, isPaid: !inst.isPaid } : i)
         );
         router.refresh();
+      } else {
+        setError(await readError(res));
       }
     } finally {
       setTogglingId(null);
@@ -131,10 +147,15 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
 
   async function deleteInstallment(id: string) {
     setDeletingId(id);
+    setError(null);
     try {
-      await fetch(`/api/invoices/${invoiceId}/installments/${id}`, { method: "DELETE" });
-      setInstallments(prev => prev.filter(i => i.id !== id));
-      router.refresh();
+      const res = await fetch(`/api/invoices/${invoiceId}/installments/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setInstallments(prev => prev.filter(i => i.id !== id));
+        router.refresh();
+      } else {
+        setError(await readError(res));
+      }
     } finally {
       setDeletingId(null);
     }
@@ -142,10 +163,15 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
 
   async function resetAll() {
     setSaving(true);
+    setError(null);
     try {
-      await fetch(`/api/invoices/${invoiceId}/installments`, { method: "DELETE" });
-      setInstallments([]);
-      router.refresh();
+      const res = await fetch(`/api/invoices/${invoiceId}/installments`, { method: "DELETE" });
+      if (res.ok) {
+        setInstallments([]);
+        router.refresh();
+      } else {
+        setError(await readError(res));
+      }
     } finally {
       setSaving(false);
     }
@@ -163,6 +189,11 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-sm text-red-700">
+          {error}
+        </div>
+      )}
       {/* Bestaande termijnen */}
       {installments.length > 0 && (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
