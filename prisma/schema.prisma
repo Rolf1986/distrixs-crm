@@ -857,6 +857,8 @@ model CompanySetting {
   website       String?
   // Logo URL (extern, bijv. CDN of eigen domein)
   logoUrl       String?  @map("logo_url")
+  // Mollie API-key voor online betaallinks (instelbaar via Instellingen → Betalingen)
+  mollieApiKey  String?  @map("mollie_api_key")
   // Contactpersoon voor offerte-ondertekening
   contactPersonName  String? @map("contact_person_name")
   contactPersonPhone String? @map("contact_person_phone")
