@@ -8,6 +8,7 @@ import { InvoicePdf } from "@/components/InvoicePdf";
 import { getCompanyInfo } from "@/lib/companySettings";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
 import { formatCurrency } from "@/lib/utils";
+import { createMolliePaymentLink } from "@/lib/mollie";
 
 export async function POST(
   req: NextRequest,
@@ -109,10 +110,24 @@ export async function POST(
     ? `<p style="margin:16px 0 0 0;padding:12px 16px;background:#f0fdf4;border-radius:8px;font-size:13px;color:#166534;"><strong>Betaalkenmerk:</strong> ${invoice.invoiceNumber}<br><strong>IBAN:</strong> ${company.iban}${company.bic ? `<br><strong>BIC:</strong> ${company.bic}` : ""}<br><strong>Bedrag:</strong> ${totalStr}<br><strong>Vervaldatum:</strong> ${dueDate}</p>`
     : "";
 
+  // Online-betaalknop (Mollie) voor het openstaande bedrag — fail-soft:
+  // lukt het aanmaken niet, dan gaat de mail zonder knop de deur uit
+  let paymentCtaUrl: string | undefined;
+  if (Number(invoice.openAmount) > 0 && invoice.status !== "PAID" && invoice.status !== "CREDITED") {
+    const link = await createMolliePaymentLink(id);
+    if (link.ok) {
+      paymentCtaUrl = link.checkoutUrl;
+    } else if (link.error !== "MOLLIE_API_KEY niet ingesteld") {
+      console.warn(`[invoice send] betaallink niet aangemaakt voor ${invoice.invoiceNumber}: ${link.error}`);
+    }
+  }
+
   const html = buildEmailHtml({
     companyName: company.companyName,
     recipientName,
     subject,
+    ctaUrl: paymentCtaUrl,
+    ctaLabel: paymentCtaUrl ? `Betaal online (${formatCurrency(Number(invoice.openAmount))})` : undefined,
     bodyLines: [
       ...messageLines,
       paymentInfo ? "__PAYMENT_INFO__" : "",
