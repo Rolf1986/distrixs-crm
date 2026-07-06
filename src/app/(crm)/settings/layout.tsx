@@ -14,6 +14,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
             { label: "E-mailboxen",     href: "/settings/email-accounts" },
             { label: "Import",          href: "/settings/import" },
             { label: "Twinfield",       href: "/settings/twinfield" },
+            { label: "Betalingen",      href: "/settings/payments" },
           ]} />
         </div>
       </div>

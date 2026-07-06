@@ -16,8 +16,17 @@ export type PaymentLinkResult =
   | { ok: true; paymentId: string; checkoutUrl: string }
   | { ok: false; error: string };
 
+/** Mollie API-key: uit Instellingen → Betalingen, met env-variabele als fallback. */
+export async function getMollieKey(): Promise<string | null> {
+  const settings = await prisma.companySetting.findUnique({
+    where: { id: "singleton" },
+    select: { mollieApiKey: true },
+  });
+  return settings?.mollieApiKey?.trim() || process.env.MOLLIE_API_KEY || null;
+}
+
 export async function createMolliePaymentLink(invoiceId: string): Promise<PaymentLinkResult> {
-  const mollieKey = process.env.MOLLIE_API_KEY;
+  const mollieKey = await getMollieKey();
   if (!mollieKey) {
     return { ok: false, error: "MOLLIE_API_KEY niet ingesteld" };
   }

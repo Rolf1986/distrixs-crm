@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getMollieKey } from "@/lib/mollie";
 
 /**
  * Mollie webhook — wordt aangeroepen door Mollie als een betaling van status verandert.
@@ -17,7 +18,7 @@ interface MolliePaymentDetails {
 }
 
 export async function POST(req: NextRequest) {
-  const mollieKey = process.env.MOLLIE_API_KEY;
+  const mollieKey = await getMollieKey();
   if (!mollieKey) {
     return NextResponse.json({ ok: false }, { status: 503 });
   }
