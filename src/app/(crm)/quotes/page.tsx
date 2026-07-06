@@ -48,7 +48,9 @@ export default async function QuotesPage() {
           quotes={quotes.map((q) => ({
             id: q.id,
             quoteNumber: q.quoteNumber,
+            customerId: q.customerId,
             customerName: q.customer.companyName,
+            dealId: q.dealId ?? null,
             dealNumber: q.deal?.dealNumber ?? null,
             quoteDate: q.quoteDate.toISOString(),
             validUntil: q.validUntil?.toISOString() ?? null,

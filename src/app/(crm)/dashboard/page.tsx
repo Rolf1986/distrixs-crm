@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Phone, CalendarDays, CheckSquare, MessageSquare, Mail, TrendingUp, AlertTriangle, Clock } from "lucide-react";
+import { Phone, CalendarDays, CheckSquare, MessageSquare, Mail, TrendingUp, AlertTriangle, Clock, Receipt, FileText } from "lucide-react";
 
 async function getDashboardData() {
   const today = new Date();
@@ -125,16 +125,34 @@ export default async function DashboardPage() {
 
       {/* KPI row */}
       <div className="px-8 grid grid-cols-4 gap-4 mb-8">
-        <Link href="/deals" className="bg-white rounded-xl border border-slate-200 px-5 py-4 hover:border-slate-300 transition-colors group">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide flex items-center gap-1.5">
-            <TrendingUp className="w-3.5 h-3.5" /> Pipeline
-          </p>
+        <Link
+          href="/deals"
+          className="relative overflow-hidden bg-gradient-to-br from-blue-50/70 to-white rounded-xl border border-slate-200 border-l-4 border-l-brand-blue px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+        >
+          <div className="flex items-start justify-between">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pipeline</p>
+            <span className="p-1.5 rounded-lg bg-brand-blue/10 text-brand-blue">
+              <TrendingUp className="w-4 h-4" />
+            </span>
+          </div>
           <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(pipelineValue)}</p>
           <p className="text-xs text-slate-400 mt-0.5">{activeDeals.length} actieve deals</p>
         </Link>
 
-        <Link href="/invoices" className={`bg-white rounded-xl border px-5 py-4 hover:border-slate-300 transition-colors ${overdueInvoiceCount > 0 ? "border-orange-200" : "border-slate-200"}`}>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Openstaand</p>
+        <Link
+          href="/invoices"
+          className={`relative overflow-hidden rounded-xl border border-slate-200 border-l-4 px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${
+            overdueInvoiceCount > 0
+              ? "border-l-orange-500 bg-gradient-to-br from-orange-50/70 to-white"
+              : "border-l-slate-300 bg-gradient-to-br from-slate-50/70 to-white"
+          }`}
+        >
+          <div className="flex items-start justify-between">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Openstaand</p>
+            <span className={`p-1.5 rounded-lg ${overdueInvoiceCount > 0 ? "bg-orange-100 text-orange-600" : "bg-slate-100 text-slate-500"}`}>
+              <Receipt className="w-4 h-4" />
+            </span>
+          </div>
           <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(openInvoiceAmount)}</p>
           <p className="text-xs mt-0.5">
             <span className="text-slate-400">{openInvoiceCount} facturen</span>
@@ -144,16 +162,36 @@ export default async function DashboardPage() {
           </p>
         </Link>
 
-        <Link href="/quotes" className="bg-white rounded-xl border border-slate-200 px-5 py-4 hover:border-slate-300 transition-colors">
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Offertes verzonden</p>
+        <Link
+          href="/quotes"
+          className="relative overflow-hidden bg-gradient-to-br from-indigo-50/70 to-white rounded-xl border border-slate-200 border-l-4 border-l-indigo-400 px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200"
+        >
+          <div className="flex items-start justify-between">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Offertes verzonden</p>
+            <span className="p-1.5 rounded-lg bg-indigo-100 text-indigo-600">
+              <FileText className="w-4 h-4" />
+            </span>
+          </div>
           <p className="text-2xl font-bold text-slate-900 mt-1">{sentQuotesCount}</p>
           <p className="text-xs text-slate-400 mt-0.5">{formatCurrency(sentQuotesTotal)} openstaand</p>
         </Link>
 
-        <Link href="/activities" className={`bg-white rounded-xl border px-5 py-4 hover:border-slate-300 transition-colors ${overdueActivities.length > 0 ? "border-red-200 bg-red-50/20" : "border-slate-200"}`}>
-          <p className={`text-xs font-semibold uppercase tracking-wide ${overdueActivities.length > 0 ? "text-red-500" : "text-slate-500"}`}>
-            Verlopen taken
-          </p>
+        <Link
+          href="/activities"
+          className={`relative overflow-hidden rounded-xl border border-slate-200 border-l-4 px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${
+            overdueActivities.length > 0
+              ? "border-l-red-500 bg-gradient-to-br from-red-50/70 to-white"
+              : "border-l-green-500 bg-gradient-to-br from-green-50/70 to-white"
+          }`}
+        >
+          <div className="flex items-start justify-between">
+            <p className={`text-xs font-semibold uppercase tracking-wide ${overdueActivities.length > 0 ? "text-red-500" : "text-slate-500"}`}>
+              Verlopen taken
+            </p>
+            <span className={`p-1.5 rounded-lg ${overdueActivities.length > 0 ? "bg-red-100 text-red-600" : "bg-green-100 text-green-600"}`}>
+              {overdueActivities.length > 0 ? <AlertTriangle className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
+            </span>
+          </div>
           <p className={`text-2xl font-bold mt-1 ${overdueActivities.length > 0 ? "text-red-600" : "text-slate-900"}`}>
             {overdueActivities.length}
           </p>

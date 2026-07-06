@@ -9,7 +9,9 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 type Quote = {
   id: string;
   quoteNumber: string;
+  customerId: string;
   customerName: string;
+  dealId: string | null;
   dealNumber: string | null;
   quoteDate: string;
   validUntil: string | null;
@@ -160,22 +162,53 @@ export function QuotesClient({ quotes }: { quotes: Quote[] }) {
           <tbody className="divide-y divide-slate-100">
             {paginated.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-slate-400">Geen offertes gevonden</td>
+                <td colSpan={9} className="px-4 py-14 text-center">
+                  <p className="text-3xl mb-2">📄</p>
+                  <p className="text-slate-500 font-medium">Geen offertes gevonden</p>
+                  <p className="text-xs text-slate-400 mt-1">Pas het filter of de zoekopdracht aan</p>
+                </td>
               </tr>
             )}
             {paginated.map((q) => {
               const margePct = q.subtotal > 0 ? (q.margin / q.subtotal) * 100 : 0;
               const expired = isExpiredQuote(q, today);
+              const accentBar = expired && q.status === "SENT"
+                ? "border-l-orange-500"
+                : q.status === "ACCEPTED"
+                ? "border-l-green-500"
+                : q.status === "REJECTED"
+                ? "border-l-red-400"
+                : q.status === "SENT"
+                ? "border-l-brand-blue"
+                : "border-l-slate-200";
               return (
-                <tr key={q.id} className="hover:bg-slate-50 cursor-pointer transition-colors group relative">
+                <tr key={q.id} className={`border-l-4 ${accentBar} hover:bg-slate-50 cursor-pointer transition-colors group relative`}>
                   <td className="px-4 py-3">
                     <Link href={`/quotes/${q.id}/lines`} className="absolute inset-0" aria-label={q.quoteNumber} />
                     <span className="font-medium text-slate-900 group-hover:text-brand-blue transition-colors font-mono">
                       {q.quoteNumber}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-slate-600">{q.customerName}</td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">{q.dealNumber ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/customers/${q.customerId}`}
+                      className="relative z-10 text-slate-600 hover:text-brand-blue hover:underline"
+                    >
+                      {q.customerName}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {q.dealId ? (
+                      <Link
+                        href={`/deals/${q.dealId}`}
+                        className="relative z-10 text-slate-500 hover:text-brand-blue hover:underline font-mono"
+                      >
+                        {q.dealNumber}
+                      </Link>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(q.quoteDate)}</td>
                   <td className={`px-4 py-3 text-sm ${expired ? "text-orange-600 font-medium" : "text-slate-500"}`}>
                     {q.validUntil ? formatDate(q.validUntil) : <span className="text-slate-300">—</span>}

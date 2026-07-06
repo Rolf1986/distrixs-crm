@@ -39,15 +39,15 @@ export const shared = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 9,
     color: C.text,
-    paddingTop: 30,
+    paddingTop: 48,
     paddingBottom: 50,
-    paddingHorizontal: 40,
+    paddingHorizontal: 48,
   },
   // Header: logo links, adres rechts
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: 36,
   },
   logo: {
     width: 120,
@@ -67,7 +67,7 @@ export const shared = StyleSheet.create({
   },
   // Klantadres
   customerBlock: {
-    marginBottom: 20,
+    marginBottom: 28,
     fontSize: 9,
     lineHeight: 1.6,
     color: C.text,

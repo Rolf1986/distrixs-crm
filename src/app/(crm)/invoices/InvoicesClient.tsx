@@ -10,7 +10,9 @@ type Invoice = {
   id: string;
   invoiceNumber: string;
   ourReference: string | null;
+  customerId: string;
   customerName: string;
+  dealId: string | null;
   dealNumber: string | null;
   invoiceDate: string;
   dueDate: string;
@@ -164,22 +166,24 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-100">
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Nummer</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Klant</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Deal</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Datum</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Vervaldatum</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Totaal</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Open</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Status</th>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Nummer</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Klant</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Deal</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Datum</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Vervaldatum</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Totaal</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Open</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {paginated.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
-                  Geen facturen gevonden
+                <td colSpan={8} className="px-4 py-14 text-center">
+                  <p className="text-3xl mb-2">🧾</p>
+                  <p className="text-slate-500 font-medium">Geen facturen gevonden</p>
+                  <p className="text-xs text-slate-400 mt-1">Pas het filter of de zoekopdracht aan</p>
                 </td>
               </tr>
             )}
@@ -188,10 +192,19 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
               invDue.setHours(0, 0, 0, 0);
               const isOverdue = inv.status !== "PAID" && inv.status !== "CREDITED" && inv.status !== "DRAFT" && invDue < today;
               const overduedays = isOverdue ? daysOverdue(inv.dueDate) : 0;
+              const accentBar = isOverdue
+                ? "border-l-orange-500"
+                : inv.status === "PAID"
+                ? "border-l-green-500"
+                : inv.status === "PARTIALLY_PAID"
+                ? "border-l-orange-400"
+                : inv.status === "SENT"
+                ? "border-l-brand-blue"
+                : "border-l-slate-200";
               return (
                 <tr
                   key={inv.id}
-                  className={`hover:bg-slate-50 transition-colors cursor-pointer group relative ${
+                  className={`border-l-4 ${accentBar} hover:bg-slate-50 transition-colors cursor-pointer group relative ${
                     isOverdue ? "bg-red-50/30" : ""
                   }`}
                 >
@@ -202,8 +215,26 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                       <span className="block text-xs text-slate-400 font-normal">{inv.ourReference}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{inv.customerName}</td>
-                  <td className="px-4 py-3 text-slate-500 font-mono text-xs">{inv.dealNumber ?? "—"}</td>
+                  <td className="px-4 py-3">
+                    <Link
+                      href={`/customers/${inv.customerId}`}
+                      className="relative z-10 text-slate-700 hover:text-brand-blue hover:underline"
+                    >
+                      {inv.customerName}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs">
+                    {inv.dealId ? (
+                      <Link
+                        href={`/deals/${inv.dealId}`}
+                        className="relative z-10 text-slate-500 hover:text-brand-blue hover:underline"
+                      >
+                        {inv.dealNumber}
+                      </Link>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(inv.invoiceDate)}</td>
                   <td className="px-4 py-3">
                     <span className={isOverdue ? "text-red-600 font-medium" : "text-slate-500"}>

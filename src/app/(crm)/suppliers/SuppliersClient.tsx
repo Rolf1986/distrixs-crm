@@ -91,11 +91,15 @@ export function SuppliersClient({ initialSuppliers }: { initialSuppliers: Suppli
   }
 
   async function toggleActive(supplier: Supplier) {
-    await fetch(`/api/suppliers/${supplier.id}`, {
+    const res = await fetch(`/api/suppliers/${supplier.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !supplier.isActive }),
     });
+    if (!res.ok) {
+      alert("Status wijzigen mislukt — probeer opnieuw.");
+      return;
+    }
     setSuppliers((prev) =>
       prev.map((s) => s.id === supplier.id ? { ...s, isActive: !s.isActive } : s)
     );

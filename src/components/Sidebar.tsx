@@ -28,26 +28,56 @@ import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { signOut } from "next-auth/react";
 
-const navItems = [
-  { label: "Dashboard",      href: "/dashboard",       icon: LayoutDashboard },
-  { label: "Deals",          href: "/deals",            icon: Handshake },
-  { label: "Leads",          href: "/leads",            icon: UserPlus },
-  { label: "Offertes",       href: "/quotes",           icon: FileText },
-  { label: "Facturen",       href: "/invoices",         icon: Receipt },
-  { label: "Terugkerend",    href: "/recurring-invoices", icon: RefreshCw },
-  { label: "Klanten",        href: "/customers",        icon: Users },
-  { label: "Producten",      href: "/products",         icon: Package },
-  { label: "Leveranciers",   href: "/suppliers",        icon: Truck },
-  { label: "Inkoop",         href: "/purchase-orders",  icon: ShoppingCart },
-  { label: "Inkoopfacturen", href: "/purchase-invoices", icon: FileInput },
-  { label: "Zendingen",      href: "/shipments",         icon: Navigation },
-  { label: "RMA",            href: "/rma",              icon: RotateCcw },
-  { label: "E-mails",        href: "/emails",           icon: Mail },
-  { label: "Activiteiten",   href: "/activities",       icon: Calendar },
-  { label: "Bestanden",      href: "/files",            icon: FolderOpen },
-  { label: "Rapportages",    href: "/reports",          icon: BarChart2 },
-  { label: "Analytics",      href: "/analytics",        icon: Activity },
-  { label: "Instellingen",   href: "/settings",         icon: Settings },
+const navGroups: Array<{ title: string | null; items: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> }> = [
+  {
+    title: null,
+    items: [
+      { label: "Dashboard",      href: "/dashboard",       icon: LayoutDashboard },
+    ],
+  },
+  {
+    title: "Verkoop",
+    items: [
+      { label: "Deals",          href: "/deals",            icon: Handshake },
+      { label: "Leads",          href: "/leads",            icon: UserPlus },
+      { label: "Offertes",       href: "/quotes",           icon: FileText },
+      { label: "Facturen",       href: "/invoices",         icon: Receipt },
+      { label: "Terugkerend",    href: "/recurring-invoices", icon: RefreshCw },
+    ],
+  },
+  {
+    title: "Relaties & catalogus",
+    items: [
+      { label: "Klanten",        href: "/customers",        icon: Users },
+      { label: "Producten",      href: "/products",         icon: Package },
+      { label: "Leveranciers",   href: "/suppliers",        icon: Truck },
+    ],
+  },
+  {
+    title: "Inkoop & logistiek",
+    items: [
+      { label: "Inkoop",         href: "/purchase-orders",  icon: ShoppingCart },
+      { label: "Inkoopfacturen", href: "/purchase-invoices", icon: FileInput },
+      { label: "Zendingen",      href: "/shipments",         icon: Navigation },
+      { label: "RMA",            href: "/rma",              icon: RotateCcw },
+    ],
+  },
+  {
+    title: "Werk & inzicht",
+    items: [
+      { label: "E-mails",        href: "/emails",           icon: Mail },
+      { label: "Activiteiten",   href: "/activities",       icon: Calendar },
+      { label: "Bestanden",      href: "/files",            icon: FolderOpen },
+      { label: "Rapportages",    href: "/reports",          icon: BarChart2 },
+      { label: "Analytics",      href: "/analytics",        icon: Activity },
+    ],
+  },
+  {
+    title: null,
+    items: [
+      { label: "Instellingen",   href: "/settings",         icon: Settings },
+    ],
+  },
 ];
 
 export function Sidebar({ overdueActivityCount = 0 }: { overdueActivityCount?: number }) {
@@ -71,41 +101,48 @@ export function Sidebar({ overdueActivityCount = 0 }: { overdueActivityCount?: n
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2.5 py-3 space-y-0.5 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active =
-            item.href === "/deals"
-              ? pathname === "/deals" || pathname.startsWith("/deals/")
-              : item.href === "/quotes"
-              ? pathname === "/quotes" || pathname.startsWith("/quotes/")
-              : pathname.startsWith(item.href);
+      <nav className="flex-1 px-2.5 py-3 overflow-y-auto">
+        {navGroups.map((group, gi) => (
+          <div key={group.title ?? `group-${gi}`} className={gi > 0 ? "mt-4" : undefined}>
+            {group.title && (
+              <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/25">
+                {group.title}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const active =
+                  item.href === "/deals"
+                    ? pathname === "/deals" || pathname.startsWith("/deals/")
+                    : item.href === "/quotes"
+                    ? pathname === "/quotes" || pathname.startsWith("/quotes/")
+                    : pathname.startsWith(item.href);
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                active
-                  ? "text-white"
-                  : "text-white/50 hover:text-white/80 hover:bg-white/5"
-              )}
-              style={active ? { backgroundColor: "#0170B9" } : undefined}
-            >
-              <Icon className="w-4 h-4 shrink-0" />
-              <span className="flex-1">{item.label}</span>
-              {item.href === "/activities" && overdueActivityCount > 0 && (
-                <span
-                  className="ml-auto text-white text-xs font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none"
-                  style={{ backgroundColor: "#ff6600" }}
-                >
-                  {overdueActivityCount > 99 ? "99+" : overdueActivityCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+                      active
+                        ? "bg-brand-blue text-white shadow-lg shadow-brand-blue/25"
+                        : "text-white/50 hover:text-white hover:bg-white/[0.06] hover:translate-x-0.5"
+                    )}
+                  >
+                    <Icon className={cn("w-4 h-4 shrink-0", active ? "text-white" : "text-white/40")} />
+                    <span className="flex-1">{item.label}</span>
+                    {item.href === "/activities" && overdueActivityCount > 0 && (
+                      <span className="ml-auto bg-red-500 text-white text-xs font-semibold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 leading-none shadow-sm">
+                        {overdueActivityCount > 99 ? "99+" : overdueActivityCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}
