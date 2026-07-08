@@ -48,7 +48,7 @@ export async function POST(
   const messageLines = message.split("\n").filter(Boolean)
     .map((l) => l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
 
-  const paymentInfo = `<p style="margin:16px 0 0 0;padding:12px 16px;background:#fff7ed;border-radius:8px;font-size:13px;color:#9a3412;"><strong>Openstaand bedrag:</strong> ${openAmount}<br><strong>Factuurnummer:</strong> ${invoice.invoiceNumber}${company.iban ? `<br><strong>IBAN:</strong> ${company.iban}` : ""}<br><strong>Vervaldatum:</strong> ${dueDate}</p>`;
+  const paymentInfo = `<p style="margin:16px 0 0 0;padding:12px 16px;background:#fff7ed;border-radius:8px;font-size:13px;color:#9a3412;"><strong>Openstaand bedrag:</strong> ${openAmount}<br><strong>Factuurnummer:</strong> ${invoice.invoiceNumber}${company.iban ? `<br><strong>IBAN:</strong> ${company.iban}` : ""}${company.ibanAccountHolder ? `<br><strong>T.n.v.:</strong> ${company.ibanAccountHolder}` : ""}<br><strong>Vervaldatum:</strong> ${dueDate}</p>`;
 
   const html = buildEmailHtml({
     companyName: company.companyName,

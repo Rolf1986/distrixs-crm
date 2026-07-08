@@ -57,7 +57,7 @@ export async function POST(
     .map((l) => l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
 
   const paymentInfo = company.iban
-    ? `<p style="margin:16px 0 0 0;padding:12px 16px;background:#f0fdf4;border-radius:8px;font-size:13px;color:#166534;"><strong>Betaalkenmerk:</strong> ${invoice.invoiceNumber}<br><strong>IBAN:</strong> ${company.iban}${company.bic ? `<br><strong>BIC:</strong> ${company.bic}` : ""}<br><strong>Bedrag:</strong> ${totalStr}<br><strong>Vervaldatum:</strong> ${dueDate}</p>`
+    ? `<p style="margin:16px 0 0 0;padding:12px 16px;background:#f0fdf4;border-radius:8px;font-size:13px;color:#166534;"><strong>Betaalkenmerk:</strong> ${invoice.invoiceNumber}<br><strong>IBAN:</strong> ${company.iban}${company.ibanAccountHolder ? `<br><strong>T.n.v.:</strong> ${company.ibanAccountHolder}` : ""}${company.bic ? `<br><strong>BIC:</strong> ${company.bic}` : ""}<br><strong>Bedrag:</strong> ${totalStr}<br><strong>Vervaldatum:</strong> ${dueDate}</p>`
     : "";
 
   // Online-betaalknop (Mollie) voor het openstaande bedrag — fail-soft:

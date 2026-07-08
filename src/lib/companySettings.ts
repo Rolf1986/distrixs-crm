@@ -12,6 +12,7 @@ export interface CompanyInfo {
   iban: string | null;
   bic: string | null;
   bankName: string | null;
+  ibanAccountHolder: string | null;
   email: string | null;
   phone: string | null;
   contactPersonName: string | null;
@@ -41,6 +42,7 @@ const DEFAULTS: CompanyInfo = {
   iban: null,
   bic: null,
   bankName: null,
+  ibanAccountHolder: "Distrixs B.V.",
   email: "info@distrixs.nl",
   phone: "+3110 - 223 01 87",
   contactPersonName: null,
@@ -73,6 +75,7 @@ export async function getCompanyInfo(): Promise<CompanyInfo> {
     iban: s.iban,
     bic: s.bic,
     bankName: s.bankName,
+    ibanAccountHolder: s.ibanAccountHolder ?? DEFAULTS.ibanAccountHolder,
     email: s.email ?? DEFAULTS.email,
     phone: s.phone ?? DEFAULTS.phone,
     contactPersonName: s.contactPersonName,

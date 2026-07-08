@@ -852,6 +852,7 @@ model CompanySetting {
   iban          String?
   bic           String?
   bankName      String?  @map("bank_name")
+  ibanAccountHolder String? @map("iban_account_holder") // tenaamstelling rekening (bv. Distrixs B.V.)
   email         String?
   phone         String?
   website       String?

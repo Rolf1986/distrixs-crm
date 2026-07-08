@@ -16,6 +16,7 @@ interface Settings {
   iban?: string | null;
   bic?: string | null;
   bankName?: string | null;
+  ibanAccountHolder?: string | null;
   email?: string | null;
   phone?: string | null;
   website?: string | null;
@@ -77,6 +78,7 @@ export function CompanySettingsForm({ initialSettings }: { initialSettings: Sett
     iban: s.iban ?? "",
     bic: s.bic ?? "",
     bankName: (s as Settings).bankName ?? "",
+    ibanAccountHolder: (s as Settings).ibanAccountHolder ?? "",
     email: s.email ?? "",
     phone: s.phone ?? "",
     website: s.website ?? "",
@@ -150,6 +152,7 @@ export function CompanySettingsForm({ initialSettings }: { initialSettings: Sett
 
         {section("Bankgegevens")}
         <Field label="Bank" name="bankName" value={form.bankName ?? ""} onChange={handle} placeholder="ING" />
+        <Field label="Tenaamstelling (t.n.v.)" name="ibanAccountHolder" value={form.ibanAccountHolder ?? ""} onChange={handle} placeholder="Distrixs B.V." />
         <div className="grid grid-cols-2 gap-4">
           <Field label="IBAN" name="iban" value={form.iban ?? ""} onChange={handle} placeholder="NL14 INGB 0007 1132 63" />
           <Field label="BIC / SWIFT" name="bic" value={form.bic ?? ""} onChange={handle} placeholder="INGBNL2A" />
