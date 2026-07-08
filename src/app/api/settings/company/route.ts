@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest) {
   const allowedFields = [
     "companyName", "logoUrl",
     "addressLine1", "addressLine2", "city", "postalCode", "country",
-    "kvkNumber", "vatNumber", "iban", "bic", "bankName",
+    "kvkNumber", "vatNumber", "iban", "bic", "bankName", "ibanAccountHolder",
     "email", "phone", "website",
     "contactPersonName", "contactPersonPhone", "contactPersonEmail",
     "termsNl", "termsEn",

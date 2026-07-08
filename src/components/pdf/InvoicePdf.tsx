@@ -26,6 +26,7 @@ export interface InvoicePdfData {
     iban?: string | null;
     bic?: string | null;
     bankName?: string | null;
+    ibanAccountHolder?: string | null;
     email?: string | null;
     phone?: string | null;
     termsNl?: string | null;
@@ -288,6 +289,12 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
               <Text style={{ fontSize: 8, color: "#2d6a4f" }}>IBAN</Text>
               <Text style={{ fontSize: 8, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{co?.iban ?? "—"}</Text>
             </View>
+            {co?.ibanAccountHolder && (
+              <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
+                <Text style={{ fontSize: 8, color: "#2d6a4f" }}>{lang === "EN" ? "In the name of" : "T.n.v."}</Text>
+                <Text style={{ fontSize: 8, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{co.ibanAccountHolder}</Text>
+              </View>
+            )}
             <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
               <Text style={{ fontSize: 8, color: "#2d6a4f" }}>{lang === "EN" ? "Reference" : "Onder vermelding van"}</Text>
               <Text style={{ fontSize: 8, color: "#1a6b3a", fontFamily: "Helvetica-Bold" }}>{data.invoiceNumber}</Text>
