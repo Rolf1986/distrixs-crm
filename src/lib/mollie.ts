@@ -76,13 +76,7 @@ export async function createMolliePaymentLink(invoiceId: string): Promise<Paymen
 
   const payment = (await mollieRes.json()) as MolliePaymentResponse;
 
-  // Mollie payment ID vastleggen als er nog geen eigen referentie is
-  await prisma.invoice.update({
-    where: { id: invoiceId },
-    data: {
-      ourReference: invoice.ourReference ? invoice.ourReference : `Mollie: ${payment.id}`,
-    },
-  });
-
+  // Bewust géén ourReference zetten: het Mollie payment-id is intern
+  // traceerbaar via de webhook-metadata en hoort niet op de factuur.
   return { ok: true, paymentId: payment.id, checkoutUrl: payment._links.checkout.href };
 }
