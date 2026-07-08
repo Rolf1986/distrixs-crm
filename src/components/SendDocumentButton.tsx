@@ -13,6 +13,8 @@ interface Props {
   defaultMessage?: string;
   /** Taal van het document (NL of EN) — bepaalt welke template automatisch geladen wordt */
   documentLanguage?: string;
+  /** Bekende e-mailadressen van de klantkaart (hoofdadres + contactpersonen) */
+  emailOptions?: Array<{ label: string; email: string }>;
 }
 
 type Lang = "NL" | "EN";
@@ -54,6 +56,7 @@ export function SendDocumentButton({
   currentStatus,
   defaultTo = "",
   documentLanguage = "NL",
+  emailOptions = [],
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -186,12 +189,28 @@ export function SendDocumentButton({
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
                   {lang === "EN" ? "To *" : "Aan *"}
                 </label>
+                {emailOptions.length > 0 && (
+                  <select
+                    value={emailOptions.some((o) => o.email === to) ? to : ""}
+                    onChange={(e) => { if (e.target.value) setTo(e.target.value); }}
+                    className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 mb-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+                  >
+                    <option value="">
+                      {lang === "EN" ? "Choose from customer card…" : "Kies van klantkaart…"}
+                    </option>
+                    {emailOptions.map((o) => (
+                      <option key={`${o.label}-${o.email}`} value={o.email}>
+                        {o.label} — {o.email}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <input
                   type="email"
                   value={to}
                   onChange={(e) => setTo(e.target.value)}
                   placeholder="contact@company.com"
-                  autoFocus
+                  autoFocus={emailOptions.length === 0}
                   className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
                 />
               </div>

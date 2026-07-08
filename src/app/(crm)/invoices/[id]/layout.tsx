@@ -19,7 +19,18 @@ async function getInvoice(id: string) {
   return prisma.invoice.findUnique({
     where: { id },
     include: {
-      customer: { select: { companyName: true, id: true } },
+      customer: {
+        select: {
+          companyName: true,
+          id: true,
+          email: true,
+          contacts: {
+            where: { isActive: true, email: { not: null } },
+            select: { firstName: true, lastName: true, email: true, isPrimary: true },
+            orderBy: { isPrimary: "desc" },
+          },
+        },
+      },
       deal: { select: { id: true, dealNumber: true } },
       quote: { select: { id: true, quoteNumber: true } },
       contact: { select: { firstName: true, lastName: true, email: true } },
@@ -55,6 +66,19 @@ export default async function InvoiceLayout({
   if (!invoice) notFound();
 
   const { prev, next } = await getAdjacentInvoices(id, invoice.invoiceDate);
+
+  // E-mailadressen van de klantkaart: hoofd-/factuuradres + contactpersonen
+  const emailOptions = [
+    ...(invoice.customer.email
+      ? [{ label: `${invoice.customer.companyName} (hoofdadres)`, email: invoice.customer.email }]
+      : []),
+    ...invoice.customer.contacts
+      .filter((c) => !!c.email)
+      .map((c) => ({
+        label: `${c.firstName} ${c.lastName}${c.isPrimary ? " (primair contact)" : ""}`,
+        email: c.email as string,
+      })),
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -186,8 +210,9 @@ export default async function InvoiceLayout({
               documentId={id}
               documentNumber={invoice.invoiceNumber}
               currentStatus={invoice.status}
-              defaultTo={invoice.contact?.email ?? ""}
+              defaultTo={invoice.contact?.email ?? invoice.customer.email ?? ""}
               documentLanguage={"language" in invoice ? (invoice.language as string) : "NL"}
+              emailOptions={emailOptions}
             />
             <InvoiceStatusActions
               invoiceId={id}

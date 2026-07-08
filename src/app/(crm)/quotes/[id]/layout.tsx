@@ -17,7 +17,17 @@ async function getQuote(id: string) {
   return prisma.quote.findUnique({
     where: { id },
     include: {
-      customer: { select: { companyName: true } },
+      customer: {
+        select: {
+          companyName: true,
+          email: true,
+          contacts: {
+            where: { isActive: true, email: { not: null } },
+            select: { firstName: true, lastName: true, email: true, isPrimary: true },
+            orderBy: { isPrimary: "desc" },
+          },
+        },
+      },
       deal: { select: { id: true, title: true, dealNumber: true } },
       contact: { select: { firstName: true, lastName: true, email: true } },
       lines: { select: { expectedMarginSnapshot: true } },
@@ -38,6 +48,19 @@ export default async function QuoteLayout({
   if (!quote) notFound();
 
   const marge = quote.lines.reduce((s, l) => s + Number(l.expectedMarginSnapshot), 0);
+
+  // E-mailadressen van de klantkaart: hoofd-/factuuradres + contactpersonen
+  const emailOptions = [
+    ...(quote.customer.email
+      ? [{ label: `${quote.customer.companyName} (hoofdadres)`, email: quote.customer.email }]
+      : []),
+    ...quote.customer.contacts
+      .filter((c) => !!c.email)
+      .map((c) => ({
+        label: `${c.firstName} ${c.lastName}${c.isPrimary ? " (primair contact)" : ""}`,
+        email: c.email as string,
+      })),
+  ];
   const margePct = Number(quote.subtotal) > 0 ? (marge / Number(quote.subtotal)) * 100 : 0;
   const gefactureerd = quote._count.invoices > 0;
 
@@ -103,8 +126,9 @@ export default async function QuoteLayout({
               documentId={id}
               documentNumber={quote.quoteNumber}
               currentStatus={quote.status}
-              defaultTo={quote.contact?.email ?? ""}
+              defaultTo={quote.contact?.email ?? quote.customer.email ?? ""}
               documentLanguage={"language" in quote ? (quote.language as string) : "NL"}
+              emailOptions={emailOptions}
             />
             <QuoteStatusActions quoteId={id} currentStatus={quote.status} />
           </div>

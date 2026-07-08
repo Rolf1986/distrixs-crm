@@ -25,6 +25,7 @@ export default async function CustomerInfoPage({
         companyName: customer.companyName,
         kvkNumber: customer.kvkNumber,
         vatNumber: customer.vatNumber,
+        email: customer.email,
         status: customer.status,
         defaultPaymentTerm: customer.defaultPaymentTerm,
         notes: customer.notes,
