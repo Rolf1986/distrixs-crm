@@ -5,7 +5,8 @@ import { getCompanyInfo } from "@/lib/companySettings";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
-import { InvoicePdf } from "@/components/InvoicePdf";
+import { InvoicePdf } from "@/components/pdf/InvoicePdf";
+import { buildInvoicePdfData } from "@/lib/pdf-data";
 import { formatCurrency } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
@@ -48,40 +49,14 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const addr = invoice.customer.addresses[0];
-      const addrStr = addr ? `${addr.street} ${addr.houseNumber}, ${addr.postalCode} ${addr.city}` : undefined;
+      // PDF via gedeelde databouwer (zelfde layout als de download-route)
+      const built = await buildInvoicePdfData(invoice.id);
+      if (!built) {
+        errors.push(`${invoice.invoiceNumber}: factuur niet gevonden`);
+        continue;
+      }
 
-      const pdfData = {
-        company,
-        invoiceNumber: invoice.invoiceNumber,
-        invoiceDate: invoice.invoiceDate,
-        dueDate: invoice.dueDate,
-        subtotal: Number(invoice.subtotal),
-        vatAmount: Number(invoice.vatAmount),
-        total: Number(invoice.total),
-        openAmount: Number(invoice.openAmount),
-        quoteNumber: invoice.quote?.quoteNumber ?? null,
-        ourReference: invoice.ourReference ?? null,
-        customer: {
-          companyName: invoice.customer.companyName,
-          kvkNumber: invoice.customer.kvkNumber,
-          vatNumber: invoice.customer.vatNumber,
-          address: addrStr,
-        },
-        contact: primaryContact
-          ? { firstName: primaryContact.firstName, lastName: primaryContact.lastName, email: primaryContact.email }
-          : null,
-        lines: invoice.lines.map((l) => ({
-          skuSnapshot: l.skuSnapshot,
-          titleSnapshot: l.titleSnapshot,
-          qty: Number(l.qty),
-          grossUnitPrice: Number(l.grossUnitPrice),
-          discountPercent: Number(l.discountPercent),
-          netLineTotal: Number(l.netLineTotal),
-        })),
-      };
-
-      const element = createElement(InvoicePdf, { data: pdfData });
+      const element = createElement(InvoicePdf, { data: built.data });
       const pdfBuffer = await renderToBuffer(element as never);
 
       const dueDate = new Intl.DateTimeFormat("nl-NL").format(new Date(invoice.dueDate));
@@ -104,6 +79,7 @@ export async function POST(req: NextRequest) {
 
       const html = buildEmailHtml({
         companyName: company.companyName,
+        logoUrl: company.logoUrl,
         recipientName,
         subject,
         bodyLines: [...messageLines, "__PAYMENT_INFO__"],

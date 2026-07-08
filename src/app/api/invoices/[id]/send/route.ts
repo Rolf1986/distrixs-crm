@@ -4,8 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { syncInvoiceToTwinfield } from "@/lib/twinfield";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
-import { InvoicePdf } from "@/components/InvoicePdf";
-import { getCompanyInfo } from "@/lib/companySettings";
+import { InvoicePdf } from "@/components/pdf/InvoicePdf";
+import { buildInvoicePdfData } from "@/lib/pdf-data";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
 import { formatCurrency } from "@/lib/utils";
 import { createMolliePaymentLink } from "@/lib/mollie";
@@ -32,63 +32,13 @@ export async function POST(
     return NextResponse.json({ error: "E-mailadres verplicht" }, { status: 400 });
   }
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: {
-      customer: {
-        include: { addresses: { where: { isDefault: true }, take: 1 } },
-      },
-      contact: true,
-      quote: { select: { quoteNumber: true } },
-      lines: { orderBy: { createdAt: "asc" } },
-    },
-  });
-
-  if (!invoice) {
+  // PDF via gedeelde databouwer (zelfde layout als de download-route)
+  const built = await buildInvoicePdfData(id);
+  if (!built) {
     return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
   }
-
-  const company = await getCompanyInfo();
-
-  // Genereer PDF
-  const addr = invoice.customer.addresses[0];
-  const addrStr = addr
-    ? `${addr.street} ${addr.houseNumber}, ${addr.postalCode} ${addr.city}`
-    : undefined;
-
-  const pdfData = {
-    company,
-    invoiceNumber: invoice.invoiceNumber,
-    invoiceDate: invoice.invoiceDate,
-    dueDate: invoice.dueDate,
-    subtotal: Number(invoice.subtotal),
-    vatAmount: Number(invoice.vatAmount),
-    total: Number(invoice.total),
-    openAmount: Number(invoice.openAmount),
-    quoteNumber: invoice.quote?.quoteNumber ?? null,
-    ourReference: invoice.ourReference ?? null,
-    customer: {
-      companyName: invoice.customer.companyName,
-      kvkNumber: invoice.customer.kvkNumber,
-      vatNumber: invoice.customer.vatNumber,
-      address: addrStr,
-    },
-    contact: invoice.contact
-      ? {
-          firstName: invoice.contact.firstName,
-          lastName: invoice.contact.lastName,
-          email: invoice.contact.email,
-        }
-      : null,
-    lines: invoice.lines.map((l) => ({
-      skuSnapshot: l.skuSnapshot,
-      titleSnapshot: l.titleSnapshot,
-      qty: Number(l.qty),
-      grossUnitPrice: Number(l.grossUnitPrice),
-      discountPercent: Number(l.discountPercent),
-      netLineTotal: Number(l.netLineTotal),
-    })),
-  };
+  const { invoice, company } = built;
+  const pdfData = { ...built.data, isDraft: false };
 
   const element = createElement(InvoicePdf, { data: pdfData });
   const pdfBuffer = await renderToBuffer(element as never);
@@ -124,6 +74,7 @@ export async function POST(
 
   const html = buildEmailHtml({
     companyName: company.companyName,
+    logoUrl: company.logoUrl,
     recipientName,
     subject,
     ctaUrl: paymentCtaUrl,
