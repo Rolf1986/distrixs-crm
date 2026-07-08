@@ -16,7 +16,7 @@ export async function PATCH(
 
   const data: Record<string, unknown> = {};
   const allowed = [
-    "companyName", "kvkNumber", "vatNumber",
+    "companyName", "kvkNumber", "vatNumber", "email",
     "status", "defaultPaymentTerm",
     "notes",
   ];

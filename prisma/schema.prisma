@@ -226,6 +226,7 @@ model Customer {
   kvkNumber          String?        @map("kvk_number")
   vatNumber          String?        @map("vat_number")
   vatCountry         String?        @map("vat_country")
+  email              String?        // hoofd-/factuur-e-mailadres van het bedrijf (uit Teamleader)
   defaultPaymentTerm PaymentTerm    @default(DAYS_30) @map("default_payment_term")
   notes              String?
   status             CustomerStatus @default(ACTIVE)

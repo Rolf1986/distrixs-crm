@@ -9,6 +9,7 @@ type CustomerInfo = {
   companyName: string;
   kvkNumber: string | null;
   vatNumber: string | null;
+  email: string | null;
   status: string;
   defaultPaymentTerm: string;
   notes: string | null;
@@ -398,6 +399,25 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
               </div>
             )}
 
+            <InlineField
+              label="E-mail (factuur)"
+              value={customer.email ?? ""}
+              editing={editing === "email"}
+              onEdit={() => startEdit("email", customer.email ?? "")}
+              onSave={() => saveField("email")}
+              onCancel={() => setEditing(null)}
+              editContent={
+                <input
+                  className={inputClass}
+                  type="email"
+                  placeholder="administratie@bedrijf.nl"
+                  value={fieldValues.email ?? customer.email ?? ""}
+                  onChange={(e) => setFieldValues((f) => ({ ...f, email: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveField("email"); if (e.key === "Escape") setEditing(null); }}
+                  autoFocus
+                />
+              }
+            />
             <InlineField
               label="KvK-nummer"
               value={customer.kvkNumber ?? ""}

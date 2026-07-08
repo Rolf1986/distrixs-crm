@@ -276,10 +276,17 @@ export async function POST(): Promise<Response> {
       const pa = c.primary_address;
       const addrLine1 = pa?.line_1?.trim() ?? "";
       const addrMatch = addrLine1.match(/^(.*?)\s+(\d[\w\s\-/]*)$/);
+      // Factuur-e-mail heeft voorrang, anders het hoofdadres
+      const tlEmails = c.emails ?? [];
+      const companyEmail =
+        tlEmails.find((e) => e.type === "invoicing")?.email ??
+        tlEmails.find((e) => e.type === "primary")?.email ??
+        null;
       const customer = await prisma.customer.create({
         data: {
           customerNumber,
           companyName: c.name,
+          email: companyEmail,
           vatNumber: c.vat_number ?? null,
           kvkNumber: c.national_identification_number ?? null,
           status: "ACTIVE",
