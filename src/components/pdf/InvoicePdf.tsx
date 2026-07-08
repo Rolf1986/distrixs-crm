@@ -73,7 +73,7 @@ const S = StyleSheet.create({
   docTypeLabel: {
     fontFamily: "Helvetica-Bold",
     fontSize: 18,
-    color: C.dark,
+    color: C.orange,
     marginLeft: "auto",
   },
 });
@@ -146,6 +146,10 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
           <View style={{ marginRight: 24 }}>
             <Text style={shared.metaLabel}>{t("date", lang)}</Text>
             <Text style={shared.metaValue}>{fmtDate(data.invoiceDate, lang)}</Text>
+          </View>
+          <View style={{ marginRight: 24 }}>
+            <Text style={shared.metaLabel}>{lang === "EN" ? "Due date" : "Vervaldatum"}</Text>
+            <Text style={shared.metaValue}>{fmtDate(data.dueDate, lang)}</Text>
           </View>
           <View style={{ marginRight: 24 }}>
             <Text style={shared.metaLabel}>{t("paymentTerm", lang)}</Text>
