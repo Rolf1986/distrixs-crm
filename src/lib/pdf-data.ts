@@ -59,6 +59,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
     company,
     customer: {
       companyName: invoice.customer.companyName,
+      customerNumber: invoice.customer.customerNumber,
       contactName: invoice.contact
         ? `${invoice.contact.firstName} ${invoice.contact.lastName}`
         : null,

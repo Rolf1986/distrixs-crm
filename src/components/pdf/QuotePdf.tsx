@@ -227,16 +227,20 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
           </View>
         </View>
 
-        {/* Footer bottom */}
-        <View style={[shared.pageFooter, { flexDirection: "column" }]} fixed>
-          <Text style={[shared.footerText, { textAlign: "center", marginBottom: 2 }]}>
+        {/* Footer bottom — merkbalk in huisstijl */}
+        <View style={[shared.pageFooter, { flexDirection: "column", borderTopWidth: 0 }]} fixed>
+          <Text style={[shared.footerText, { textAlign: "center", marginBottom: 3 }]}>
             Bij akkoord op de offerte wordt automatisch ook de algemene voorwaarden geaccepteerd.
           </Text>
-          <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-            <Text style={[shared.footerText, { textAlign: "center", flex: 1 }]}>{footerIds}</Text>
-            <Text style={shared.footerText} render={({ pageNumber, totalPages }) =>
-              `${pageNumber} / ${totalPages}`
-            } />
+          <View style={shared.brandFooterBand}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+              <Text style={shared.brandFooterName}>
+                {[coName, co?.addressLine1, co?.postalCode && co?.city ? `${co.postalCode} ${co.city}` : co?.city]
+                  .filter(Boolean).join("  |  ")}
+              </Text>
+              <Text style={shared.brandFooterPage} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+            </View>
+            <Text style={shared.brandFooterDetails}>{footerIds.split(" | ").join("  |  ")}</Text>
           </View>
         </View>
       </Page>

@@ -34,6 +34,7 @@ export interface InvoicePdfData {
   } | null;
   customer: {
     companyName: string;
+    customerNumber?: string | null;
     contactName?: string | null;
     address?: string | null;
     postalCode?: string | null;
@@ -151,6 +152,12 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
             <Text style={shared.metaLabel}>{lang === "EN" ? "Due date" : "Vervaldatum"}</Text>
             <Text style={shared.metaValue}>{fmtDate(data.dueDate, lang)}</Text>
           </View>
+          {data.customer.customerNumber && (
+            <View style={{ marginRight: 24 }}>
+              <Text style={shared.metaLabel}>{lang === "EN" ? "Customer no." : "Klantnummer"}</Text>
+              <Text style={shared.metaValue}>{data.customer.customerNumber}</Text>
+            </View>
+          )}
           <View style={{ marginRight: 24 }}>
             <Text style={shared.metaLabel}>{t("paymentTerm", lang)}</Text>
             <Text style={shared.metaValue}>{paymentTermLabel}</Text>
@@ -305,20 +312,29 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
             </View>
           </View>
 
-          {/* Bankgegevens regel */}
-          <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3, borderTopWidth: 0.5, borderTopColor: C.border, paddingTop: 4 }}>
-            <View style={{ flexDirection: "row", gap: 10 }}>
-              {co?.bankName  && <Text style={shared.footerText}>{co.bankName}</Text>}
-              {co?.iban      && <Text style={shared.footerText}>IBAN: {co.iban}</Text>}
-              {co?.bic       && <Text style={shared.footerText}>SWIFT / BIC: {co.bic}</Text>}
-              {co?.kvkNumber && <Text style={shared.footerText}>KVK: {co.kvkNumber}</Text>}
-              {co?.vatNumber && <Text style={shared.footerText}>{lang === "EN" ? "VAT" : "BTW"}: {co.vatNumber}</Text>}
+          {/* Merkbalk met bedrijfsgegevens (huisstijl) */}
+          <View style={shared.brandFooterBand}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 3 }}>
+              <Text style={shared.brandFooterName}>
+                {[coName, co?.addressLine1, co?.postalCode && co?.city ? `${co.postalCode} ${co.city}` : co?.city]
+                  .filter(Boolean).join("  |  ")}
+              </Text>
+              <Text style={shared.brandFooterPage} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
             </View>
-            <Text style={shared.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+            <Text style={shared.brandFooterDetails}>
+              {[
+                co?.phone,
+                co?.email,
+                co?.iban ? `IBAN: ${co.iban}` : null,
+                co?.bic ? `BIC: ${co.bic}` : null,
+                co?.kvkNumber ? `KVK: ${co.kvkNumber}` : null,
+                co?.vatNumber ? `${lang === "EN" ? "VAT" : "BTW"}: ${co.vatNumber}` : null,
+              ].filter(Boolean).join("  |  ")}
+            </Text>
           </View>
 
           {/* AV tekst */}
-          <Text style={[shared.footerText, { fontStyle: "italic" }]}>
+          <Text style={[shared.footerText, { fontStyle: "italic", marginTop: 3 }]}>
             Op al onze leveringen en diensten zijn de algemene voorwaarden van toepassing welke zijn bijgevoegd met deze factuur.{"  "}
             The general terms and conditions that are attached to this invoice apply to all our deliveries and services.
           </Text>
