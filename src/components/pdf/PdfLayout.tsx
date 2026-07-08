@@ -190,6 +190,16 @@ export const shared = StyleSheet.create({
     justifyContent: "space-between",
   },
   footerText: { fontSize: 7, color: C.light },
+  // Merkbalk onderaan documenten (huisstijl, naar voorbeeld branded footer)
+  brandFooterBand: {
+    backgroundColor: C.dark,
+    borderRadius: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  brandFooterName: { fontSize: 7.5, color: C.white, fontFamily: "Helvetica-Bold" },
+  brandFooterPage: { fontSize: 7, color: C.white },
+  brandFooterDetails: { fontSize: 7, color: "#ffb380" },
   // AV pagina
   avPage: {
     fontFamily: "Helvetica",
