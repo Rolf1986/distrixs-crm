@@ -23,6 +23,7 @@ export { Document, Page, Text, View, Image, Link };
 // ── Kleurpalet ──────────────────────────────────────────────────────────────
 export const C = {
   blue:    "#0170B9",
+  orange:  "#ff6600",
   dark:    "#2a2a2a",
   text:    "#333333",
   muted:   "#666666",
@@ -50,8 +51,8 @@ export const shared = StyleSheet.create({
     marginBottom: 36,
   },
   logo: {
-    width: 120,
-    height: 50,
+    width: 150,
+    height: 64,
     objectFit: "contain",
   },
   logoText: {
@@ -83,7 +84,7 @@ export const shared = StyleSheet.create({
   docTitle: {
     fontFamily: "Helvetica-Bold",
     fontSize: 14,
-    color: C.dark,
+    color: C.orange,
     marginBottom: 6,
   },
   // Meta tabel (Nummer / Datum / etc.)
@@ -107,8 +108,8 @@ export const shared = StyleSheet.create({
     backgroundColor: C.tableHd,
     paddingVertical: 5,
     paddingHorizontal: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: C.border,
+    borderBottomWidth: 1.5,
+    borderBottomColor: C.orange,
   },
   tableRow: {
     flexDirection: "row",
@@ -128,7 +129,7 @@ export const shared = StyleSheet.create({
   thText: {
     fontFamily: "Helvetica-Bold",
     fontSize: 8,
-    color: C.muted,
+    color: C.dark,
   },
   // Totalen
   totalsBox: {
@@ -151,7 +152,7 @@ export const shared = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 6,
     paddingHorizontal: 6,
-    backgroundColor: C.dark,
+    backgroundColor: C.orange,
     marginTop: 3,
     borderRadius: 2,
   },
