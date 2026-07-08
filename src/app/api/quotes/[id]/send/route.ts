@@ -3,8 +3,8 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
-import { QuotePdf } from "@/components/QuotePdf";
-import { getCompanyInfo } from "@/lib/companySettings";
+import { QuotePdf } from "@/components/pdf/QuotePdf";
+import { buildQuotePdfData } from "@/lib/pdf-data";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
 
 export async function POST(
@@ -29,59 +29,12 @@ export async function POST(
     return NextResponse.json({ error: "E-mailadres verplicht" }, { status: 400 });
   }
 
-  const quote = await prisma.quote.findUnique({
-    where: { id },
-    include: {
-      customer: {
-        include: { addresses: { where: { isDefault: true }, take: 1 } },
-      },
-      contact: true,
-      lines: { orderBy: { createdAt: "asc" } },
-    },
-  });
-
-  if (!quote) {
+  // PDF via gedeelde databouwer (zelfde layout als de download-route)
+  const built = await buildQuotePdfData(id);
+  if (!built) {
     return NextResponse.json({ error: "Offerte niet gevonden" }, { status: 404 });
   }
-
-  const company = await getCompanyInfo();
-
-  // Genereer PDF
-  const addr = quote.customer.addresses[0];
-  const addrStr = addr
-    ? `${addr.street} ${addr.houseNumber}, ${addr.postalCode} ${addr.city}`
-    : undefined;
-
-  const pdfData = {
-    company,
-    quoteNumber: quote.quoteNumber,
-    quoteDate: quote.quoteDate,
-    validUntil: quote.validUntil,
-    subtotal: Number(quote.subtotal),
-    vatAmount: Number(quote.vatAmount),
-    total: Number(quote.total),
-    customer: {
-      companyName: quote.customer.companyName,
-      kvkNumber: quote.customer.kvkNumber,
-      vatNumber: quote.customer.vatNumber,
-      address: addrStr,
-    },
-    contact: quote.contact
-      ? {
-          firstName: quote.contact.firstName,
-          lastName: quote.contact.lastName,
-          email: quote.contact.email,
-        }
-      : null,
-    lines: quote.lines.map((l) => ({
-      skuSnapshot: l.skuSnapshot,
-      titleSnapshot: l.titleSnapshot,
-      qty: Number(l.qty),
-      grossUnitPrice: Number(l.grossUnitPrice),
-      discountPercent: Number(l.discountPercent),
-      netLineTotal: Number(l.netLineTotal),
-    })),
-  };
+  const { quote, company, data: pdfData } = built;
 
   const element = createElement(QuotePdf, { data: pdfData });
   const pdfBuffer = await renderToBuffer(element as never);
@@ -102,6 +55,7 @@ export async function POST(
 
   const html = buildEmailHtml({
     companyName: company.companyName,
+    logoUrl: company.logoUrl,
     recipientName,
     subject: finalSubject,
     bodyLines: messageLines,

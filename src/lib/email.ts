@@ -69,7 +69,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendResult> {
   }
 }
 
-/** Genereer een eenvoudige HTML e-mail met Distrixs-stijl */
+/** Genereer een eenvoudige HTML e-mail in Distrixs-huisstijl (logo + oranje accent) */
 export function buildEmailHtml(opts: {
   companyName: string;
   recipientName?: string;
@@ -78,20 +78,27 @@ export function buildEmailHtml(opts: {
   ctaUrl?: string;
   ctaLabel?: string;
   footerLines?: string[];
+  logoUrl?: string | null;
 }): string {
-  const { companyName, recipientName, bodyLines, ctaUrl, ctaLabel, footerLines } = opts;
+  const { companyName, recipientName, bodyLines, ctaUrl, ctaLabel, footerLines, logoUrl } = opts;
 
   const greeting = recipientName ? `Beste ${recipientName},` : "Geachte relatie,";
 
   const body = bodyLines.map((l) => `<p style="margin:0 0 12px 0;color:#374151;">${l}</p>`).join("");
 
   const cta = ctaUrl && ctaLabel
-    ? `<div style="margin:24px 0;"><a href="${ctaUrl}" style="background:#2563eb;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">${ctaLabel}</a></div>`
+    ? `<div style="margin:24px 0;"><a href="${ctaUrl}" style="background:#ff6600;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">${ctaLabel}</a></div>`
     : "";
 
   const footer = footerLines?.length
     ? footerLines.map((l) => `<p style="margin:0 0 4px 0;">${l}</p>`).join("")
     : "";
+
+  // Header: logo op witte achtergrond met oranje accentlijn eronder;
+  // zonder logo valt hij terug op de bedrijfsnaam in huisstijl-oranje
+  const header = logoUrl
+    ? `<div style="background:#ffffff;padding:24px 32px;border-bottom:3px solid #ff6600;"><img src="${logoUrl}" alt="${companyName}" height="40" style="display:block;height:40px;width:auto;" /></div>`
+    : `<div style="background:#ffffff;padding:24px 32px;border-bottom:3px solid #ff6600;"><h1 style="margin:0;color:#ff6600;font-size:20px;font-weight:700;">${companyName}</h1></div>`;
 
   return `<!DOCTYPE html>
 <html lang="nl">
@@ -99,9 +106,7 @@ export function buildEmailHtml(opts: {
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
     <!-- Header -->
-    <div style="background:#1e40af;padding:24px 32px;">
-      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">${companyName}</h1>
-    </div>
+    ${header}
     <!-- Body -->
     <div style="padding:32px;">
       <p style="margin:0 0 20px 0;color:#374151;">${greeting}</p>
