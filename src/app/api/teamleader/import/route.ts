@@ -15,7 +15,6 @@ import {
 } from "@/lib/teamleader";
 import {
   nextDealNumber,
-  nextInvoiceNumber,
   nextQuoteNumber,
   nextCreditNoteNumber,
 } from "@/lib/sequences";
@@ -170,7 +169,7 @@ export async function POST(): Promise<Response> {
       prisma.customerContact.findMany({ where: { externalId: { startsWith: "tl-contact-" } }, select: { id: true, externalId: true } }),
       prisma.deal.findMany({ where: { externalId: { startsWith: "tl-deal-" } }, select: { id: true, externalId: true } }),
       prisma.quote.findMany({ where: { externalId: { startsWith: "tl-quotation-" } }, select: { id: true, externalId: true } }),
-      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { id: true, externalId: true, status: true, total: true, dealId: true } }),
+      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { id: true, externalId: true, status: true, total: true, dealId: true, invoiceNumber: true } }),
     ]);
 
     // externalId → local id / boolean
@@ -518,19 +517,26 @@ export async function POST(): Promise<Response> {
         // Dealkoppeling alsnog leggen als de deal inmiddels wél geïmporteerd is
         const resolvedDealId = inv.deal?.id ? (dealIdToLocalId.get(inv.deal.id) ?? null) : null;
         const needsDealLink = !existingInv.dealId && !!resolvedDealId;
-        if (existingInv.status !== newStatus || needsDealLink) {
+        // Nummer volgt Teamleader: concept dat inmiddels geboekt is krijgt het TL-nummer
+        const needsNumber = !!inv.invoice_number && existingInv.invoiceNumber !== inv.invoice_number;
+        if (existingInv.status !== newStatus || needsDealLink || needsNumber) {
           const invTotal = inv.total?.tax_inclusive?.amount ?? Number(existingInv.total);
           const newPaid = newStatus === "PAID" ? invTotal : 0;
-          await prisma.invoice.update({
-            where: { id: existingInv.id },
-            data: {
-              status: newStatus,
-              paidAmount: newPaid,
-              openAmount: invTotal - newPaid,
-              ...(needsDealLink ? { dealId: resolvedDealId } : {}),
-            },
-          });
-          counts.invoicesUpdated++;
+          try {
+            await prisma.invoice.update({
+              where: { id: existingInv.id },
+              data: {
+                status: newStatus,
+                paidAmount: newPaid,
+                openAmount: invTotal - newPaid,
+                ...(needsDealLink ? { dealId: resolvedDealId } : {}),
+                ...(needsNumber ? { invoiceNumber: inv.invoice_number as string } : {}),
+              },
+            });
+            counts.invoicesUpdated++;
+          } catch (e) {
+            console.warn(`[import] factuur ${existingInv.invoiceNumber} bijwerken mislukt (nummer ${inv.invoice_number} bezet?):`, e instanceof Error ? e.message : e);
+          }
         }
         continue;
       }
@@ -560,12 +566,9 @@ export async function POST(): Promise<Response> {
       const dueDate     = inv.due_on ? new Date(inv.due_on) : new Date(Date.now() + 30 * 86_400_000);
       const status      = mapInvoiceStatus(inv.status);
       const paidAmount  = status === "PAID" ? total : 0;
-      // Store original TL invoice number as reference
-      const ourReference = inv.invoice_number?.number
-        ? `TL-${inv.invoice_number.number}`
-        : null;
 
-      const invoiceNumber = await nextInvoiceNumber(year);
+      // Nummer volgt Teamleader; concepten hebben daar nog geen nummer
+      const invoiceNumber = inv.invoice_number ?? `DRAFT-${inv.id.slice(0, 8)}`;
       const createdInvoice = await prisma.invoice.create({
         data: {
           invoiceNumber,
@@ -581,7 +584,6 @@ export async function POST(): Promise<Response> {
           openAmount: total - paidAmount,
           createdBy: systemUserId,
           externalId,
-          ...(ourReference ? { ourReference } : {}),
         },
       });
 

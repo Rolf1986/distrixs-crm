@@ -9,6 +9,7 @@ import { buildInvoicePdfData } from "@/lib/pdf-data";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
 import { formatCurrency } from "@/lib/utils";
 import { createMolliePaymentLink } from "@/lib/mollie";
+import { nextInvoiceNumber } from "@/lib/sequences";
 
 export async function POST(
   req: NextRequest,
@@ -30,6 +31,22 @@ export async function POST(
 
   if (!to?.trim()) {
     return NextResponse.json({ error: "E-mailadres verplicht" }, { status: 400 });
+  }
+
+  // Concept dat voor het eerst verzonden wordt krijgt nu zijn definitieve nummer
+  const current = await prisma.invoice.findUnique({
+    where: { id },
+    select: { invoiceNumber: true },
+  });
+  if (!current) {
+    return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
+  }
+  if (current.invoiceNumber.startsWith("DRAFT-")) {
+    const definitiveNumber = await nextInvoiceNumber(new Date().getFullYear());
+    await prisma.invoice.update({
+      where: { id },
+      data: { invoiceNumber: definitiveNumber },
+    });
   }
 
   // PDF via gedeelde databouwer (zelfde layout als de download-route)

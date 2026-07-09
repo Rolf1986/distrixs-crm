@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { nextInvoiceNumber } from "@/lib/sequences";
 
 export async function POST(
   req: NextRequest,
@@ -35,7 +34,8 @@ export async function POST(
 
   // Generate sequential invoice number for this year
   const year = new Date().getFullYear();
-  const invoiceNumber = await nextInvoiceNumber(year);
+  // Concepten krijgen pas een definitief nummer bij het verzenden
+  const invoiceNumber = `DRAFT-${crypto.randomUUID().slice(0, 8)}`;
 
   const invoiceDate = new Date();
   const paymentTerm = quote.customer?.defaultPaymentTerm ?? "DAYS_30";

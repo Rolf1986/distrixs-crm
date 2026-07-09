@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { nextInvoiceNumber } from "@/lib/sequences";
 import { calcTotals } from "@/lib/recalc";
 
 function addDays(date: Date, days: number): Date {
@@ -73,7 +72,8 @@ export async function POST(req: NextRequest) {
 
   for (const recurring of dueItems) {
     const year = invoiceDate.getFullYear();
-    const invoiceNumber = await nextInvoiceNumber(year);
+    // Concepten krijgen pas een definitief nummer bij het verzenden
+  const invoiceNumber = `DRAFT-${crypto.randomUUID().slice(0, 8)}`;
     const dueDate = computeDueDate(invoiceDate, recurring.paymentTermType);
 
     const linesForCalc = recurring.lines.map((l) => ({

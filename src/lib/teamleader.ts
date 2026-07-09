@@ -69,7 +69,7 @@ export interface TLQuotation {
 
 export interface TLInvoice {
   id: string;
-  invoice_number?: { id: string; number: number };
+  invoice_number?: string | null; // bv. "2026 / 326"; null zolang concept
   deal?: { type: string; id: string };
   customer?: { type: string; id: string };
   invoicee?: { customer?: { type: string; id: string } };

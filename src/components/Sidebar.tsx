@@ -26,7 +26,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/GlobalSearch";
-import { signOut } from "next-auth/react";
 
 const navGroups: Array<{ title: string | null; items: Array<{ label: string; href: string; icon: typeof LayoutDashboard }> }> = [
   {
@@ -148,7 +147,10 @@ export function Sidebar({ overdueActivityCount = 0 }: { overdueActivityCount?: n
       {/* Footer */}
       <div className="px-3 py-3 border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" });
+            window.location.href = "/login";
+          }}
           className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium w-full text-white/50 hover:text-white/80 hover:bg-white/5 transition-all"
         >
           <LogOut className="w-4 h-4 shrink-0" />
