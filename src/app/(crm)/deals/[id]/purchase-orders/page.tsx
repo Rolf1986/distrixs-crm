@@ -16,6 +16,27 @@ async function getDealPos(dealId: string) {
         },
         orderBy: { orderDate: "desc" },
       },
+      // Producten uit de offertes van deze deal (voor directe PO-regels)
+      quotes: {
+        where: { status: { not: "REJECTED" } },
+        select: {
+          lines: {
+            where: { productId: { not: null } },
+            select: {
+              productId: true,
+              qty: true,
+              product: {
+                select: {
+                  sku: true,
+                  title: true,
+                  supplierId: true,
+                  supplier: { select: { name: true } },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -44,13 +65,35 @@ export default async function DealPurchaseOrdersPage({
 
   const pos = deal.purchaseOrders;
 
+  // Dedupliceer producten over offertes heen; tel aantallen op
+  const productMap = new Map<string, { productId: string; sku: string; title: string; qty: number; supplierId: string | null; supplierName: string | null }>();
+  for (const q of deal.quotes) {
+    for (const l of q.lines) {
+      if (!l.productId || !l.product) continue;
+      const existing = productMap.get(l.productId);
+      if (existing) {
+        existing.qty += Number(l.qty);
+      } else {
+        productMap.set(l.productId, {
+          productId: l.productId,
+          sku: l.product.sku,
+          title: l.product.title,
+          qty: Number(l.qty),
+          supplierId: l.product.supplierId ?? null,
+          supplierName: l.product.supplier?.name ?? null,
+        });
+      }
+    }
+  }
+  const dealProducts = [...productMap.values()];
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
           Inkooporders ({pos.length})
         </h2>
-        <CreatePoButton dealId={id} suppliers={suppliers} />
+        <CreatePoButton dealId={id} suppliers={suppliers} dealProducts={dealProducts} />
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
