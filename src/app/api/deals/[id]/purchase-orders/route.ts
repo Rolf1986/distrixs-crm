@@ -13,7 +13,10 @@ export async function POST(
   }
 
   const { id: dealId } = await params;
-  const body = await req.json().catch(() => ({})) as { supplierId?: string };
+  const body = await req.json().catch(() => ({})) as {
+    supplierId?: string;
+    lines?: Array<{ productId?: string; qty?: number }>;
+  };
 
   if (!body.supplierId) {
     return NextResponse.json({ error: "Kies een leverancier" }, { status: 400 });
@@ -28,10 +31,22 @@ export async function POST(
     return NextResponse.json({ error: "Deal niet gevonden" }, { status: 404 });
   }
 
+  // Geselecteerde dealproducten worden direct als PO-regels aangemaakt
+  const requestedLines = (body.lines ?? []).filter(
+    (l): l is { productId: string; qty: number } =>
+      typeof l.productId === "string" && typeof l.qty === "number" && l.qty > 0
+  );
+  const products = requestedLines.length
+    ? await prisma.product.findMany({
+        where: { id: { in: requestedLines.map((l) => l.productId) } },
+        select: { id: true, sku: true, title: true, baseCostPrice: true },
+      })
+    : [];
+  const productById = new Map(products.map((p) => [p.id, p]));
+
   const year = new Date().getFullYear();
   const poNumber = await nextPurchaseOrderNumber(year);
 
-  // Maak een lege concept-inkooporder aan — regels worden later toegevoegd
   const po = await prisma.purchaseOrder.create({
     data: {
       poNumber,
@@ -40,6 +55,20 @@ export async function POST(
       status: "DRAFT",
       orderDate: new Date(),
       createdBy: session.user.id,
+      lines: {
+        create: requestedLines
+          .filter((l) => productById.has(l.productId))
+          .map((l) => {
+            const p = productById.get(l.productId)!;
+            return {
+              productId: p.id,
+              skuSnapshot: p.sku,
+              titleSnapshot: p.title,
+              qtyOrdered: l.qty,
+              baseCostSnapshot: p.baseCostPrice,
+            };
+          }),
+      },
     },
   });
 
