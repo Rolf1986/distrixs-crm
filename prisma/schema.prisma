@@ -751,6 +751,8 @@ model OrderConfirmation {
   status             OrderConfirmationStatus @default(DRAFT)
   confirmationDate   DateTime                @default(now()) @map("confirmation_date")
   expectedDelivery   DateTime?               @map("expected_delivery")
+  // Leverdatum per offerteregel (quoteLineId → ISO-datum); leeg = alles op expectedDelivery
+  lineDeliveries     Json?                   @map("line_deliveries")
   notes              String?
   createdBy          String                  @map("created_by")
   createdAt          DateTime                @default(now()) @map("created_at")

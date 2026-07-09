@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDate } from "@/lib/utils";
+import { CreatePoButton } from "@/components/CreatePoButton";
 
 async function getDealPos(dealId: string) {
   return prisma.deal.findUnique({
@@ -31,7 +32,14 @@ export default async function DealPurchaseOrdersPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const deal = await getDealPos(id);
+  const [deal, suppliers] = await Promise.all([
+    getDealPos(id),
+    prisma.supplier.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, supplierType: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
   if (!deal) notFound();
 
   const pos = deal.purchaseOrders;
@@ -42,6 +50,7 @@ export default async function DealPurchaseOrdersPage({
         <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
           Inkooporders ({pos.length})
         </h2>
+        <CreatePoButton dealId={id} suppliers={suppliers} />
       </div>
 
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

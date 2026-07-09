@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import { Truck } from "lucide-react";
 import { CreateDeliveryNoteButton } from "@/components/CreateDeliveryNoteButton";
+import { DnRowActions } from "@/components/DnRowActions";
 import { DeliveryNoteShipmentsSection } from "./DeliveryNoteShipmentsSection";
 
 async function getDealData(dealId: string) {
@@ -102,6 +103,7 @@ export default async function DealDeliveryNotesPage({
                 <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Vervoerder</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Track & trace</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Status</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Acties</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -124,6 +126,9 @@ export default async function DealDeliveryNotesPage({
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={dn.status} type="dn" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <DnRowActions dnId={dn.id} deliveryNumber={dn.deliveryNumber} />
                   </td>
                 </tr>
               ))}

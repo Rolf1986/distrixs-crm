@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDate } from "@/lib/utils";
 import { ClipboardCheck } from "lucide-react";
 import { CreateOrderConfirmationButton } from "@/components/CreateOrderConfirmationButton";
+import { OcRowActions } from "@/components/OcRowActions";
 
 async function getDealData(dealId: string) {
   return prisma.deal.findUnique({
@@ -13,7 +14,12 @@ async function getDealData(dealId: string) {
       customerId: true,
       orderConfirmations: {
         include: {
-          quote: { select: { quoteNumber: true } },
+          quote: {
+            select: {
+              quoteNumber: true,
+              lines: { select: { id: true, titleSnapshot: true, qty: true }, orderBy: { createdAt: "asc" } },
+            },
+          },
         },
         orderBy: { createdAt: "desc" },
       },
@@ -64,6 +70,7 @@ export default async function DealOrderConfirmationsPage({
                 <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Offerte</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Verwachte levering</th>
                 <th className="text-left px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Status</th>
+                <th className="text-right px-4 py-3 font-medium text-slate-500 text-xs uppercase tracking-wide">Acties</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -87,6 +94,19 @@ export default async function DealOrderConfirmationsPage({
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={oc.status} type="oc" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <OcRowActions
+                      ocId={oc.id}
+                      confirmationNumber={oc.confirmationNumber}
+                      expectedDelivery={oc.expectedDelivery?.toISOString() ?? null}
+                      lineDeliveries={(oc.lineDeliveries ?? {}) as Record<string, string>}
+                      quoteLines={(oc.quote?.lines ?? []).map((l) => ({
+                        id: l.id,
+                        title: l.titleSnapshot,
+                        qty: Number(l.qty),
+                      }))}
+                    />
                   </td>
                 </tr>
               ))}
