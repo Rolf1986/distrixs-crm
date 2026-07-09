@@ -2,6 +2,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Onjuiste combinatie van e-mailadres en wachtwoord.",
   missing: "Vul zowel e-mailadres als wachtwoord in.",
   ratelimit: "Te veel inlogpogingen. Probeer het over 15 minuten opnieuw.",
+  captcha: "Verificatie mislukt. Vernieuw de pagina en probeer opnieuw.",
   server: "Er ging iets mis — probeer het opnieuw.",
 };
 
@@ -12,6 +13,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? ERROR_MESSAGES.server : null;
   const formLoadedAt = Date.now();
+  // Cloudflare Turnstile-widget alleen tonen als er een sitekey is ingesteld.
+  // Server-side gerenderd, dus geen NEXT_PUBLIC nodig (runtime-env volstaat).
+  const turnstileSiteKey = process.env.TURNSTILE_SITE_KEY;
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", fontFamily: "system-ui, sans-serif" }}>
@@ -48,11 +52,17 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
                 style={{ width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: "8px", fontSize: "14px", boxSizing: "border-box" }}
                 placeholder="••••••••" />
             </div>
+            {turnstileSiteKey && (
+              <div className="cf-turnstile" data-sitekey={turnstileSiteKey} style={{ marginBottom: "16px" }} />
+            )}
             <button type="submit"
               style={{ width: "100%", background: "#2563eb", color: "#fff", border: "none", borderRadius: "8px", padding: "10px 16px", fontSize: "14px", fontWeight: 500, cursor: "pointer" }}>
               Inloggen
             </button>
           </form>
+          {turnstileSiteKey && (
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+          )}
         </div>
       </div>
     </div>
