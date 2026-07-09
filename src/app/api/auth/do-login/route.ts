@@ -23,6 +23,17 @@ export async function POST(req: NextRequest) {
     const email = (form.get("email") as string)?.trim().toLowerCase();
     const password = form.get("password") as string;
 
+    // Bot-detectie: honeypot ingevuld → stil weigeren (bot denkt dat het lukte)
+    const honeypot = (form.get("company_website") as string) ?? "";
+    if (honeypot.trim() !== "") {
+      return NextResponse.redirect(siteUrl(req, "/login?error=invalid"));
+    }
+    // Tijd-val: mens doet er langer dan ~2s over; sneller = geautomatiseerd
+    const loadedAt = Number(form.get("form_loaded_at"));
+    if (Number.isFinite(loadedAt) && Date.now() - loadedAt < 2000) {
+      return NextResponse.redirect(siteUrl(req, "/login?error=invalid"));
+    }
+
     if (!email || !password) {
       return NextResponse.redirect(siteUrl(req, "/login?error=missing"));
     }

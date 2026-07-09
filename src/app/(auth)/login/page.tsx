@@ -5,9 +5,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   server: "Er ging iets mis — probeer het opnieuw.",
 };
 
+// Dynamisch renderen zodat het tijdstempel (bot-tijdval) per bezoek klopt
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
   const errorMessage = error ? ERROR_MESSAGES[error] ?? ERROR_MESSAGES.server : null;
+  const formLoadedAt = Date.now();
 
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", fontFamily: "system-ui, sans-serif" }}>
@@ -23,6 +27,15 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </div>
           )}
           <form method="POST" action="/api/auth/do-login">
+            {/* Honeypot: een echt mens ziet dit veld niet; bots vullen het in.
+                Off-screen i.p.v. display:none, want sommige bots slaan verborgen velden over. */}
+            <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: "-9999px", width: "1px", height: "1px", overflow: "hidden" }}>
+              <label>Laat dit veld leeg
+                <input type="text" name="company_website" tabIndex={-1} autoComplete="off" />
+              </label>
+            </div>
+            {/* Tijd-val: formulier dat binnen 2s wordt ingestuurd is een bot */}
+            <input type="hidden" name="form_loaded_at" value={formLoadedAt} />
             <div style={{ marginBottom: "16px" }}>
               <label style={{ display: "block", fontSize: "14px", fontWeight: 500, color: "#374151", marginBottom: "6px" }}>E-mailadres</label>
               <input type="email" name="email" required autoFocus
