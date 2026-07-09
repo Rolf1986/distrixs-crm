@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { requireUser, requireRole } from "@/lib/authz";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+const VALID_ROLES = ["ADMIN", "SALES", "FINANCE", "VIEWER"] as const;
 
 export async function GET(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-  }
+  const auth = await requireUser(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const users = await prisma.user.findMany({
     select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
@@ -18,10 +19,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getSession(req);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
-  }
+  // Alleen beheerders mogen gebruikers aanmaken
+  const auth = await requireRole(req, "ADMIN");
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const body = await req.json();
   const { name, email, role = "SALES", password } = body;
@@ -29,15 +29,19 @@ export async function POST(req: NextRequest) {
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: "Naam en e-mail zijn verplicht" }, { status: 400 });
   }
+  if (!VALID_ROLES.includes(role)) {
+    return NextResponse.json({ error: "Ongeldige rol" }, { status: 400 });
+  }
 
   const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (existing) {
     return NextResponse.json({ error: "Dit e-mailadres is al in gebruik" }, { status: 409 });
   }
 
+  // Geen wachtwoord opgegeven → onbruikbaar CSPRNG-secret (account moet reset)
   const passwordHash = password
-    ? await bcrypt.hash(password, 10)
-    : await bcrypt.hash(Math.random().toString(36), 10); // Random hash if no password set
+    ? await bcrypt.hash(password, 12)
+    : await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 12);
 
   const user = await prisma.user.create({
     data: {

@@ -10,8 +10,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # Alleen op localhost bereikbaar; extern verkeer loopt via nginx (TLS + headers)
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     networks:
       - crm
 

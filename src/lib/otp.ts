@@ -4,7 +4,8 @@ import crypto from "crypto";
 const OTP_EXPIRY_MINUTES = 10;
 
 export function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  // Cryptografisch veilige 6-cijferige code
+  return String(crypto.randomInt(100000, 1000000));
 }
 
 export async function createOtp(userId: string): Promise<string> {

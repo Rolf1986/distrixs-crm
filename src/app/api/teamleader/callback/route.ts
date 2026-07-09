@@ -1,10 +1,16 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { exchangeCode } from "@/lib/teamleader";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/authz";
+import { verifyState } from "@/lib/oauth-state";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl";
 
 export async function GET(request: NextRequest) {
+  // Alleen een ingelogde gebruiker mag de koppeling afronden
+  const auth = await requireUser(request);
+  if (!auth.ok) return NextResponse.redirect(`${BASE_URL}/login`);
+
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
@@ -13,6 +19,11 @@ export async function GET(request: NextRequest) {
     return Response.redirect(
       `${BASE_URL}/settings/import?error=${encodeURIComponent(error)}`
     );
+  }
+
+  // CSRF: state uit de callback moet matchen met het cookie
+  if (!verifyState(request, "tl_oauth_state", searchParams.get("state"))) {
+    return Response.redirect(`${BASE_URL}/settings/import?error=invalid_state`);
   }
 
   if (!code) {

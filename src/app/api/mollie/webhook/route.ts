@@ -64,6 +64,11 @@ export async function POST(req: NextRequest) {
 
   // Verwerk betaling op basis van Mollie status
   if (payment.status === "paid") {
+    // Alleen EUR verwerken — voorkomt valuta-verwarring bij vreemde betalingen
+    if (payment.amount.currency !== "EUR") {
+      console.warn(`[mollie] betaling ${paymentId} in ${payment.amount.currency} genegeerd (alleen EUR)`);
+      return NextResponse.json({ ok: true });
+    }
     const reference = `Mollie ${paymentId}`;
 
     // Idempotent: Mollie herhaalt webhooks — zelfde betaling nooit dubbel registreren

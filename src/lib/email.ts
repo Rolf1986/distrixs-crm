@@ -69,6 +69,16 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendResult> {
   }
 }
 
+/** HTML-escape voor tekst die in de mail-body/attributen wordt geïnterpoleerd. */
+function esc(v: string): string {
+  return v
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /** Genereer een eenvoudige HTML e-mail in Distrixs-huisstijl (logo + oranje accent) */
 export function buildEmailHtml(opts: {
   companyName: string;
@@ -82,12 +92,15 @@ export function buildEmailHtml(opts: {
 }): string {
   const { companyName, recipientName, bodyLines, ctaUrl, ctaLabel, footerLines, logoUrl } = opts;
 
-  const greeting = recipientName ? `Beste ${recipientName},` : "Geachte relatie,";
+  // companyName/recipientName/ctaLabel/URLs escapen; bodyLines/footerLines zijn
+  // door de aanroepers al opgemaakt (bevatten bewust HTML) en blijven ongewijzigd.
+  const safeCompany = esc(companyName);
+  const greeting = recipientName ? `Beste ${esc(recipientName)},` : "Geachte relatie,";
 
   const body = bodyLines.map((l) => `<p style="margin:0 0 12px 0;color:#374151;">${l}</p>`).join("");
 
   const cta = ctaUrl && ctaLabel
-    ? `<div style="margin:24px 0;"><a href="${ctaUrl}" style="background:#ff6600;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">${ctaLabel}</a></div>`
+    ? `<div style="margin:24px 0;"><a href="${esc(ctaUrl)}" style="background:#ff6600;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;display:inline-block;">${esc(ctaLabel)}</a></div>`
     : "";
 
   const footer = footerLines?.length
@@ -97,8 +110,8 @@ export function buildEmailHtml(opts: {
   // Header: logo op witte achtergrond met oranje accentlijn eronder;
   // zonder logo valt hij terug op de bedrijfsnaam in huisstijl-oranje
   const header = logoUrl
-    ? `<div style="background:#ffffff;padding:24px 32px;border-bottom:3px solid #ff6600;"><img src="${logoUrl}" alt="${companyName}" height="40" style="display:block;height:40px;width:auto;" /></div>`
-    : `<div style="background:#ffffff;padding:24px 32px;border-bottom:3px solid #ff6600;"><h1 style="margin:0;color:#ff6600;font-size:20px;font-weight:700;">${companyName}</h1></div>`;
+    ? `<div style="background:#ffffff;padding:24px 32px;border-bottom:3px solid #ff6600;"><img src="${esc(logoUrl)}" alt="${safeCompany}" height="40" style="display:block;height:40px;width:auto;" /></div>`
+    : `<div style="background:#ffffff;padding:24px 32px;border-bottom:3px solid #ff6600;"><h1 style="margin:0;color:#ff6600;font-size:20px;font-weight:700;">${safeCompany}</h1></div>`;
 
   return `<!DOCTYPE html>
 <html lang="nl">
@@ -112,7 +125,7 @@ export function buildEmailHtml(opts: {
       <p style="margin:0 0 20px 0;color:#374151;">${greeting}</p>
       ${body}
       ${cta}
-      <p style="margin:24px 0 0 0;color:#374151;">Met vriendelijke groet,<br><strong>${companyName}</strong></p>
+      <p style="margin:24px 0 0 0;color:#374151;">Met vriendelijke groet,<br><strong>${safeCompany}</strong></p>
     </div>
     <!-- Footer -->
     ${footer ? `<div style="background:#f1f5f9;padding:16px 32px;border-top:1px solid #e2e8f0;font-size:12px;color:#64748b;">${footer}</div>` : ""}
