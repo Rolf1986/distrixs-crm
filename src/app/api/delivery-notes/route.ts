@@ -14,6 +14,38 @@ export async function POST(req: NextRequest) {
   const deal = await prisma.deal.findUnique({ where: { id: dealId }, select: { customerId: true } });
   if (!deal) return NextResponse.json({ error: "Deal niet gevonden" }, { status: 404 });
 
+  // Artikelregels overnemen: uit de offerte van de gekoppelde orderbevestiging,
+  // anders uit de recentste geaccepteerde/verzonden offerte van de deal
+  let sourceQuoteId: string | null = null;
+  if (confirmationId) {
+    const oc = await prisma.orderConfirmation.findUnique({
+      where: { id: confirmationId },
+      select: { quoteId: true },
+    });
+    sourceQuoteId = oc?.quoteId ?? null;
+  }
+  if (!sourceQuoteId) {
+    const quote =
+      (await prisma.quote.findFirst({
+        where: { dealId, status: "ACCEPTED" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      })) ??
+      (await prisma.quote.findFirst({
+        where: { dealId, status: "SENT" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      }));
+    sourceQuoteId = quote?.id ?? null;
+  }
+  const quoteLines = sourceQuoteId
+    ? await prisma.quoteLine.findMany({
+        where: { quoteId: sourceQuoteId },
+        select: { skuSnapshot: true, titleSnapshot: true, qty: true },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
+
   const year = new Date().getFullYear();
   const deliveryNumber = await nextDeliveryNoteNumber(year);
 
@@ -29,6 +61,13 @@ export async function POST(req: NextRequest) {
       trackingCode: trackingCode || null,
       notes: notes || null,
       createdBy: session.user.id,
+      lines: {
+        create: quoteLines.map((l) => ({
+          skuSnapshot: l.skuSnapshot,
+          titleSnapshot: l.titleSnapshot,
+          qty: l.qty,
+        })),
+      },
     },
   });
 
