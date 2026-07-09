@@ -34,6 +34,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.redirect(siteUrl(req, "/login?error=invalid"));
     }
 
+    // Cloudflare Turnstile: alleen afdwingen als de secret is ingesteld
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    if (turnstileSecret) {
+      const captchaToken = form.get("cf-turnstile-response") as string;
+      if (!captchaToken) {
+        return NextResponse.redirect(siteUrl(req, "/login?error=captcha"));
+      }
+      const verify = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ secret: turnstileSecret, response: captchaToken, remoteip: ip }),
+      });
+      const outcome = (await verify.json()) as { success?: boolean };
+      if (!outcome.success) {
+        return NextResponse.redirect(siteUrl(req, "/login?error=captcha"));
+      }
+    }
+
     if (!email || !password) {
       return NextResponse.redirect(siteUrl(req, "/login?error=missing"));
     }
