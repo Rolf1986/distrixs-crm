@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeCode, fetchAndStoreCluster } from "@/lib/twinfield";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/authz";
+import { verifyState } from "@/lib/oauth-state";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl";
 
 export async function GET(req: NextRequest) {
+  const auth = await requireUser(req);
+  if (!auth.ok) return NextResponse.redirect(`${BASE_URL}/login`);
+
   const { searchParams } = req.nextUrl;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
@@ -14,6 +19,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(
       `${BASE_URL}/settings/twinfield?error=${encodeURIComponent(msg)}`
     );
+  }
+
+  // CSRF: state uit de callback moet matchen met het cookie
+  if (!verifyState(req, "tw_oauth_state", searchParams.get("state"))) {
+    return NextResponse.redirect(`${BASE_URL}/settings/twinfield?error=${encodeURIComponent("Ongeldige state")}`);
   }
 
   try {

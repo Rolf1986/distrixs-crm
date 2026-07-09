@@ -2,7 +2,6 @@
 
 import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
-import { getAuthUrl } from "@/lib/teamleader";
 import { AlertTriangle, CheckCircle2, ExternalLink, RefreshCw } from "lucide-react";
 
 interface ImportCounts {
@@ -43,7 +42,6 @@ function ImportPageInner() {
     }
   }
 
-  const authUrl = getAuthUrl();
 
   return (
     <div className="max-w-2xl space-y-6">
@@ -71,7 +69,7 @@ function ImportPageInner() {
         </p>
 
         <a
-          href={authUrl}
+          href="/api/teamleader/auth"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors"
           style={{ backgroundColor: "#0170B9" }}
         >

@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/authz";
 import {
   refreshTokens,
   fetchCompanies,
@@ -133,7 +134,10 @@ function makeCustomerNumber(year: number, seq: number): string {
 
 // ─── POST handler ─────────────────────────────────────────────────────────────
 
-export async function POST(): Promise<Response> {
+export async function POST(req: NextRequest): Promise<Response> {
+  const auth = await requireUser(req);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const counts = { products: 0, customers: 0, contacts: 0, deals: 0, quotes: 0, invoices: 0, invoicesUpdated: 0, creditNotes: 0 };
 
   try {

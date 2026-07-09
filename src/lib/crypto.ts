@@ -16,7 +16,11 @@ function getKey(): Buffer | null {
 export function encryptPassword(plaintext: string): string {
   const key = getKey();
   if (!key) {
-    // Geen key → base64 (dev fallback)
+    // In productie NOOIT base64 (=plaintext) accepteren — fail hard
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("ENCRYPTION_KEY ontbreekt of te kort (64 hex nodig) — wachtwoord niet veilig op te slaan");
+    }
+    // Alleen buiten productie: base64 dev-fallback
     return "b64:" + Buffer.from(plaintext).toString("base64");
   }
   const iv = randomBytes(16);

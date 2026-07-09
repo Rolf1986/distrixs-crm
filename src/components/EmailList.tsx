@@ -155,9 +155,14 @@ export function EmailList({ emails, contextType }: Props) {
                       Laden…
                     </div>
                   ) : body ? (
-                    <div
-                      className="prose prose-sm max-w-none pt-4 text-slate-700 overflow-auto"
-                      dangerouslySetInnerHTML={{ __html: body }}
+                    // Inkomende e-mail-HTML in een gesandboxte iframe: geen scripts,
+                    // geen toegang tot cookies/sessie (stored-XSS via mail geblokkeerd)
+                    <iframe
+                      title="E-mailinhoud"
+                      sandbox=""
+                      srcDoc={body}
+                      className="w-full pt-4 border-0 bg-white"
+                      style={{ minHeight: "300px" }}
                     />
                   ) : email.snippet ? (
                     <p className="pt-4 text-sm text-slate-600 whitespace-pre-wrap">{email.snippet}</p>

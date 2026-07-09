@@ -1,7 +1,9 @@
 // Teamleader Focus API v2 client
 
-const CLIENT_ID = "38fb7bf0cfe0e21d64b4441f0a6be867";
-const CLIENT_SECRET = "b04fed6f12716b2b0516144f236ae969";
+// Credentials uit env; fallback op de bestaande waarden zolang env nog niet
+// overal gezet is (worden bij de Teamleader-uitfasering verwijderd + geroteerd).
+const CLIENT_ID = process.env.TEAMLEADER_CLIENT_ID ?? "38fb7bf0cfe0e21d64b4441f0a6be867";
+const CLIENT_SECRET = process.env.TEAMLEADER_CLIENT_SECRET ?? "b04fed6f12716b2b0516144f236ae969";
 const REDIRECT_URI = "https://crm.distrixs.nl/api/teamleader/callback";
 
 const AUTHORIZE_URL = "https://focus.teamleader.eu/oauth2/authorize";
@@ -109,11 +111,12 @@ export interface TLListResponse<T> {
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
-export function getAuthUrl(): string {
+export function getAuthUrl(state?: string): string {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     response_type: "code",
     redirect_uri: REDIRECT_URI,
+    ...(state ? { state } : {}),
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
 }
