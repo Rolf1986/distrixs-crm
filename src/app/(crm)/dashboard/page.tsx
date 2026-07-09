@@ -26,7 +26,7 @@ async function getDashboardData() {
     }),
     prisma.quote.findMany({ where: { status: "SENT" }, select: { total: true } }),
     prisma.invoice.findMany({
-      where: { status: { notIn: ["PAID", "CREDITED"] } },
+      where: { status: { notIn: ["PAID", "CREDITED", "DRAFT"] } },
       select: { openAmount: true, status: true, dueDate: true },
     }),
     prisma.deal.findMany({
@@ -41,7 +41,7 @@ async function getDashboardData() {
       take: 5,
     }),
     prisma.invoice.findMany({
-      where: { status: { notIn: ["PAID", "CREDITED"] } },
+      where: { status: { notIn: ["PAID", "CREDITED", "DRAFT"] } },
       include: { customer: { select: { companyName: true } } },
       orderBy: { dueDate: "asc" },
       take: 5,
