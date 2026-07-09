@@ -2,9 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+// Alleen niet-gevoelige velden — NOOIT tokens/keys/secrets teruggeven
+const PUBLIC_SETTING_FIELDS = {
+  id: true,
+  companyName: true, logoUrl: true,
+  addressLine1: true, addressLine2: true, city: true, postalCode: true, country: true,
+  kvkNumber: true, vatNumber: true,
+  iban: true, bic: true, bankName: true, ibanAccountHolder: true,
+  email: true, phone: true, website: true,
+  contactPersonName: true, contactPersonPhone: true, contactPersonEmail: true,
+  termsNl: true, termsEn: true, quoteTerms: true, invoiceFooter: true,
+  quoteEmailSubject: true, quoteEmailBody: true, quoteEmailSubjectEn: true, quoteEmailBodyEn: true,
+  invoiceEmailSubject: true, invoiceEmailBody: true, invoiceEmailSubjectEn: true, invoiceEmailBodyEn: true,
+  reminderEmailSubject: true, reminderEmailBody: true,
+} as const;
+
+export async function GET(req: NextRequest) {
+  const session = await getSession(req);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+  }
   const settings = await prisma.companySetting.findUnique({
     where: { id: "singleton" },
+    select: PUBLIC_SETTING_FIELDS,
   });
   return NextResponse.json(settings ?? { id: "singleton" });
 }
@@ -40,6 +60,7 @@ export async function PATCH(req: NextRequest) {
     where: { id: "singleton" },
     create: { id: "singleton", ...data },
     update: data,
+    select: PUBLIC_SETTING_FIELDS,
   });
 
   return NextResponse.json(settings);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { nextRmaNumber } from "@/lib/sequences";
 import { sendEmail } from "@/lib/email";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 const REASON_LABELS: Record<string, Record<string, string>> = {
   nl: {
@@ -129,6 +130,15 @@ function buildConfirmationEmail(opts: {
 
 export async function POST(req: Request) {
   try {
+    // Publiek formulier: spam-/misbruikbescherming (max 5 per IP per uur)
+    const limit = rateLimit(`rma-ip:${clientIp(req)}`, 5, 60 * 60 * 1000);
+    if (!limit.allowed) {
+      return NextResponse.json(
+        { error: "Te veel aanvragen — probeer het later opnieuw." },
+        { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } }
+      );
+    }
+
     const body = await req.json();
     const {
       submittedName,

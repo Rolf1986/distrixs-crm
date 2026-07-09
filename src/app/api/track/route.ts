@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 // ─── Publiek tracking-endpoint ─────────────────────────────────────────────────
 // Wordt cross-origin aangeroepen vanaf de webshop (distrixs.nl) door public/track.js.
@@ -79,6 +80,14 @@ export async function POST(req: NextRequest) {
   const vid = str(body.vid, 64);
   if (!vid) {
     return NextResponse.json({ error: "vid required" }, { status: 400, headers });
+  }
+
+  // Anti-flooding: begrens events per bezoeker en per IP
+  if (!rateLimit(`track-vid:${vid}`, 600, 60 * 60 * 1000).allowed) {
+    return new NextResponse(null, { status: 429, headers });
+  }
+  if (!rateLimit(`track-ip:${clientIp(req)}`, 2000, 60 * 60 * 1000).allowed) {
+    return new NextResponse(null, { status: 429, headers });
   }
 
   const rawEvents = Array.isArray(body.events) ? body.events : [];
