@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { nextInvoiceNumber } from "@/lib/sequences";
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
@@ -11,7 +10,8 @@ export async function POST(req: NextRequest) {
   if (!customerId) return NextResponse.json({ error: "Klant verplicht" }, { status: 400 });
 
   const year = new Date().getFullYear();
-  const invoiceNumber = await nextInvoiceNumber(year);
+  // Concepten krijgen pas een definitief nummer bij het verzenden
+  const invoiceNumber = `DRAFT-${crypto.randomUUID().slice(0, 8)}`;
 
   // Bereken vervaldatum op basis van betalingstermijn
   const term = paymentTerm || "DAYS_30";
