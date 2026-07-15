@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Bell } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -19,6 +19,8 @@ type Invoice = {
   total: number;
   openAmount: number;
   status: string;
+  reminderCount: number;
+  lastReminderAt: string | null;
 };
 
 const STATUS_FILTERS = [
@@ -174,13 +176,14 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Vervaldatum</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Totaal</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Open</th>
+              <th className="text-center px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Herinnering</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
             {paginated.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-14 text-center">
+                <td colSpan={9} className="px-4 py-14 text-center">
                   <p className="text-3xl mb-2">🧾</p>
                   <p className="text-slate-500 font-medium">Geen facturen gevonden</p>
                   <p className="text-xs text-slate-400 mt-1">Pas het filter of de zoekopdracht aan</p>
@@ -249,6 +252,19 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${inv.openAmount > 0 ? (isOverdue ? "text-red-600" : "text-slate-700") : "text-slate-300"}`}>
                     {formatCurrency(inv.openAmount)}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {inv.reminderCount > 0 ? (
+                      <span
+                        className="inline-flex items-center gap-1 text-xs font-medium text-orange-700"
+                        title={inv.lastReminderAt ? `Laatste herinnering: ${formatDate(inv.lastReminderAt)}` : undefined}
+                      >
+                        <Bell className="w-3.5 h-3.5" />
+                        {inv.reminderCount > 1 ? `${inv.reminderCount}×` : ""}
+                      </span>
+                    ) : (
+                      <span className="text-slate-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={inv.status} type="invoice" />

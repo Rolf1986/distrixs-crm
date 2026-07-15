@@ -14,6 +14,11 @@ async function getInvoices() {
         },
       },
       deal: { select: { dealNumber: true } },
+      reminders: {
+        where: { status: "SENT" },
+        select: { sentAt: true },
+        orderBy: { sentAt: "desc" },
+      },
     },
     orderBy: { invoiceDate: "desc" },
   });
@@ -100,6 +105,8 @@ export default async function InvoicesPage() {
             total: Number(inv.total),
             openAmount: Number(inv.openAmount),
             status: inv.status,
+            reminderCount: inv.reminders.length,
+            lastReminderAt: inv.reminders[0]?.sentAt?.toISOString() ?? null,
           }))}
         />
       </div>
