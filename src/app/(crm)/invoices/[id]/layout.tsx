@@ -37,6 +37,10 @@ async function getInvoice(id: string) {
       quote: { select: { id: true, quoteNumber: true } },
       contact: { select: { firstName: true, lastName: true, email: true } },
       creditNotes: { select: { id: true, total: true } },
+      lines: {
+        select: { id: true, skuSnapshot: true, titleSnapshot: true, qty: true, grossUnitPrice: true, netLineTotal: true, vatRate: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 }
@@ -180,6 +184,15 @@ export default async function InvoiceLayout({
               invoiceId={id}
               invoiceNumber={invoice.invoiceNumber}
               status={invoice.status}
+              lines={invoice.lines.map((l) => ({
+                id: l.id,
+                skuSnapshot: l.skuSnapshot,
+                titleSnapshot: l.titleSnapshot,
+                qty: Number(l.qty),
+                grossUnitPrice: Number(l.grossUnitPrice),
+                netLineTotal: Number(l.netLineTotal),
+                vatRate: Number(l.vatRate),
+              }))}
             />
             {/* Altijd zichtbare PDF-downloadknop */}
             <a
