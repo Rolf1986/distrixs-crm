@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { HistoryTimeline, type HistoryItem } from "./HistoryTimeline";
+import { HistoryTimeline, type HistoryItem } from "@/components/HistoryTimeline";
 
 export default async function InvoiceAuditPage({
   params,
@@ -66,5 +66,5 @@ export default async function InvoiceAuditPage({
       })),
   ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 
-  return <HistoryTimeline invoiceId={id} items={items} />;
+  return <HistoryTimeline basePath={`/api/invoices/${id}`} items={items} />;
 }

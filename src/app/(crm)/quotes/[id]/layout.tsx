@@ -150,6 +150,7 @@ export default async function QuoteLayout({
         {/* Tabs */}
         <TabNav tabs={[
           { label: "Regels",      href: `/quotes/${id}/lines` },
+          { label: "Geschiedenis", href: `/quotes/${id}/audit` },
           { label: "PDF / Download", href: `/quotes/${id}/pdf` },
         ]} />
       </div>

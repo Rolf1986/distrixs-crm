@@ -78,6 +78,18 @@ export async function POST(
     return NextResponse.json({ error: result.error ?? "Versturen mislukt" }, { status: 500 });
   }
 
+  // Verstuurde mail vastleggen voor de geschiedenis (incl. inhoud)
+  await prisma.quoteEmail.create({
+    data: {
+      quoteId: id,
+      toAddress: to.trim(),
+      ccAddress: cc?.trim() || null,
+      subject: finalSubject,
+      bodyHtml: html,
+      createdBy: session.user.id,
+    },
+  }).catch((e) => console.warn("[quote send] mail-log niet opgeslagen:", e));
+
   // Zet status op SENT (als nog DRAFT)
   if (quote.status === "DRAFT") {
     await prisma.quote.update({ where: { id }, data: { status: "SENT" } });
