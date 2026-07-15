@@ -227,7 +227,7 @@ model Customer {
   vatNumber          String?        @map("vat_number")
   vatCountry         String?        @map("vat_country")
   email              String?        // hoofd-/factuur-e-mailadres van het bedrijf (uit Teamleader)
-  defaultPaymentTerm PaymentTerm    @default(DAYS_30) @map("default_payment_term")
+  defaultPaymentTerm PaymentTerm    @default(DAYS_14) @map("default_payment_term")
   notes              String?
   status             CustomerStatus @default(ACTIVE)
   externalId         String?        @unique @map("external_id")
@@ -313,8 +313,46 @@ model Supplier {
   products       Product[]
   purchaseOrders   PurchaseOrder[]
   supplierInvoices SupplierInvoice[]
+  addresses        SupplierAddress[]
+  contacts         SupplierContact[]
 
   @@map("suppliers")
+}
+
+model SupplierAddress {
+  id          String      @id @default(cuid())
+  supplierId  String      @map("supplier_id")
+  type        AddressType @default(VISITING)
+  isDefault   Boolean     @default(false) @map("is_default")
+  street      String
+  houseNumber String      @map("house_number")
+  postalCode  String      @map("postal_code")
+  city        String
+  country     String      @default("NL")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_addresses")
+}
+
+model SupplierContact {
+  id             String   @id @default(cuid())
+  supplierId     String   @map("supplier_id")
+  firstName      String   @map("first_name")
+  lastName       String   @map("last_name")
+  email          String?
+  phone          String?
+  roleOrFunction String?  @map("role_or_function")
+  isPrimary      Boolean  @default(false) @map("is_primary")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_contacts")
 }
 
 model Product {
