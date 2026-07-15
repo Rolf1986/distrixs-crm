@@ -75,12 +75,17 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       return matchesFilter && matchesSearch;
     })
     .sort((a, b) => {
-      // In "Alle": concepten altijd bovenaan
+      // In "Alle": concepten (nog niet verzonden) altijd bovenaan
       if (filter === "all") {
         const aDraft = a.status === "DRAFT" ? 1 : 0;
         const bDraft = b.status === "DRAFT" ? 1 : 0;
         if (aDraft !== bDraft) return bDraft - aDraft;
       }
+      // Sorteer op factuurnummer (numeriek deel, bv. "2026 / 333" → 333)
+      const na = parseInt(a.invoiceNumber.replace(/^\d{4}\s*\/\s*/, ""), 10);
+      const nb = parseInt(b.invoiceNumber.replace(/^\d{4}\s*\/\s*/, ""), 10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return sortDesc ? nb - na : na - nb;
+      // Fallback (bv. DRAFT-nummers): op factuurdatum
       const da = new Date(a.invoiceDate).getTime();
       const db = new Date(b.invoiceDate).getTime();
       return sortDesc ? db - da : da - db;
@@ -141,10 +146,10 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
           <button
             onClick={() => { setSortDesc(!sortDesc); setPage(1); }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:border-slate-300 transition-colors"
-            title={sortDesc ? "Nieuwste eerst" : "Oudste eerst"}
+            title={sortDesc ? "Hoogste nummer eerst" : "Laagste nummer eerst"}
           >
             {sortDesc ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
-            {sortDesc ? "Nieuwste eerst" : "Oudste eerst"}
+            {sortDesc ? "Hoogste nr. eerst" : "Laagste nr. eerst"}
           </button>
           <input
             type="text"
