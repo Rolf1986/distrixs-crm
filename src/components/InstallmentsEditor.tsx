@@ -177,10 +177,11 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
     }
   }
 
-  // Bereken bedragen uit percentages
+  // Bereken bedragen (vast bedrag heeft voorrang, anders % van totaal).
+  // Number() forceert numeriek: Decimal-velden komen als string binnen.
   function instAmount(inst: Installment): number {
-    if (inst.amount !== null) return inst.amount;
-    if (inst.percentage !== null) return (inst.percentage / 100) * invoiceTotal;
+    if (inst.amount !== null && inst.amount !== undefined) return Number(inst.amount) || 0;
+    if (inst.percentage !== null && inst.percentage !== undefined) return (Number(inst.percentage) / 100) * invoiceTotal;
     return 0;
   }
 
