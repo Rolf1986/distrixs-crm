@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { nextInvoiceNumber } from "@/lib/sequences";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   DRAFT:          ["SENT"],
@@ -74,6 +75,12 @@ export async function PATCH(
       paidAmount: actualPaid,
       openAmount: Math.max(0, total - actualPaid),
     };
+  }
+
+  // Concept dat (handmatig) op verzonden wordt gezet krijgt zijn definitieve
+  // factuurnummer — net als bij verzenden via e-mail.
+  if (invoice.status === "DRAFT" && newStatus === "SENT" && invoice.invoiceNumber.startsWith("DRAFT-")) {
+    extraData.invoiceNumber = await nextInvoiceNumber(new Date().getFullYear());
   }
 
   const updated = await prisma.invoice.update({
