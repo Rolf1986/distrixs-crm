@@ -119,6 +119,19 @@ export async function POST(
     return NextResponse.json({ error: result.error ?? "Versturen mislukt" }, { status: 500 });
   }
 
+  // Verstuurde mail vastleggen voor de geschiedenis (incl. inhoud om in te zien)
+  await prisma.invoiceEmail.create({
+    data: {
+      invoiceId: id,
+      kind: "INVOICE",
+      toAddress: to.trim(),
+      ccAddress: cc?.trim() || null,
+      subject,
+      bodyHtml: html,
+      createdBy: session.user.id,
+    },
+  }).catch((e) => console.warn("[invoice send] mail-log niet opgeslagen:", e));
+
   // Status DRAFT → SENT. Twinfield-sync gebeurt bewust HANDMATIG
   // (knop op de factuur), niet automatisch — zo houd je controle tijdens
   // de overgang en test je per factuur of de boeking goed doorkomt.
