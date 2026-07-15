@@ -84,6 +84,57 @@ export async function buildInvoicePdfData(invoiceId: string) {
   return { invoice, company, data };
 }
 
+export async function buildCreditNotePdfData(creditNoteId: string) {
+  const cn = await prisma.creditNote.findUnique({
+    where: { id: creditNoteId },
+    include: {
+      customer: {
+        include: {
+          addresses: { orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] },
+        },
+      },
+      invoice: { select: { invoiceNumber: true } },
+      lines: { orderBy: { createdAt: "asc" } },
+    },
+  });
+  if (!cn) return null;
+
+  const company = await getCompanyInfo();
+  const addr = pickAddress(cn.customer.addresses);
+
+  const data = {
+    language: cn.language ?? "NL",
+    creditNoteNumber: cn.creditNoteNumber,
+    creditNoteDate: cn.creditNoteDate,
+    invoiceNumber: cn.invoice?.invoiceNumber ?? null,
+    reason: cn.reason ?? null,
+    subtotal: Number(cn.subtotal),
+    vatAmount: Number(cn.vatAmount),
+    total: Number(cn.total),
+    company,
+    customer: {
+      companyName: cn.customer.companyName,
+      customerNumber: cn.customer.customerNumber,
+      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
+      postalCode: addr?.postalCode ?? null,
+      city: addr?.city ?? null,
+      country: addr?.country ?? null,
+      vatNumber: cn.customer.vatNumber ?? null,
+      kvkNumber: cn.customer.kvkNumber ?? null,
+    },
+    lines: cn.lines.map((l) => ({
+      skuSnapshot: l.skuSnapshot,
+      titleSnapshot: l.titleSnapshot,
+      qty: Number(l.qty),
+      unitPrice: Number(l.unitPrice),
+      vatRate: Number(l.vatRate),
+      lineTotal: Number(l.lineTotal),
+    })),
+  };
+
+  return { creditNote: cn, company, data };
+}
+
 export async function buildQuotePdfData(quoteId: string) {
   const quote = await prisma.quote.findUnique({
     where: { id: quoteId },
