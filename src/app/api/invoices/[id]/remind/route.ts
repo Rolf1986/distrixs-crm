@@ -88,5 +88,18 @@ export async function POST(
     // Reminder logging is niet kritisch — ga door ook bij fout
   });
 
+  // Verstuurde herinnering vastleggen voor de geschiedenis (incl. inhoud)
+  await prisma.invoiceEmail.create({
+    data: {
+      invoiceId: id,
+      kind: "REMINDER",
+      toAddress: to.trim(),
+      ccAddress: cc?.trim() || null,
+      subject,
+      bodyHtml: html,
+      createdBy: session.user.id,
+    },
+  }).catch((e) => console.warn("[invoice remind] mail-log niet opgeslagen:", e));
+
   return NextResponse.json({ ok: true, simulated: result.simulated ?? false });
 }

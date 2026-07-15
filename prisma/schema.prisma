@@ -559,10 +559,33 @@ model Invoice {
   reminders         InvoiceReminder[]
   installments      InvoiceInstallment[]
   creditNotes       CreditNote[]
+  emails            InvoiceEmail[]
   files             FileAsset[]
   recurringInvoice  RecurringInvoice?   @relation(fields: [recurringInvoiceId], references: [id])
 
   @@map("invoices")
+}
+
+enum InvoiceEmailKind {
+  INVOICE
+  REMINDER
+}
+
+model InvoiceEmail {
+  id         String           @id @default(cuid())
+  invoiceId  String           @map("invoice_id")
+  kind       InvoiceEmailKind @default(INVOICE)
+  toAddress  String           @map("to_address")
+  ccAddress  String?          @map("cc_address")
+  subject    String
+  bodyHtml   String           @map("body_html")
+  sentAt     DateTime         @default(now()) @map("sent_at")
+  createdBy  String?          @map("created_by")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_emails")
 }
 
 model InvoiceLine {
