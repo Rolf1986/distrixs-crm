@@ -43,6 +43,15 @@ function daysOverdue(dueDateStr: string): number {
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
 
+// Sorteersleutel op jaar én nummer: "2026 / 150" → 2026000150, zodat een
+// hoog nummer uit een ouder jaar (2024/711) niet boven 2026/336 komt.
+// Concepten (DRAFT-...) hebben geen definitief nummer → key 0 (fallback op datum).
+function invoiceSortKey(invoiceNumber: string): number {
+  const m = invoiceNumber.match(/^(\d{4})\s*\/\s*(\d+)/);
+  if (!m) return 0;
+  return parseInt(m[1], 10) * 1_000_000 + parseInt(m[2], 10);
+}
+
 export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
@@ -58,12 +67,19 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       const invDue = new Date(inv.dueDate);
       invDue.setHours(0, 0, 0, 0);
       const isOverdue = inv.status !== "PAID" && inv.status !== "CREDITED" && inv.status !== "DRAFT" && invDue < today;
+      const isDraft = inv.status === "DRAFT";
 
+      // Concepten zijn nog geen definitieve facturen → alleen tonen onder
+      // "Nog niet verzonden", nergens anders (ook niet in "Alle" of "Niet betaald").
       const matchesFilter =
-        filter === "all" ||
-        (filter === "unpaid" && inv.status !== "PAID" && inv.status !== "CREDITED") ||
-        (filter === "overdue" && isOverdue) ||
-        inv.status === filter;
+        filter === "DRAFT"
+          ? isDraft
+          : isDraft
+          ? false
+          : filter === "all" ||
+            (filter === "unpaid" && inv.status !== "PAID" && inv.status !== "CREDITED") ||
+            (filter === "overdue" && isOverdue) ||
+            inv.status === filter;
 
       const matchesSearch =
         !search ||
@@ -75,17 +91,11 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       return matchesFilter && matchesSearch;
     })
     .sort((a, b) => {
-      // In "Alle": concepten (nog niet verzonden) altijd bovenaan
-      if (filter === "all") {
-        const aDraft = a.status === "DRAFT" ? 1 : 0;
-        const bDraft = b.status === "DRAFT" ? 1 : 0;
-        if (aDraft !== bDraft) return bDraft - aDraft;
-      }
-      // Sorteer op factuurnummer (numeriek deel, bv. "2026 / 333" → 333)
-      const na = parseInt(a.invoiceNumber.replace(/^\d{4}\s*\/\s*/, ""), 10);
-      const nb = parseInt(b.invoiceNumber.replace(/^\d{4}\s*\/\s*/, ""), 10);
-      if (!isNaN(na) && !isNaN(nb) && na !== nb) return sortDesc ? nb - na : na - nb;
-      // Fallback (bv. DRAFT-nummers): op factuurdatum
+      // Sorteer op factuurnummer inclusief jaar (2026/336 > 2024/711)
+      const ka = invoiceSortKey(a.invoiceNumber);
+      const kb = invoiceSortKey(b.invoiceNumber);
+      if (ka !== kb) return sortDesc ? kb - ka : ka - kb;
+      // Gelijk of geen nummer (bv. DRAFT): op factuurdatum
       const da = new Date(a.invoiceDate).getTime();
       const db = new Date(b.invoiceDate).getTime();
       return sortDesc ? db - da : da - db;
@@ -106,7 +116,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
   }
 
   const totalOpen = filtered
-    .filter((inv) => inv.status !== "PAID" && inv.status !== "CREDITED")
+    .filter((inv) => inv.status !== "PAID" && inv.status !== "CREDITED" && inv.status !== "DRAFT")
     .reduce((s, inv) => s + inv.openAmount, 0);
 
   return (
@@ -116,9 +126,9 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
         <div className="flex items-center gap-1 flex-wrap">
           {STATUS_FILTERS.map((f) => {
             const count = f.key === "all"
-              ? invoices.length
+              ? invoices.filter((i) => i.status !== "DRAFT").length
               : f.key === "unpaid"
-              ? invoices.filter((i) => i.status !== "PAID" && i.status !== "CREDITED").length
+              ? invoices.filter((i) => i.status !== "PAID" && i.status !== "CREDITED" && i.status !== "DRAFT").length
               : f.key === "overdue"
               ? invoices.filter((i) => {
                   const d = new Date(i.dueDate); d.setHours(0,0,0,0);
@@ -162,7 +172,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       </div>
 
       {/* Open amount summary */}
-      {filter !== "all" && filter !== "PAID" && totalOpen > 0 && (
+      {filter !== "all" && filter !== "PAID" && filter !== "DRAFT" && totalOpen > 0 && (
         <div className="text-sm text-slate-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
           <span className="font-semibold text-amber-800">{formatCurrency(totalOpen)}</span>
           <span className="text-amber-700"> openstaand in deze selectie</span>
