@@ -173,7 +173,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       prisma.customerContact.findMany({ where: { externalId: { startsWith: "tl-contact-" } }, select: { id: true, externalId: true } }),
       prisma.deal.findMany({ where: { externalId: { startsWith: "tl-deal-" } }, select: { id: true, externalId: true } }),
       prisma.quote.findMany({ where: { externalId: { startsWith: "tl-quotation-" } }, select: { id: true, externalId: true } }),
-      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { id: true, externalId: true, status: true, total: true, dealId: true, invoiceNumber: true } }),
+      prisma.invoice.findMany({ where: { externalId: { startsWith: "tl-invoice-" } }, select: { id: true, externalId: true, status: true, total: true, dealId: true, invoiceNumber: true, paidAmount: true } }),
     ]);
 
     // externalId → local id / boolean
@@ -523,16 +523,27 @@ export async function POST(req: NextRequest): Promise<Response> {
         const needsDealLink = !existingInv.dealId && !!resolvedDealId;
         // Nummer volgt Teamleader: concept dat inmiddels geboekt is krijgt het TL-nummer
         const needsNumber = !!inv.invoice_number && existingInv.invoiceNumber !== inv.invoice_number;
-        if (existingInv.status !== newStatus || needsDealLink || needsNumber) {
-          const invTotal = inv.total?.tax_inclusive?.amount ?? Number(existingInv.total);
-          const newPaid = newStatus === "PAID" ? invTotal : 0;
+        // Betaalstand NOOIT verlagen door een import: het CRM is sinds de
+        // cutover de bron van betalingen. We nemen de CRM-betaling als
+        // ondergrens, zodat een in het CRM geregistreerde (deel)betaling
+        // niet wordt weggevaagd door de Teamleader-status.
+        const invTotal = inv.total?.tax_inclusive?.amount ?? Number(existingInv.total);
+        const crmPaid = Number(existingInv.paidAmount);
+        const tlPaid = newStatus === "PAID" ? invTotal : 0;
+        const finalPaid = Math.max(crmPaid, tlPaid);
+        const finalOpen = Math.max(0, Math.round((invTotal - finalPaid) * 100) / 100);
+        const finalStatus =
+          finalOpen <= 0 ? "PAID" : finalPaid > 0 ? "PARTIALLY_PAID" : newStatus;
+        const needsStatusChange =
+          existingInv.status !== finalStatus || crmPaid !== finalPaid;
+        if (needsStatusChange || needsDealLink || needsNumber) {
           try {
             await prisma.invoice.update({
               where: { id: existingInv.id },
               data: {
-                status: newStatus,
-                paidAmount: newPaid,
-                openAmount: invTotal - newPaid,
+                ...(needsStatusChange
+                  ? { status: finalStatus, paidAmount: finalPaid, openAmount: finalOpen }
+                  : {}),
                 ...(needsDealLink ? { dealId: resolvedDealId } : {}),
                 ...(needsNumber ? { invoiceNumber: inv.invoice_number as string } : {}),
               },
