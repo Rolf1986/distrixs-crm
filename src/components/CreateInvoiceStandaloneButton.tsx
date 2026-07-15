@@ -7,7 +7,7 @@ import { CreateModal, FormField, inputClass } from "@/components/ui/CreateModal"
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 interface Props {
-  customers: { id: string; companyName: string }[];
+  customers: { id: string; companyName: string; defaultPaymentTerm?: string }[];
   deals: { id: string; dealNumber: string; title: string }[];
 }
 
@@ -18,9 +18,16 @@ export function CreateInvoiceStandaloneButton({ customers, deals }: Props) {
   const [error, setError] = useState("");
   const [customerId, setCustomerId] = useState("");
   const [dealId, setDealId] = useState("");
-  const [paymentTerm, setPaymentTerm] = useState("DAYS_30");
+  const [paymentTerm, setPaymentTerm] = useState("DAYS_14");
 
-  function reset() { setCustomerId(""); setDealId(""); setPaymentTerm("DAYS_30"); setError(""); }
+  function reset() { setCustomerId(""); setDealId(""); setPaymentTerm("DAYS_14"); setError(""); }
+
+  // Bij klantselectie: neem de standaardtermijn van de klantkaart over
+  function selectCustomer(id: string) {
+    setCustomerId(id);
+    const term = customers.find((c) => c.id === id)?.defaultPaymentTerm;
+    if (term) setPaymentTerm(term);
+  }
 
   async function handleSubmit() {
     setError("");
@@ -58,7 +65,7 @@ export function CreateInvoiceStandaloneButton({ customers, deals }: Props) {
             <SearchableSelect
               options={customerOptions}
               value={customerId}
-              onChange={setCustomerId}
+              onChange={selectCustomer}
               placeholder="Zoek en selecteer klant…"
             />
           </FormField>

@@ -6,6 +6,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { TabNav } from "@/components/TabNav";
 import { InvoiceStatusActions } from "@/components/InvoiceStatusActions";
 import { OurReferenceEditor } from "@/components/OurReferenceEditor";
+import { DueDateEditor } from "@/components/DueDateEditor";
 import { SendDocumentButton } from "@/components/SendDocumentButton";
 import { SendReminderButton } from "@/components/SendReminderButton";
 import { MolliePaymentButton } from "@/components/MolliePaymentButton";
@@ -155,7 +156,11 @@ export default async function InvoiceLayout({
                 </span>
               )}
               <span className="text-slate-400">· {formatDate(invoice.invoiceDate)}</span>
-              <span className="text-slate-400">· vervalt {formatDate(invoice.dueDate)}</span>
+              <DueDateEditor
+                invoiceId={id}
+                value={invoice.dueDate.toISOString()}
+                locked={invoice.twinfieldLocked}
+              />
               <OurReferenceEditor invoiceId={id} value={invoice.ourReference ?? null} />
               {invoice.quote && (
                 <Link

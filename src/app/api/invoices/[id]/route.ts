@@ -17,6 +17,24 @@ export async function PATCH(
   if ("notes" in body) data.notes = body.notes ?? null;
   if ("language" in body && ["NL", "EN"].includes(body.language)) data.language = body.language;
 
+  // Vervaldatum aanpasbaar (bv. betaalafspraak verlengen). Niet op een
+  // via Twinfield vergrendelde factuur.
+  const wantsDueDate = "dueDate" in body && body.dueDate;
+  if (wantsDueDate || "paymentTermType" in body) {
+    const inv = await prisma.invoice.findUnique({ where: { id }, select: { twinfieldLocked: true } });
+    if (!inv) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+    if (inv.twinfieldLocked) {
+      return NextResponse.json({ error: "Factuur is vergrendeld via Twinfield" }, { status: 403 });
+    }
+    if (wantsDueDate) {
+      const d = new Date(body.dueDate);
+      if (!isNaN(d.getTime())) data.dueDate = d;
+    }
+    if ("paymentTermType" in body && ["DAYS_14", "DAYS_30", "PREPAYMENT", "INSTALLMENTS"].includes(body.paymentTermType)) {
+      data.paymentTermType = body.paymentTermType;
+    }
+  }
+
   const invoice = await prisma.invoice.update({ where: { id }, data });
   return NextResponse.json(invoice);
 }

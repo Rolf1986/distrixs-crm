@@ -13,8 +13,16 @@ export async function POST(req: NextRequest) {
   // Concepten krijgen pas een definitief nummer bij het verzenden
   const invoiceNumber = `DRAFT-${crypto.randomUUID().slice(0, 8)}`;
 
-  // Bereken vervaldatum op basis van betalingstermijn
-  const term = paymentTerm || "DAYS_30";
+  // Bereken vervaldatum op basis van betalingstermijn.
+  // Zonder expliciete keuze: de standaardtermijn van de klant (klantkaart).
+  let term = paymentTerm;
+  if (!term) {
+    const cust = await prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { defaultPaymentTerm: true },
+    });
+    term = cust?.defaultPaymentTerm ?? "DAYS_14";
+  }
   const invoiceDate = new Date();
   let computedDueDate: Date;
   if (dueDate) {

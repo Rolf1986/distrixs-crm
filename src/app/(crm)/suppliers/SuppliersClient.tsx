@@ -225,7 +225,9 @@ export function SuppliersClient({ initialSuppliers }: { initialSuppliers: Suppli
                   </>
                 ) : (
                   <>
-                    <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">
+                      <a href={`/suppliers/${s.id}`} className="hover:text-brand-blue hover:underline">{s.name}</a>
+                    </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{TYPE_LABEL[s.supplierType] ?? s.supplierType}</td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{s.defaultCurrency}</td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{s.email ?? "—"}</td>

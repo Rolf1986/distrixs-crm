@@ -27,7 +27,7 @@ async function getInvoices() {
 async function getCustomers() {
   return prisma.customer.findMany({
     where: { status: "ACTIVE" },
-    select: { id: true, companyName: true },
+    select: { id: true, companyName: true, defaultPaymentTerm: true },
     orderBy: { companyName: "asc" },
   });
 }

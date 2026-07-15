@@ -55,7 +55,7 @@ const navGroups: Array<{ title: string | null; items: Array<{ label: string; hre
   {
     title: "Inkoop & logistiek",
     items: [
-      { label: "Inkoop",         href: "/purchase-orders",  icon: ShoppingCart },
+      { label: "Inkooporders",   href: "/purchase-orders",  icon: ShoppingCart },
       { label: "Inkoopfacturen", href: "/purchase-invoices", icon: FileInput },
       { label: "Zendingen",      href: "/shipments",         icon: Navigation },
       { label: "RMA",            href: "/rma",              icon: RotateCcw },
