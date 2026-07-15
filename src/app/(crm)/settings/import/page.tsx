@@ -28,6 +28,9 @@ function ImportPageInner() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
 
+  const [cnLoading, setCnLoading] = useState(false);
+  const [cnResult, setCnResult] = useState<string | null>(null);
+
   async function handleImport() {
     setLoading(true);
     setResult(null);
@@ -39,6 +42,24 @@ function ImportPageInner() {
       setResult({ error: "Netwerk- of serverfout." });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCreditBackfill() {
+    setCnLoading(true);
+    setCnResult(null);
+    try {
+      const res = await fetch("/api/teamleader/backfill-credit-lines", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setCnResult(data.error ?? "Fout bij ophalen creditnota-regels.");
+      } else {
+        setCnResult(`Klaar: ${data.aangevuld} creditnota's aangevuld · ${data.zonderRegelsInTL} zonder regels in Teamleader · ${data.mislukt} mislukt (van ${data.totaalGevonden}).`);
+      }
+    } catch {
+      setCnResult("Netwerk- of serverfout.");
+    } finally {
+      setCnLoading(false);
     }
   }
 
@@ -149,6 +170,37 @@ function ImportPageInner() {
                 </table>
               </div>
             ) : null}
+          </div>
+        )}
+      </div>
+
+      {/* Creditnota-regels backfill */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+        <h2 className="text-base font-semibold text-slate-900">Creditnota-regels ophalen</h2>
+        <p className="text-sm text-slate-600">
+          Uit Teamleader geïmporteerde creditnota&apos;s hebben alleen totalen, geen productregels.
+          Deze actie haalt per creditnota de regels op uit Teamleader en vult ze aan. Alleen
+          creditnota&apos;s zonder regels worden geraakt (veilig om opnieuw uit te voeren).
+        </p>
+        <button
+          onClick={handleCreditBackfill}
+          disabled={cnLoading}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 transition-colors"
+          style={{ backgroundColor: "#0170B9" }}
+        >
+          {cnLoading ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Ophalen…
+            </>
+          ) : (
+            "Creditnota-regels ophalen"
+          )}
+        </button>
+        {cnResult && (
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700">
+            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-green-600" />
+            <span>{cnResult}</span>
           </div>
         )}
       </div>

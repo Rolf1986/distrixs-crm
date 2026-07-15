@@ -283,3 +283,10 @@ export async function fetchQuotationInfo(
 ): Promise<TLInvoiceInfo | null> {
   return fetchDetailInfo(accessToken, "quotations.info", quotationId);
 }
+
+export async function fetchCreditNoteInfo(
+  accessToken: string,
+  creditNoteId: string
+): Promise<TLInvoiceInfo | null> {
+  return fetchDetailInfo(accessToken, "creditNotes.info", creditNoteId);
+}
