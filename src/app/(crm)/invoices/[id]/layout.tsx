@@ -198,7 +198,8 @@ export default async function InvoiceLayout({
               invoiceId={id}
               invoiceNumber={invoice.invoiceNumber}
               currentStatus={invoice.status}
-              defaultTo={invoice.contact?.email ?? ""}
+              defaultTo={invoice.customer.email ?? invoice.contact?.email ?? ""}
+              emailOptions={emailOptions}
               daysOverdue={
                 invoice.dueDate && new Date(invoice.dueDate) < new Date()
                   ? Math.floor((Date.now() - new Date(invoice.dueDate).getTime()) / 86400000)
@@ -210,7 +211,7 @@ export default async function InvoiceLayout({
               documentId={id}
               documentNumber={invoice.invoiceNumber}
               currentStatus={invoice.status}
-              defaultTo={invoice.contact?.email ?? invoice.customer.email ?? ""}
+              defaultTo={invoice.customer.email ?? invoice.contact?.email ?? ""}
               documentLanguage={"language" in invoice ? (invoice.language as string) : "NL"}
               emailOptions={emailOptions}
             />
