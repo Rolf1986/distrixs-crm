@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Bell } from "lucide-react";
+import { ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Bell, Download } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
@@ -23,6 +23,16 @@ type Invoice = {
   lastReminderAt: string | null;
 };
 
+type CreditNote = {
+  id: string;
+  creditNoteNumber: string;
+  creditNoteDate: string;
+  customerName: string;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+  total: number;
+};
+
 const STATUS_FILTERS = [
   { key: "DRAFT",       label: "Nog niet verzonden" },
   { key: "all",         label: "Alle" },
@@ -31,6 +41,7 @@ const STATUS_FILTERS = [
   { key: "SENT",        label: "Verzonden" },
   { key: "PARTIALLY_PAID", label: "Deels betaald" },
   { key: "PAID",        label: "Betaald" },
+  { key: "credit",      label: "Creditnota's" },
 ];
 
 const PAGE_SIZES = [30, 60, 100];
@@ -52,7 +63,7 @@ function invoiceSortKey(invoiceNumber: string): number {
   return parseInt(m[1], 10) * 1_000_000 + parseInt(m[2], 10);
 }
 
-export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
+export function InvoicesClient({ invoices, creditNotes = [] }: { invoices: Invoice[]; creditNotes?: CreditNote[] }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [sortDesc, setSortDesc] = useState(true); // newest first by default
@@ -127,6 +138,8 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
           {STATUS_FILTERS.map((f) => {
             const count = f.key === "all"
               ? invoices.filter((i) => i.status !== "DRAFT").length
+              : f.key === "credit"
+              ? creditNotes.length
               : f.key === "unpaid"
               ? invoices.filter((i) => i.status !== "PAID" && i.status !== "CREDITED" && i.status !== "DRAFT").length
               : f.key === "overdue"
@@ -179,7 +192,75 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
         </div>
       )}
 
+      {/* Creditnota's */}
+      {filter === "credit" && (
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Nummer</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Klant</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Factuur</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Datum</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Totaal</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">PDF</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {creditNotes.filter((cn) => {
+                if (!search) return true;
+                const q = search.toLowerCase();
+                return cn.creditNoteNumber.toLowerCase().includes(q)
+                  || cn.customerName.toLowerCase().includes(q)
+                  || (cn.invoiceNumber ?? "").toLowerCase().includes(q);
+              }).length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-14 text-center">
+                    <p className="text-3xl mb-2">↩️</p>
+                    <p className="text-slate-500 font-medium">Geen creditnota&apos;s</p>
+                  </td>
+                </tr>
+              )}
+              {creditNotes
+                .filter((cn) => {
+                  if (!search) return true;
+                  const q = search.toLowerCase();
+                  return cn.creditNoteNumber.toLowerCase().includes(q)
+                    || cn.customerName.toLowerCase().includes(q)
+                    || (cn.invoiceNumber ?? "").toLowerCase().includes(q);
+                })
+                .map((cn) => (
+                  <tr key={cn.id} className="border-l-4 border-l-red-400 hover:bg-slate-50 transition-colors group relative">
+                    <td className="px-4 py-3 font-mono font-medium text-slate-900">
+                      <Link href={`/credit-notes/${cn.id}`} className="absolute inset-0" />
+                      <span className="group-hover:text-brand-blue transition-colors">{cn.creditNoteNumber}</span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-700">{cn.customerName}</td>
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {cn.invoiceId ? (
+                        <Link href={`/invoices/${cn.invoiceId}/lines`} className="relative z-10 text-slate-500 hover:text-brand-blue hover:underline">
+                          {cn.invoiceNumber}
+                        </Link>
+                      ) : (
+                        <span className="text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">{formatDate(cn.creditNoteDate)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-red-600">{formatCurrency(cn.total)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <a href={`/api/credit-notes/${cn.id}/pdf`} className="relative z-10 inline-flex text-slate-400 hover:text-brand-blue" title="PDF downloaden">
+                        <Download className="w-4 h-4" />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Table */}
+      {filter !== "credit" && (
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -290,8 +371,10 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Pagination */}
+      {filter !== "credit" && (
       <div className="flex items-center justify-between text-sm text-slate-600">
         <div className="flex items-center gap-2">
           <span>Per pagina:</span>
@@ -334,6 +417,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
