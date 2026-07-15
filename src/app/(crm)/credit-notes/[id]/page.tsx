@@ -4,12 +4,20 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ChevronRight, Download } from "lucide-react";
+import { SendCreditNoteButton } from "@/components/SendCreditNoteButton";
 
 async function getCreditNote(id: string) {
   return prisma.creditNote.findUnique({
     where: { id },
     include: {
-      customer: { select: { id: true, companyName: true } },
+      customer: {
+        select: {
+          id: true,
+          companyName: true,
+          email: true,
+          contacts: { where: { isActive: true, email: { not: null } }, select: { email: true }, orderBy: { isPrimary: "desc" } },
+        },
+      },
       invoice: { select: { id: true, invoiceNumber: true } },
       lines: { orderBy: { createdAt: "asc" } },
       createdByUser: { select: { name: true } },
@@ -84,13 +92,24 @@ export default async function CreditNoteDetailPage({
               )}
             </div>
           </div>
-          <a
-            href={`/api/credit-notes/${cn.id}/pdf`}
-            className="flex items-center gap-1.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            PDF
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/credit-notes/${cn.id}/pdf`}
+              className="flex items-center gap-1.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              PDF
+            </a>
+            <SendCreditNoteButton
+              creditNoteId={cn.id}
+              creditNoteNumber={cn.creditNoteNumber}
+              defaultTo={cn.customer.email ?? cn.customer.contacts[0]?.email ?? ""}
+              emailOptions={Array.from(new Set([
+                cn.customer.email,
+                ...cn.customer.contacts.map((c) => c.email),
+              ].filter((e): e is string => !!e)))}
+            />
+          </div>
         </div>
 
         {/* KPI's */}
