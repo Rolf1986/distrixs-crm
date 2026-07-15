@@ -487,8 +487,25 @@ model Quote {
   invoices           Invoice[]
   files              FileAsset[]
   orderConfirmations OrderConfirmation[]
+  emails             QuoteEmail[]
 
   @@map("quotes")
+}
+
+model QuoteEmail {
+  id         String   @id @default(cuid())
+  quoteId    String   @map("quote_id")
+  toAddress  String   @map("to_address")
+  ccAddress  String?  @map("cc_address")
+  subject    String
+  bodyHtml   String   @map("body_html")
+  sentAt     DateTime @default(now()) @map("sent_at")
+  createdBy  String?  @map("created_by")
+
+  quote Quote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([quoteId])
+  @@map("quote_emails")
 }
 
 model QuoteLine {
