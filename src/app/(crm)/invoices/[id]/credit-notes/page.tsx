@@ -13,6 +13,10 @@ async function getInvoiceWithCreditNotes(id: string) {
       invoiceNumber: true,
       status: true,
       total: true,
+      lines: {
+        select: { id: true, skuSnapshot: true, titleSnapshot: true, qty: true, grossUnitPrice: true, netLineTotal: true, vatRate: true },
+        orderBy: { createdAt: "asc" },
+      },
       creditNotes: {
         include: {
           lines: { select: { lineTotal: true } },
@@ -51,6 +55,15 @@ export default async function InvoiceCreditNotesPage({
           invoiceId={id}
           invoiceNumber={invoice.invoiceNumber}
           status={invoice.status}
+          lines={invoice.lines.map((l) => ({
+            id: l.id,
+            skuSnapshot: l.skuSnapshot,
+            titleSnapshot: l.titleSnapshot,
+            qty: Number(l.qty),
+            grossUnitPrice: Number(l.grossUnitPrice),
+            netLineTotal: Number(l.netLineTotal),
+            vatRate: Number(l.vatRate),
+          }))}
         />
       </div>
 
