@@ -24,6 +24,16 @@ async function getInvoices() {
   });
 }
 
+async function getCreditNotes() {
+  return prisma.creditNote.findMany({
+    include: {
+      customer: { select: { companyName: true } },
+      invoice: { select: { id: true, invoiceNumber: true } },
+    },
+    orderBy: { creditNoteDate: "desc" },
+  });
+}
+
 async function getCustomers() {
   return prisma.customer.findMany({
     where: { status: "ACTIVE" },
@@ -41,7 +51,12 @@ async function getDealsForInvoice() {
 }
 
 export default async function InvoicesPage() {
-  const [invoices, customers, deals] = await Promise.all([getInvoices(), getCustomers(), getDealsForInvoice()]);
+  const [invoices, customers, deals, creditNotes] = await Promise.all([
+    getInvoices(),
+    getCustomers(),
+    getDealsForInvoice(),
+    getCreditNotes(),
+  ]);
 
   const unpaidCount = invoices.filter(
     (i) => i.status !== "PAID" && i.status !== "CREDITED"
@@ -107,6 +122,15 @@ export default async function InvoicesPage() {
             status: inv.status,
             reminderCount: inv.reminders.length,
             lastReminderAt: inv.reminders[0]?.sentAt?.toISOString() ?? null,
+          }))}
+          creditNotes={creditNotes.map((cn) => ({
+            id: cn.id,
+            creditNoteNumber: cn.creditNoteNumber,
+            creditNoteDate: cn.creditNoteDate.toISOString(),
+            customerName: cn.customer.companyName,
+            invoiceId: cn.invoice?.id ?? null,
+            invoiceNumber: cn.invoice?.invoiceNumber ?? null,
+            total: Number(cn.total),
           }))}
         />
       </div>
