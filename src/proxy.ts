@@ -20,6 +20,10 @@ export default async function proxy(req: NextRequest) {
   if (
     pathname === "/track.js" || // publiek analytics-snippet (webshop laadt dit anoniem)
     pathname === "/logo.png" || // logo voor e-mails en PDF's
+    pathname === "/sw.js" || // service worker (PWA)
+    pathname === "/manifest.webmanifest" || // PWA-manifest
+    pathname === "/apple-touch-icon.png" ||
+    /^\/icon-[\w-]+\.png$/.test(pathname) || // PWA-iconen
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/retour") ||
     pathname === "/api/rma" ||
