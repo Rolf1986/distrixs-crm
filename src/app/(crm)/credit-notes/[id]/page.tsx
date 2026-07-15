@@ -3,7 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { KpiCard } from "@/components/ui/KpiCard";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 
 async function getCreditNote(id: string) {
   return prisma.creditNote.findUnique({
@@ -84,6 +84,13 @@ export default async function CreditNoteDetailPage({
               )}
             </div>
           </div>
+          <a
+            href={`/api/credit-notes/${cn.id}/pdf`}
+            className="flex items-center gap-1.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            PDF
+          </a>
         </div>
 
         {/* KPI's */}

@@ -35,6 +35,7 @@ async function getInvoice(id: string) {
       deal: { select: { id: true, dealNumber: true } },
       quote: { select: { id: true, quoteNumber: true } },
       contact: { select: { firstName: true, lastName: true, email: true } },
+      creditNotes: { select: { id: true, total: true } },
     },
   });
 }
@@ -241,6 +242,29 @@ export default async function InvoiceLayout({
             highlight={Number(invoice.openAmount) > 0}
           />
         </div>
+
+        {/* Creditnota's: laat zien wat er gecrediteerd is en wat er netto resteert */}
+        {(() => {
+          const credited = invoice.creditNotes.reduce((s, c) => s + Number(c.total), 0);
+          if (credited <= 0) return null;
+          const net = Math.max(0, Number(invoice.openAmount) - credited);
+          return (
+            <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm">
+              <span className="text-slate-500">
+                Open bedrag <span className="font-medium text-slate-700">{formatCurrency(Number(invoice.openAmount))}</span>
+              </span>
+              <span className="text-red-600">
+                − Gecrediteerd <span className="font-medium">{formatCurrency(credited)}</span>
+              </span>
+              <span className="text-slate-700">
+                = Netto te betalen <span className="font-semibold text-slate-900">{formatCurrency(net)}</span>
+              </span>
+              <span className="text-xs text-slate-400">
+                (creditnota staat administratief los van de factuur)
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Tabs */}
         <TabNav tabs={[
