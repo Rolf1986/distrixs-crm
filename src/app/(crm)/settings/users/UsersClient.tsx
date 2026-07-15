@@ -74,6 +74,7 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
 
   async function saveEdit(id: string) {
     setSaving(true);
+    setError(null);
     try {
       const patch: Record<string, string> = {};
       if (editForm.name.trim()) patch.name = editForm.name;
@@ -89,18 +90,29 @@ export function UsersClient({ initialUsers }: { initialUsers: User[] }) {
         setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...updated } : u)));
         setEditingId(null);
         router.refresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Wijzigen mislukt");
       }
+    } catch {
+      setError("Netwerk- of serverfout");
     } finally {
       setSaving(false);
     }
   }
 
   async function toggleActive(user: User) {
-    await fetch(`/api/users/${user.id}`, {
+    setError(null);
+    const res = await fetch(`/api/users/${user.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !user.isActive }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Status wijzigen mislukt");
+      return;
+    }
     setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, isActive: !u.isActive } : u)));
     router.refresh();
   }

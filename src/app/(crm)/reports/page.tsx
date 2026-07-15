@@ -135,10 +135,11 @@ async function getReportData() {
         payments: { select: { paymentDate: true } },
       },
     }),
-    // F. Top klanten — total invoiced per customer
+    // F. Top klanten — total invoiced per customer (concepten uitgesloten,
+    //    consistent met de omzet-KPI's hierboven)
     prisma.invoice.groupBy({
       by: ["customerId"],
-      where: { status: { notIn: ["CREDITED"] } },
+      where: { status: { in: [...REVENUE_STATUSES] } },
       _sum: { total: true },
       _count: { id: true },
       orderBy: { _sum: { total: "desc" } },
