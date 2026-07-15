@@ -14,6 +14,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { CreateCreditNoteButton } from "@/components/CreateCreditNoteButton";
 import { DeleteInvoiceButton } from "@/components/DeleteInvoiceButton";
+import { TwinfieldSyncButton } from "@/components/TwinfieldSyncButton";
 
 async function getInvoice(id: string) {
   return prisma.invoice.findUnique({
@@ -214,6 +215,12 @@ export default async function InvoiceLayout({
               defaultTo={invoice.customer.email ?? invoice.contact?.email ?? ""}
               documentLanguage={"language" in invoice ? (invoice.language as string) : "NL"}
               emailOptions={emailOptions}
+            />
+            <TwinfieldSyncButton
+              invoiceId={id}
+              status={invoice.status}
+              syncStatus={invoice.twinfieldSyncStatus}
+              reference={invoice.twinfieldReference ?? null}
             />
             <InvoiceStatusActions
               invoiceId={id}
