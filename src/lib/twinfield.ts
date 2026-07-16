@@ -377,18 +377,19 @@ export async function findOrCreateDebtor(
   }
 
   // 3. If not found, create a new debtor
-  // Debitor code format in this admin: 1[0-9]{4} (10000-19999)
-  // Gebruik sequentiële code op basis van hoogste bestaande code in onze DB
-  // zodat we nooit een code tweemaal aanmaken (Twinfield geeft geen fout bij dubbele code maar overschrijft)
+  // Nieuwe debiteuren in de 2xxxx-reeks (20000-29999). De oude, uit het
+  // Teamleader-tijdperk in Twinfield bestaande debiteuren zitten in de
+  // 1xxxx-reeks; door voortaan met 2 te beginnen kunnen we nooit een
+  // bestaande code overschrijven (Twinfield geeft geen fout bij dubbele code).
   if (!foundCode) {
     const usedRows = await prisma.$queryRaw<Array<{ twinfield_debtor_code: string }>>`
       SELECT twinfield_debtor_code FROM customers
-      WHERE twinfield_debtor_code IS NOT NULL AND twinfield_debtor_code ~ '^1[0-9]{4}$'
+      WHERE twinfield_debtor_code IS NOT NULL AND twinfield_debtor_code ~ '^2[0-9]{4}$'
     `;
     const usedCodes = new Set(usedRows.map((r) => r.twinfield_debtor_code));
 
-    let nextCode = 10000;
-    while (usedCodes.has(String(nextCode)) && nextCode < 19999) {
+    let nextCode = 20000;
+    while (usedCodes.has(String(nextCode)) && nextCode < 29999) {
       nextCode++;
     }
     const candidateCode = String(nextCode);
