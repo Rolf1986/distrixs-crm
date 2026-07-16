@@ -27,13 +27,38 @@ export function CreateCustomerButton() {
   const [cLast, setCLast] = useState("");
   const [cEmail, setCEmail] = useState("");
   const [cPhone, setCPhone] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupMsg, setLookupMsg] = useState("");
+
+  // Postcode + huisnummer → straat + plaats automatisch invullen (PDOK)
+  async function lookupAddress(pc: string, nr: string) {
+    const clean = pc.replace(/\s+/g, "").toUpperCase();
+    if (!/^\d{4}[A-Z]{2}$/.test(clean) || !nr.trim()) return;
+    setLookupBusy(true);
+    setLookupMsg("");
+    try {
+      const res = await fetch(`/api/postcode-lookup?postcode=${encodeURIComponent(clean)}&huisnummer=${encodeURIComponent(nr.trim())}`);
+      const data = await res.json();
+      if (res.ok) {
+        if (data.street) setStreet(data.street);
+        if (data.city) setCity(data.city);
+        setLookupMsg("✓ Adres gevonden");
+      } else {
+        setLookupMsg(data.error ?? "Geen adres gevonden");
+      }
+    } catch {
+      setLookupMsg("Zoeken mislukt");
+    } finally {
+      setLookupBusy(false);
+    }
+  }
 
   function reset() {
     setCompanyName(""); setKvkNumber(""); setVatNumber("");
     setStatus("ACTIVE"); setPaymentTerm("DAYS_14"); setLanguage("NL"); setEmail("");
     setStreet(""); setHouseNumber(""); setPostalCode(""); setCity("");
     setCFirst(""); setCLast(""); setCEmail(""); setCPhone("");
-    setError("");
+    setLookupMsg(""); setError("");
   }
 
   async function handleSubmit() {
@@ -130,24 +155,41 @@ export function CreateCustomerButton() {
             </FormField>
           </div>
 
-          {/* Adres (optioneel) */}
+          {/* Adres (optioneel) — postcode + huisnummer vult straat/plaats automatisch */}
           <div className="pt-2 mt-1 border-t border-slate-100">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Adres (optioneel)</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Adres (optioneel)</p>
+              {lookupMsg && (
+                <span className={`text-xs ${lookupMsg.startsWith("✓") ? "text-green-600" : "text-amber-600"}`}>
+                  {lookupBusy ? "Zoeken…" : lookupMsg}
+                </span>
+              )}
+            </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-2">
+              <FormField label="Postcode">
+                <input
+                  className={inputClass}
+                  value={postalCode}
+                  onChange={(e) => setPostalCode(e.target.value)}
+                  onBlur={(e) => lookupAddress(e.target.value, houseNumber)}
+                  placeholder="1234 AB"
+                />
+              </FormField>
+              <FormField label="Nr.">
+                <input
+                  className={inputClass}
+                  value={houseNumber}
+                  onChange={(e) => setHouseNumber(e.target.value)}
+                  onBlur={(e) => lookupAddress(postalCode, e.target.value)}
+                  placeholder="12A"
+                />
+              </FormField>
+              <FormField label="Plaats">
+                <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Amsterdam" />
+              </FormField>
+              <div className="col-span-3">
                 <FormField label="Straat">
                   <input className={inputClass} value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Dorpsstraat" />
-                </FormField>
-              </div>
-              <FormField label="Nr.">
-                <input className={inputClass} value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="12A" />
-              </FormField>
-              <FormField label="Postcode">
-                <input className={inputClass} value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="1234 AB" />
-              </FormField>
-              <div className="col-span-2">
-                <FormField label="Plaats">
-                  <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Amsterdam" />
                 </FormField>
               </div>
             </div>
