@@ -15,10 +15,25 @@ export function CreateCustomerButton() {
   const [vatNumber, setVatNumber] = useState("");
   const [status, setStatus] = useState("ACTIVE");
   const [paymentTerm, setPaymentTerm] = useState("DAYS_14");
+  const [language, setLanguage] = useState("NL");
+  const [email, setEmail] = useState("");
+  // Adres
+  const [street, setStreet] = useState("");
+  const [houseNumber, setHouseNumber] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [city, setCity] = useState("");
+  // Contactpersoon
+  const [cFirst, setCFirst] = useState("");
+  const [cLast, setCLast] = useState("");
+  const [cEmail, setCEmail] = useState("");
+  const [cPhone, setCPhone] = useState("");
 
   function reset() {
     setCompanyName(""); setKvkNumber(""); setVatNumber("");
-    setStatus("ACTIVE"); setPaymentTerm("DAYS_14"); setError("");
+    setStatus("ACTIVE"); setPaymentTerm("DAYS_14"); setLanguage("NL"); setEmail("");
+    setStreet(""); setHouseNumber(""); setPostalCode(""); setCity("");
+    setCFirst(""); setCLast(""); setCEmail(""); setCPhone("");
+    setError("");
   }
 
   async function handleSubmit() {
@@ -33,15 +48,25 @@ export function CreateCustomerButton() {
           companyName: companyName.trim(),
           kvkNumber: kvkNumber.trim() || null,
           vatNumber: vatNumber.trim() || null,
+          email: email.trim() || null,
           status,
           defaultPaymentTerm: paymentTerm,
+          defaultLanguage: language,
+          address: (street.trim() && city.trim())
+            ? { street: street.trim(), houseNumber: houseNumber.trim(), postalCode: postalCode.trim(), city: city.trim() }
+            : null,
+          contact: (cFirst.trim() || cLast.trim())
+            ? { firstName: cFirst.trim(), lastName: cLast.trim(), email: cEmail.trim() || null, phone: cPhone.trim() || null }
+            : null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Fout bij aanmaken"); return; }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error ?? `Fout bij aanmaken (${res.status})`); return; }
       setOpen(false);
       router.push(`/customers/${data.id}`);
       router.refresh();
+    } catch {
+      setError("Netwerkfout — probeer opnieuw");
     } finally { setLoading(false); }
   }
 
@@ -63,50 +88,89 @@ export function CreateCustomerButton() {
           error={error}
         >
           <FormField label="Bedrijfsnaam" required>
-            <input
-              className={inputClass}
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Acme BV"
-              autoFocus
-            />
-          </FormField>
-
-          <FormField label="Status">
-            <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value)}>
-              <option value="ACTIVE">Actief</option>
-              <option value="PROSPECT">Prospect</option>
-              <option value="INACTIVE">Inactief</option>
-            </select>
+            <input className={inputClass} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme BV" autoFocus />
           </FormField>
 
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="KVK-nummer">
-              <input
-                className={inputClass}
-                value={kvkNumber}
-                onChange={(e) => setKvkNumber(e.target.value)}
-                placeholder="12345678"
-              />
+            <FormField label="E-mail (factuur/hoofd)">
+              <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="info@acme.nl" />
             </FormField>
-            <FormField label="BTW-nummer">
-              <input
-                className={inputClass}
-                value={vatNumber}
-                onChange={(e) => setVatNumber(e.target.value)}
-                placeholder="NL123456789B01"
-              />
+            <FormField label="Status">
+              <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value)}>
+                <option value="ACTIVE">Actief</option>
+                <option value="PROSPECT">Prospect</option>
+                <option value="INACTIVE">Inactief</option>
+              </select>
             </FormField>
           </div>
 
-          <FormField label="Betalingstermijn">
-            <select className={inputClass} value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)}>
-              <option value="DAYS_14">14 dagen</option>
-              <option value="DAYS_14">30 dagen</option>
-              <option value="PREPAYMENT">Vooruitbetaling</option>
-              <option value="INSTALLMENTS">In termijnen</option>
-            </select>
-          </FormField>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="KVK-nummer">
+              <input className={inputClass} value={kvkNumber} onChange={(e) => setKvkNumber(e.target.value)} placeholder="12345678" />
+            </FormField>
+            <FormField label="BTW-nummer">
+              <input className={inputClass} value={vatNumber} onChange={(e) => setVatNumber(e.target.value)} placeholder="NL123456789B01" />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Betalingstermijn">
+              <select className={inputClass} value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)}>
+                <option value="DAYS_14">14 dagen</option>
+                <option value="DAYS_30">30 dagen</option>
+                <option value="PREPAYMENT">Vooruitbetaling</option>
+                <option value="INSTALLMENTS">In termijnen</option>
+              </select>
+            </FormField>
+            <FormField label="Taal (offerte/factuur)">
+              <select className={inputClass} value={language} onChange={(e) => setLanguage(e.target.value)}>
+                <option value="NL">🇳🇱 Nederlands</option>
+                <option value="EN">🇬🇧 Engels</option>
+              </select>
+            </FormField>
+          </div>
+
+          {/* Adres (optioneel) */}
+          <div className="pt-2 mt-1 border-t border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Adres (optioneel)</p>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <FormField label="Straat">
+                  <input className={inputClass} value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Dorpsstraat" />
+                </FormField>
+              </div>
+              <FormField label="Nr.">
+                <input className={inputClass} value={houseNumber} onChange={(e) => setHouseNumber(e.target.value)} placeholder="12A" />
+              </FormField>
+              <FormField label="Postcode">
+                <input className={inputClass} value={postalCode} onChange={(e) => setPostalCode(e.target.value)} placeholder="1234 AB" />
+              </FormField>
+              <div className="col-span-2">
+                <FormField label="Plaats">
+                  <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Amsterdam" />
+                </FormField>
+              </div>
+            </div>
+          </div>
+
+          {/* Contactpersoon (optioneel) */}
+          <div className="pt-2 mt-1 border-t border-slate-100">
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Contactpersoon (optioneel)</p>
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Voornaam">
+                <input className={inputClass} value={cFirst} onChange={(e) => setCFirst(e.target.value)} />
+              </FormField>
+              <FormField label="Achternaam">
+                <input className={inputClass} value={cLast} onChange={(e) => setCLast(e.target.value)} />
+              </FormField>
+              <FormField label="E-mail">
+                <input className={inputClass} type="email" value={cEmail} onChange={(e) => setCEmail(e.target.value)} />
+              </FormField>
+              <FormField label="Telefoon">
+                <input className={inputClass} value={cPhone} onChange={(e) => setCPhone(e.target.value)} />
+              </FormField>
+            </div>
+          </div>
         </CreateModal>
       )}
     </>
