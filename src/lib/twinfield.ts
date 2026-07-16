@@ -534,10 +534,9 @@ export async function syncInvoiceToTwinfield(
     // uitvoeringstype (performancetype) op de regel + een prestatiedatum in
     // de header. Distrixs levert goederen → "goods".
     const isEuIcp = vatMapping.vatCode === "ICL";
-    // Volgens de Twinfield-XSD komen de prestatievelden ná <description>.
-    const perfLines = isEuIcp
-      ? `\n        <performancetype>goods</performancetype>\n        <performancedate>${invoiceDate}</performancedate>`
-      : "";
+    // Intracommunautaire levering van goederen: alleen het uitvoeringstype.
+    // Bij "goods" mag GEEN uitvoeringsdatum mee (die is enkel voor diensten).
+    const perfLines = isEuIcp ? `\n        <performancetype>goods</performancetype>` : "";
 
     const detailLines = invoice.lines
       .map((line, i) => {
