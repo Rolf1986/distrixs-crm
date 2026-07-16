@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TabNav } from "@/components/TabNav";
+import { CustomerQuickCreate } from "@/components/CustomerQuickCreate";
 import { ChevronRight } from "lucide-react";
 
 async function getCustomer(id: string) {
@@ -53,6 +54,7 @@ export default async function CustomerLayout({
               <StatusBadge status={customer.status} />
             </div>
           </div>
+          <CustomerQuickCreate customerId={id} companyName={customer.companyName} />
         </div>
 
         {/* KPI's */}

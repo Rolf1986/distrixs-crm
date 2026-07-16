@@ -164,7 +164,7 @@ export function QuoteLinesClient({
   }
 
   async function addLine() {
-    if (!addSku || !addTitle || !addQty || !addPrice) return;
+    if (!addTitle || !addQty || !addPrice) return;
     setAdding(true);
     try {
       const res = await fetch(`/api/quotes/${quoteId}/lines`, {
@@ -522,10 +522,10 @@ export function QuoteLinesClient({
           {/* Handmatige invoer */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-500 mb-1">SKU</label>
+              <label className="block text-xs text-slate-500 mb-1">SKU (optioneel)</label>
               <input
                 className={`${inputClass} w-full`}
-                placeholder="Artikelcode"
+                placeholder="Leeg = eenmalige regel"
                 value={addSku}
                 onChange={(e) => setAddSku(e.target.value)}
               />
@@ -620,7 +620,7 @@ export function QuoteLinesClient({
               })()}
               <button
                 onClick={addLine}
-                disabled={adding || !addSku || !addTitle || !addQty || !addPrice}
+                disabled={adding || !addTitle || !addQty || !addPrice}
                 className="flex items-center gap-1.5 bg-brand-blue hover:bg-brand-blue-dark disabled:opacity-60 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
               >
                 {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
