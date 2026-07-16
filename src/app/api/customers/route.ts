@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       companyName,
       kvkNumber: kvkNumber || null,
       vatNumber: vatNumber || null,
-      defaultPaymentTerm: defaultPaymentTerm || "DAYS_30",
+      defaultPaymentTerm: defaultPaymentTerm || "DAYS_14",
       status: status || "ACTIVE",
     },
   });

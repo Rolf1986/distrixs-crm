@@ -14,11 +14,11 @@ export function CreateCustomerButton() {
   const [kvkNumber, setKvkNumber] = useState("");
   const [vatNumber, setVatNumber] = useState("");
   const [status, setStatus] = useState("ACTIVE");
-  const [paymentTerm, setPaymentTerm] = useState("DAYS_30");
+  const [paymentTerm, setPaymentTerm] = useState("DAYS_14");
 
   function reset() {
     setCompanyName(""); setKvkNumber(""); setVatNumber("");
-    setStatus("ACTIVE"); setPaymentTerm("DAYS_30"); setError("");
+    setStatus("ACTIVE"); setPaymentTerm("DAYS_14"); setError("");
   }
 
   async function handleSubmit() {
@@ -102,7 +102,7 @@ export function CreateCustomerButton() {
           <FormField label="Betalingstermijn">
             <select className={inputClass} value={paymentTerm} onChange={(e) => setPaymentTerm(e.target.value)}>
               <option value="DAYS_14">14 dagen</option>
-              <option value="DAYS_30">30 dagen</option>
+              <option value="DAYS_14">30 dagen</option>
               <option value="PREPAYMENT">Vooruitbetaling</option>
               <option value="INSTALLMENTS">In termijnen</option>
             </select>
