@@ -17,12 +17,14 @@ export async function PATCH(
   const data: Record<string, unknown> = {};
   const allowed = [
     "companyName", "kvkNumber", "vatNumber", "email",
-    "status", "defaultPaymentTerm",
+    "status", "defaultPaymentTerm", "defaultLanguage",
     "notes",
   ];
   for (const f of allowed) {
     if (f in body) data[f] = body[f] === "" ? null : body[f];
   }
+  // Taal moet NL of EN zijn
+  if ("defaultLanguage" in data && data.defaultLanguage !== "EN") data.defaultLanguage = "NL";
 
   const customer = await prisma.customer.update({ where: { id }, data });
   return NextResponse.json(customer);

@@ -13,6 +13,12 @@ export async function POST(req: NextRequest) {
   const year = new Date().getFullYear();
   const quoteNumber = await nextQuoteNumber(year);
 
+  // Taal volgt de klantkaart (NL/EN)
+  const cust = await prisma.customer.findUnique({
+    where: { id: customerId },
+    select: { defaultLanguage: true },
+  });
+
   const quote = await prisma.quote.create({
     data: {
       quoteNumber,
@@ -21,6 +27,7 @@ export async function POST(req: NextRequest) {
       status: "DRAFT",
       quoteDate: new Date(),
       validUntil: validUntil ? new Date(validUntil) : null,
+      language: cust?.defaultLanguage === "EN" ? "EN" : "NL",
       subtotal: 0,
       vatAmount: 0,
       total: 0,

@@ -15,14 +15,13 @@ export async function POST(req: NextRequest) {
 
   // Bereken vervaldatum op basis van betalingstermijn.
   // Zonder expliciete keuze: de standaardtermijn van de klant (klantkaart).
-  let term = paymentTerm;
-  if (!term) {
-    const cust = await prisma.customer.findUnique({
-      where: { id: customerId },
-      select: { defaultPaymentTerm: true },
-    });
-    term = cust?.defaultPaymentTerm ?? "DAYS_14";
-  }
+  // Taal + (bij ontbrekende keuze) termijn volgen de klantkaart
+  const cust = await prisma.customer.findUnique({
+    where: { id: customerId },
+    select: { defaultPaymentTerm: true, defaultLanguage: true },
+  });
+  const term = paymentTerm || cust?.defaultPaymentTerm || "DAYS_14";
+  const language = cust?.defaultLanguage === "EN" ? "EN" : "NL";
   const invoiceDate = new Date();
   let computedDueDate: Date;
   if (dueDate) {
@@ -45,6 +44,7 @@ export async function POST(req: NextRequest) {
       invoiceDate,
       dueDate: computedDueDate,
       paymentTermType: term,
+      language,
       subtotal: 0,
       vatAmount: 0,
       total: 0,

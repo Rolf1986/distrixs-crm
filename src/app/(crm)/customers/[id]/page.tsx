@@ -28,6 +28,7 @@ export default async function CustomerInfoPage({
         email: customer.email,
         status: customer.status,
         defaultPaymentTerm: customer.defaultPaymentTerm,
+        defaultLanguage: customer.defaultLanguage,
         notes: customer.notes,
         addresses: customer.addresses.map((a) => ({
           id: a.id,
