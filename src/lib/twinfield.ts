@@ -470,6 +470,11 @@ export async function syncInvoiceToTwinfield(
       return { success: false, error: "Een concept-factuur kan niet naar Twinfield. Verstuur/boek de factuur eerst." };
     }
 
+    // Al geboekt → niet nog eens (voorkomt dubbele boeking bij opnieuw verzenden)
+    if (invoice.twinfieldSyncStatus === "SYNCED") {
+      return { success: true, reference: invoice.twinfieldReference ?? undefined };
+    }
+
     // 2. Get valid OAuth token
     const token = await getValidToken();
 

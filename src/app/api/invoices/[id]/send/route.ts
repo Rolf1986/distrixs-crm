@@ -10,6 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { createMolliePaymentLink } from "@/lib/mollie";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { logSentEmail } from "@/lib/sent-email";
+import { syncInvoiceToTwinfield, type TwinfieldSyncResult } from "@/lib/twinfield";
 
 export async function POST(
   req: NextRequest,
@@ -146,9 +147,7 @@ export async function POST(
     createdBy: session.user.id,
   });
 
-  // Status DRAFT → SENT. Twinfield-sync gebeurt bewust HANDMATIG
-  // (knop op de factuur), niet automatisch — zo houd je controle tijdens
-  // de overgang en test je per factuur of de boeking goed doorkomt.
+  // Status DRAFT → SENT
   if (invoice.status === "DRAFT") {
     await prisma.invoice.update({
       where: { id },
@@ -156,9 +155,23 @@ export async function POST(
     });
   }
 
+  // Automatisch naar Twinfield boeken (fail-soft: mislukt dit, dan is de mail
+  // al verstuurd en kan de factuur later handmatig via de knop). Al geboekte
+  // facturen worden overgeslagen door syncInvoiceToTwinfield.
+  let twinfield: TwinfieldSyncResult | null = null;
+  try {
+    twinfield = await syncInvoiceToTwinfield(id);
+    if (!twinfield.success) {
+      console.warn(`[invoice send] Twinfield-boeking mislukt voor ${invoice.invoiceNumber}: ${twinfield.error}`);
+    }
+  } catch (e) {
+    console.warn(`[invoice send] Twinfield-boeking fout voor ${invoice.invoiceNumber}:`, e);
+  }
+
   return NextResponse.json({
     ok: true,
     simulated: result.simulated ?? false,
     emailId: result.id,
+    twinfield: twinfield ? { success: twinfield.success, error: twinfield.error } : null,
   });
 }
