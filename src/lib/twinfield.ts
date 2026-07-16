@@ -525,6 +525,12 @@ export async function syncInvoiceToTwinfield(
     const period = formatTwinfieldPeriod(invoice.invoiceDate);
     const total = Number(invoice.total).toFixed(2);
 
+    // Intracommunautaire levering (EU, bv. België): Twinfield eist een
+    // uitvoeringstype (performancetype) op de regel + een prestatiedatum in
+    // de header. Distrixs levert goederen → "goods".
+    const isEuIcp = vatMapping.vatCode === "ICL";
+    const perfTypeLine = isEuIcp ? `\n        <performancetype>goods</performancetype>` : "";
+
     const detailLines = invoice.lines
       .map((line, i) => {
         const netValue = Number(line.netLineTotal).toFixed(2);
@@ -534,7 +540,7 @@ export async function syncInvoiceToTwinfield(
           : "";
         return `      <line type="detail" id="${2 + i}">
         <dim1>${escapeXml(vatMapping.revenueAccount)}</dim1>
-        <value>${netValue}</value>${vatLine}
+        <value>${netValue}</value>${vatLine}${perfTypeLine}
         <description>${escapeXml(desc)}</description>
       </line>`;
       })
@@ -549,7 +555,7 @@ export async function syncInvoiceToTwinfield(
       <date>${invoiceDate}</date>
       <period>${period}</period>
       <invoicenumber>${escapeXml(invoice.invoiceNumber)}</invoicenumber>
-      <description>${escapeXml(invoice.invoiceNumber)}</description>
+      <description>${escapeXml(invoice.invoiceNumber)}</description>${isEuIcp ? `\n      <performancedate>${invoiceDate}</performancedate>` : ""}
     </header>
     <lines>
       <line type="total" id="1">
