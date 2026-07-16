@@ -21,6 +21,7 @@ async function getData() {
       twinfield_debtor_account: string | null;
       twinfield_revenue_account: string | null;
       twinfield_vat_code: string | null;
+      twinfield_auto_sync: boolean | null;
     }>
   >`SELECT
       twinfield_access_token,
@@ -29,7 +30,8 @@ async function getData() {
       twinfield_transaction_type,
       twinfield_debtor_account,
       twinfield_revenue_account,
-      twinfield_vat_code
+      twinfield_vat_code,
+      twinfield_auto_sync
     FROM company_settings WHERE id = 'singleton' LIMIT 1`;
 
   const settings = settingsRows[0] ?? null;
@@ -67,6 +69,7 @@ export default async function TwinfieldSettingsPage({
       debtorAccount={settings?.twinfield_debtor_account ?? "1300"}
       revenueAccount={settings?.twinfield_revenue_account ?? "8000"}
       vatCode={settings?.twinfield_vat_code ?? "VH"}
+      autoSync={settings?.twinfield_auto_sync !== false}
       tokenExpiresAt={settings?.twinfield_token_expires_at?.toISOString() ?? null}
       recentInvoices={invoices.map((inv) => ({
         id: inv.id,

@@ -10,7 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { createMolliePaymentLink } from "@/lib/mollie";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { logSentEmail } from "@/lib/sent-email";
-import { syncInvoiceToTwinfield, type TwinfieldSyncResult } from "@/lib/twinfield";
+import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled, type TwinfieldSyncResult } from "@/lib/twinfield";
 
 export async function POST(
   req: NextRequest,
@@ -159,13 +159,15 @@ export async function POST(
   // al verstuurd en kan de factuur later handmatig via de knop). Al geboekte
   // facturen worden overgeslagen door syncInvoiceToTwinfield.
   let twinfield: TwinfieldSyncResult | null = null;
-  try {
-    twinfield = await syncInvoiceToTwinfield(id);
-    if (!twinfield.success) {
-      console.warn(`[invoice send] Twinfield-boeking mislukt voor ${invoice.invoiceNumber}: ${twinfield.error}`);
+  if (await isTwinfieldAutoSyncEnabled()) {
+    try {
+      twinfield = await syncInvoiceToTwinfield(id);
+      if (!twinfield.success) {
+        console.warn(`[invoice send] Twinfield-boeking mislukt voor ${invoice.invoiceNumber}: ${twinfield.error}`);
+      }
+    } catch (e) {
+      console.warn(`[invoice send] Twinfield-boeking fout voor ${invoice.invoiceNumber}:`, e);
     }
-  } catch (e) {
-    console.warn(`[invoice send] Twinfield-boeking fout voor ${invoice.invoiceNumber}:`, e);
   }
 
   return NextResponse.json({

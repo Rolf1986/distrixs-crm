@@ -439,6 +439,18 @@ function getVatMapping(country: string, defaultSettings: TwinfieldSettings): Vat
 
 // ─── Invoice sync ─────────────────────────────────────────────────────────────
 
+/** Staat de automatische Twinfield-boeking bij verzenden aan? (default: ja) */
+export async function isTwinfieldAutoSyncEnabled(): Promise<boolean> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ twinfield_auto_sync: boolean | null }>>`
+      SELECT twinfield_auto_sync FROM company_settings WHERE id = 'singleton' LIMIT 1
+    `;
+    return rows[0]?.twinfield_auto_sync !== false;
+  } catch {
+    return true;
+  }
+}
+
 export async function syncInvoiceToTwinfield(
   invoiceId: string
 ): Promise<TwinfieldSyncResult> {

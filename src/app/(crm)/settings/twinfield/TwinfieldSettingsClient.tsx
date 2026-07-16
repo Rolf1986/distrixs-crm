@@ -28,6 +28,7 @@ type Props = {
   debtorAccount: string;
   revenueAccount: string;
   vatCode: string;
+  autoSync: boolean;
   tokenExpiresAt: string | null;
   recentInvoices: InvoiceRow[];
   flash: "success" | string | null;
@@ -47,6 +48,7 @@ export function TwinfieldSettingsClient({
   debtorAccount: initialDebtorAccount,
   revenueAccount: initialRevenueAccount,
   vatCode: initialVatCode,
+  autoSync: initialAutoSync,
   tokenExpiresAt,
   recentInvoices,
   flash,
@@ -56,6 +58,7 @@ export function TwinfieldSettingsClient({
   const [debtorAccount, setDebtorAccount] = useState(initialDebtorAccount);
   const [revenueAccount, setRevenueAccount] = useState(initialRevenueAccount);
   const [vatCode, setVatCode] = useState(initialVatCode);
+  const [autoSync, setAutoSync] = useState(initialAutoSync);
 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
@@ -119,6 +122,7 @@ export function TwinfieldSettingsClient({
           twinfield_debtor_account: debtorAccount,
           twinfield_revenue_account: revenueAccount,
           twinfield_vat_code: vatCode,
+          twinfield_auto_sync: autoSync,
         }),
       });
       if (res.ok) {
@@ -362,6 +366,26 @@ export function TwinfieldSettingsClient({
                 BTW-code voor verkoopfacturen (bijv. VH = hoog 21%)
               </p>
             </div>
+          </div>
+
+          {/* Automatische sync aan/uit */}
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 mt-2">
+            <div>
+              <p className="text-sm font-medium text-slate-800">Automatisch naar Twinfield bij verzenden</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Staat dit aan, dan wordt een factuur bij het versturen (of op ‘Verzonden’ zetten) automatisch als concept-boeking naar Twinfield gestuurd. Uit = alleen handmatig via de knop op de factuur.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAutoSync((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${autoSync ? "bg-brand-blue" : "bg-slate-300"}`}
+              role="switch"
+              aria-checked={autoSync}
+              title={autoSync ? "Auto-sync staat aan" : "Auto-sync staat uit"}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${autoSync ? "translate-x-5" : "translate-x-1"}`} />
+            </button>
           </div>
 
           <div className="flex items-center gap-3 pt-2">
