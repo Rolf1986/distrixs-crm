@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Check, X, Package, ShoppingCart } from "lucide-react";
+import { Plus, Loader2, Pencil, Check, X, Package, ShoppingCart, MapPin } from "lucide-react";
 
 type Supplier = {
   id: string;
@@ -242,7 +242,15 @@ export function SuppliersClient({ initialSuppliers }: { initialSuppliers: Suppli
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1">
+                      <div className="flex items-center gap-1">
+                        <a
+                          href={`/suppliers/${s.id}`}
+                          className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-brand-blue hover:bg-blue-50 transition-colors"
+                          title="Adressen & contactpersonen"
+                        >
+                          <MapPin className="w-3.5 h-3.5" />
+                          Adres/contact
+                        </a>
                         <button
                           onClick={() => { setEditingId(s.id); setEditForm({}); }}
                           className="p-1.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100"
