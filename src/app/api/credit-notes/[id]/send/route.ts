@@ -5,6 +5,7 @@ import { createElement } from "react";
 import { CreditNotePdf } from "@/components/pdf/CreditNotePdf";
 import { buildCreditNotePdfData } from "@/lib/pdf-data";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
+import { logSentEmail } from "@/lib/sent-email";
 
 export async function POST(
   req: NextRequest,
@@ -57,6 +58,19 @@ export async function POST(
   if (!result.ok) {
     return NextResponse.json({ error: result.error ?? "Versturen mislukt" }, { status: 500 });
   }
+
+  await logSentEmail({
+    category: "CREDIT_NOTE",
+    to: to.trim(),
+    cc: cc?.trim() || null,
+    subject: finalSubject,
+    bodyHtml: html,
+    relatedType: "CreditNote",
+    relatedId: id,
+    relatedLabel: data.creditNoteNumber,
+    customerName: data.customer.companyName ?? null,
+    createdBy: session.user.id,
+  });
 
   return NextResponse.json({ ok: true, simulated: result.simulated ?? false });
 }

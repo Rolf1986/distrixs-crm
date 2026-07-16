@@ -9,6 +9,7 @@ import { sendEmail, buildEmailHtml } from "@/lib/email";
 import { formatCurrency } from "@/lib/utils";
 import { createMolliePaymentLink } from "@/lib/mollie";
 import { nextInvoiceNumber } from "@/lib/sequences";
+import { logSentEmail } from "@/lib/sent-email";
 
 export async function POST(
   req: NextRequest,
@@ -131,6 +132,19 @@ export async function POST(
       createdBy: session.user.id,
     },
   }).catch((e) => console.warn("[invoice send] mail-log niet opgeslagen:", e));
+
+  await logSentEmail({
+    category: "INVOICE",
+    to: to.trim(),
+    cc: cc?.trim() || null,
+    subject,
+    bodyHtml: html,
+    relatedType: "Invoice",
+    relatedId: id,
+    relatedLabel: invoice.invoiceNumber,
+    customerName: invoice.customer?.companyName ?? null,
+    createdBy: session.user.id,
+  });
 
   // Status DRAFT → SENT. Twinfield-sync gebeurt bewust HANDMATIG
   // (knop op de factuur), niet automatisch — zo houd je controle tijdens

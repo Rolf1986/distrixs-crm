@@ -7,6 +7,7 @@ import { createElement } from "react";
 import { InvoicePdf } from "@/components/pdf/InvoicePdf";
 import { buildInvoicePdfData } from "@/lib/pdf-data";
 import { formatCurrency } from "@/lib/utils";
+import { logSentEmail } from "@/lib/sent-email";
 
 export async function POST(
   req: NextRequest,
@@ -100,6 +101,19 @@ export async function POST(
       createdBy: session.user.id,
     },
   }).catch((e) => console.warn("[invoice remind] mail-log niet opgeslagen:", e));
+
+  await logSentEmail({
+    category: "REMINDER",
+    to: to.trim(),
+    cc: cc?.trim() || null,
+    subject,
+    bodyHtml: html,
+    relatedType: "Invoice",
+    relatedId: id,
+    relatedLabel: invoice.invoiceNumber,
+    customerName: invoice.customer?.companyName ?? null,
+    createdBy: session.user.id,
+  });
 
   return NextResponse.json({ ok: true, simulated: result.simulated ?? false });
 }
