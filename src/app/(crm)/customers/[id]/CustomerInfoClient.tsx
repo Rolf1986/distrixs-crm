@@ -12,6 +12,7 @@ type CustomerInfo = {
   email: string | null;
   status: string;
   defaultPaymentTerm: string;
+  defaultLanguage: string;
   notes: string | null;
   addresses: Array<{
     id: string;
@@ -53,6 +54,8 @@ const PAYMENT_TERM_OPTIONS = [
 const PAYMENT_TERM_LABEL: Record<string, string> = Object.fromEntries(
   PAYMENT_TERM_OPTIONS.map((o) => [o.value, o.label])
 );
+
+const LANGUAGE_LABEL: Record<string, string> = { NL: "🇳🇱 Nederlands", EN: "🇬🇧 Engels" };
 
 const inputClass =
   "rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-white w-full";
@@ -570,6 +573,26 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
                   autoFocus
                 >
                   {PAYMENT_TERM_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              }
+            />
+            <InlineField
+              label="Taal (offerte/factuur)"
+              value={customer.defaultLanguage}
+              displayValue={LANGUAGE_LABEL[customer.defaultLanguage] ?? customer.defaultLanguage}
+              editing={editing === "defaultLanguage"}
+              onEdit={() => startEdit("defaultLanguage", customer.defaultLanguage)}
+              onSave={() => saveField("defaultLanguage")}
+              onCancel={() => setEditing(null)}
+              editContent={
+                <select
+                  className={inputClass}
+                  value={fieldValues.defaultLanguage ?? customer.defaultLanguage}
+                  onChange={(e) => setFieldValues((f) => ({ ...f, defaultLanguage: e.target.value }))}
+                  autoFocus
+                >
+                  <option value="NL">🇳🇱 Nederlands</option>
+                  <option value="EN">🇬🇧 Engels</option>
                 </select>
               }
             />

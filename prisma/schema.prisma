@@ -228,6 +228,7 @@ model Customer {
   vatCountry         String?        @map("vat_country")
   email              String?        // hoofd-/factuur-e-mailadres van het bedrijf (uit Teamleader)
   defaultPaymentTerm PaymentTerm    @default(DAYS_14) @map("default_payment_term")
+  defaultLanguage    String         @default("NL") @map("default_language")
   notes              String?
   status             CustomerStatus @default(ACTIVE)
   externalId         String?        @unique @map("external_id")
