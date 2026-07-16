@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(updates).length === 0 && typeof body.twinfield_auto_sync !== "boolean") {
     return NextResponse.json({ error: "Geen geldige velden" }, { status: 400 });
   }
 
@@ -57,6 +57,13 @@ export async function PATCH(req: NextRequest) {
   if (updates.twinfield_vat_code !== undefined) {
     await prisma.$executeRaw`
       UPDATE company_settings SET twinfield_vat_code = ${updates.twinfield_vat_code} WHERE id = 'singleton'
+    `;
+  }
+
+  // Auto-sync aan/uit (boolean)
+  if (typeof body.twinfield_auto_sync === "boolean") {
+    await prisma.$executeRaw`
+      UPDATE company_settings SET twinfield_auto_sync = ${body.twinfield_auto_sync} WHERE id = 'singleton'
     `;
   }
 
