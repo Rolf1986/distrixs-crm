@@ -532,11 +532,24 @@ export async function POST(req: NextRequest): Promise<Response> {
         const tlPaid = newStatus === "PAID" ? invTotal : 0;
         const finalPaid = Math.max(crmPaid, tlPaid);
         const finalOpen = Math.max(0, Math.round((invTotal - finalPaid) * 100) / 100);
-        const finalStatus =
+        const paidBasedStatus =
           finalOpen <= 0 ? "PAID" : finalPaid > 0 ? "PARTIALLY_PAID" : newStatus;
+        // Status NOOIT terugzetten door een import. Sinds de cutover is het CRM
+        // de bron: een in het CRM verzonden factuur mag niet terug naar concept
+        // omdat hij in Teamleader nog als concept staat. Alleen vooruit.
+        const rank: Record<string, number> = {
+          DRAFT: 0, SENT: 1, OVERDUE: 1, PARTIALLY_PAID: 2, PAID: 3, CREDITED: 4,
+        };
+        const finalStatus =
+          (rank[paidBasedStatus] ?? 0) >= (rank[existingInv.status] ?? 0)
+            ? paidBasedStatus
+            : existingInv.status;
+        // Een TL-nummer alleen overnemen als het CRM nog een concept-placeholder
+        // (DRAFT-…) heeft; een al toegekend echt nummer nooit overschrijven.
+        const safeNeedsNumber = needsNumber && existingInv.invoiceNumber.startsWith("DRAFT-");
         const needsStatusChange =
           existingInv.status !== finalStatus || crmPaid !== finalPaid;
-        if (needsStatusChange || needsDealLink || needsNumber) {
+        if (needsStatusChange || needsDealLink || safeNeedsNumber) {
           try {
             await prisma.invoice.update({
               where: { id: existingInv.id },
@@ -545,7 +558,7 @@ export async function POST(req: NextRequest): Promise<Response> {
                   ? { status: finalStatus, paidAmount: finalPaid, openAmount: finalOpen }
                   : {}),
                 ...(needsDealLink ? { dealId: resolvedDealId } : {}),
-                ...(needsNumber ? { invoiceNumber: inv.invoice_number as string } : {}),
+                ...(safeNeedsNumber ? { invoiceNumber: inv.invoice_number as string } : {}),
               },
             });
             counts.invoicesUpdated++;
