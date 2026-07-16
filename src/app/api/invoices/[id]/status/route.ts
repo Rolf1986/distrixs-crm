@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { nextInvoiceNumber } from "@/lib/sequences";
+import { syncInvoiceToTwinfield } from "@/lib/twinfield";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   DRAFT:          ["SENT"],
@@ -96,6 +97,17 @@ export async function PATCH(
     oldValue: invoice.status,
     newValue: newStatus,
   });
+
+  // Concept dat op verzonden wordt gezet → automatisch naar Twinfield boeken
+  // (fail-soft; al geboekte facturen worden overgeslagen).
+  if (invoice.status === "DRAFT" && newStatus === "SENT") {
+    try {
+      const tf = await syncInvoiceToTwinfield(id);
+      if (!tf.success) console.warn(`[invoice status] Twinfield-boeking mislukt voor ${updated.invoiceNumber}: ${tf.error}`);
+    } catch (e) {
+      console.warn(`[invoice status] Twinfield-boeking fout voor ${updated.invoiceNumber}:`, e);
+    }
+  }
 
   return NextResponse.json({ id: updated.id, status: updated.status });
 }
