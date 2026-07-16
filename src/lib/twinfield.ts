@@ -464,6 +464,11 @@ export async function syncInvoiceToTwinfield(
       return { success: false, error: "Factuur niet gevonden" };
     }
 
+    // Concepten mogen NOOIT naar Twinfield: geen definitief nummer, nog wijzigbaar
+    if (invoice.status === "DRAFT" || invoice.invoiceNumber.startsWith("DRAFT-")) {
+      return { success: false, error: "Een concept-factuur kan niet naar Twinfield. Verstuur/boek de factuur eerst." };
+    }
+
     // 2. Get valid OAuth token
     const token = await getValidToken();
 
