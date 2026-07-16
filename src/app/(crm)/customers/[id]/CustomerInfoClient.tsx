@@ -292,6 +292,25 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
     }
   }
 
+  // Postcode + huisnummer → straat + plaats (PDOK, alleen NL)
+  async function lookupAddressForm(pc: string, nr: string) {
+    const country = (addressForm.country || "NL").toUpperCase();
+    if (country !== "NL" && country !== "NEDERLAND") return;
+    const clean = pc.replace(/\s+/g, "").toUpperCase();
+    if (!/^\d{4}[A-Z]{2}$/.test(clean) || !nr.trim()) return;
+    try {
+      const res = await fetch(`/api/postcode-lookup?postcode=${encodeURIComponent(clean)}&huisnummer=${encodeURIComponent(nr.trim())}`);
+      const data = await res.json();
+      if (res.ok) {
+        setAddressForm((f) => ({
+          ...f,
+          street: data.street || f.street,
+          city: data.city || f.city,
+        }));
+      }
+    } catch { /* stil falen — handmatig invullen blijft mogelijk */ }
+  }
+
   async function addAddress() {
     setAddressSaving(true);
     try {
@@ -634,11 +653,11 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Huisnummer</label>
-                  <input className={inputClass} value={addressForm.houseNumber} onChange={(e) => setAddressForm((f) => ({ ...f, houseNumber: e.target.value }))} placeholder="1A" />
+                  <input className={inputClass} value={addressForm.houseNumber} onChange={(e) => setAddressForm((f) => ({ ...f, houseNumber: e.target.value }))} onBlur={(e) => lookupAddressForm(addressForm.postalCode, e.target.value)} placeholder="1A" />
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Postcode</label>
-                  <input className={inputClass} value={addressForm.postalCode} onChange={(e) => setAddressForm((f) => ({ ...f, postalCode: e.target.value }))} placeholder="1234 AB" />
+                  <input className={inputClass} value={addressForm.postalCode} onChange={(e) => setAddressForm((f) => ({ ...f, postalCode: e.target.value }))} onBlur={(e) => lookupAddressForm(e.target.value, addressForm.houseNumber)} placeholder="1234 AB" />
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">Stad</label>
