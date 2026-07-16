@@ -30,8 +30,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { productId, skuSnapshot, titleSnapshot, qty, grossUnitPrice, discountPercent, vatRate } = await req.json();
 
-  if (!skuSnapshot || !titleSnapshot || !qty || grossUnitPrice === undefined) {
-    return NextResponse.json({ error: "Verplichte velden ontbreken" }, { status: 400 });
+  // SKU is optioneel (bv. eenmalige regel die geen product is) → "—"
+  const sku = (skuSnapshot ?? "").trim() || "—";
+  if (!titleSnapshot || !qty || grossUnitPrice === undefined) {
+    return NextResponse.json({ error: "Omschrijving, aantal en prijs zijn verplicht" }, { status: 400 });
   }
 
   const discount = discountPercent ?? 0;
@@ -75,7 +77,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     data: {
       quoteId,
       productId: productId || null,
-      skuSnapshot,
+      skuSnapshot: sku,
       titleSnapshot,
       qty: Number(qty),
       grossUnitPrice: effectiveGrossPrice,
