@@ -23,20 +23,20 @@ export function CreateModal({
 }: Props) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
           <h2 className="font-semibold text-slate-900">{title}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="px-6 py-5 space-y-4">{children}</div>
+        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">{children}</div>
         {error && (
           <div className="px-6 pb-2">
             <p className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>
           </div>
         )}
-        <div className="px-6 py-4 border-t border-slate-200 flex gap-3 justify-end">
+        <div className="px-6 py-4 border-t border-slate-200 flex gap-3 justify-end shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
