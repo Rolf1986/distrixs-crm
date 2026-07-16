@@ -23,6 +23,7 @@ import {
   Navigation,
   Activity,
   LogOut,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -65,6 +66,7 @@ const navGroups: Array<{ title: string | null; items: Array<{ label: string; hre
     title: "Werk & inzicht",
     items: [
       { label: "E-mails",        href: "/emails",           icon: Mail },
+      { label: "Verzonden mail", href: "/sent-emails",      icon: Send },
       { label: "Activiteiten",   href: "/activities",       icon: Calendar },
       { label: "Bestanden",      href: "/files",            icon: FolderOpen },
       { label: "Rapportages",    href: "/reports",          icon: BarChart2 },

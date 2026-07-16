@@ -6,6 +6,7 @@ import { createElement } from "react";
 import { QuotePdf } from "@/components/pdf/QuotePdf";
 import { buildQuotePdfData } from "@/lib/pdf-data";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
+import { logSentEmail } from "@/lib/sent-email";
 
 export async function POST(
   req: NextRequest,
@@ -89,6 +90,19 @@ export async function POST(
       createdBy: session.user.id,
     },
   }).catch((e) => console.warn("[quote send] mail-log niet opgeslagen:", e));
+
+  await logSentEmail({
+    category: "QUOTE",
+    to: to.trim(),
+    cc: cc?.trim() || null,
+    subject: finalSubject,
+    bodyHtml: html,
+    relatedType: "Quote",
+    relatedId: id,
+    relatedLabel: quote.quoteNumber,
+    customerName: quote.customer?.companyName ?? null,
+    createdBy: session.user.id,
+  });
 
   // Zet status op SENT (als nog DRAFT)
   if (quote.status === "DRAFT") {

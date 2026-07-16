@@ -508,6 +508,34 @@ model QuoteEmail {
   @@map("quote_emails")
 }
 
+enum SentEmailCategory {
+  INVOICE
+  REMINDER
+  QUOTE
+  CREDIT_NOTE
+  OTHER
+}
+
+// Centraal logboek van ALLE vanuit het CRM verstuurde e-mails
+model SentEmail {
+  id           String            @id @default(cuid())
+  category     SentEmailCategory @default(OTHER)
+  toAddress    String            @map("to_address")
+  ccAddress    String?           @map("cc_address")
+  subject      String
+  bodyHtml     String            @map("body_html")
+  relatedType  String?           @map("related_type")   // Invoice | Quote | CreditNote
+  relatedId    String?           @map("related_id")
+  relatedLabel String?           @map("related_label")  // bv. 2026 / 337
+  customerName String?           @map("customer_name")
+  sentAt       DateTime          @default(now()) @map("sent_at")
+  createdBy    String?           @map("created_by")
+
+  @@index([relatedType, relatedId])
+  @@index([sentAt])
+  @@map("sent_emails")
+}
+
 model QuoteLine {
   id                     String   @id @default(cuid())
   quoteId                String   @map("quote_id")
