@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { Sidebar } from "@/components/Sidebar";
+import { InstallAppHint } from "@/components/InstallAppHint";
 import { prisma } from "@/lib/prisma";
 
 async function getOverdueActivityCount() {
@@ -19,6 +20,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar overdueActivityCount={overdueActivityCount} />
       <main className="flex-1 ml-56 min-h-screen">{children}</main>
+      <InstallAppHint />
     </div>
   );
 }
