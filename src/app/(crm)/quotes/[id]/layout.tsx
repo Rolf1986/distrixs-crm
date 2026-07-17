@@ -129,6 +129,7 @@ export default async function QuoteLayout({
               defaultTo={quote.customer.email ?? quote.contact?.email ?? ""}
               documentLanguage={"language" in quote ? (quote.language as string) : "NL"}
               emailOptions={emailOptions}
+              recipientFirstName={quote.contact?.firstName ?? ""}
             />
             <QuoteStatusActions quoteId={id} currentStatus={quote.status} />
           </div>

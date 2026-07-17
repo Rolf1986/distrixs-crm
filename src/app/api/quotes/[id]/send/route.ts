@@ -19,11 +19,12 @@ export async function POST(
 
   const { id } = await params;
   const body = await req.json();
-  const { to, cc, subject, message } = body as {
+  const { to, cc, subject, message, greeting } = body as {
     to: string;
     cc?: string;
     subject: string;
     message: string;
+    greeting?: string;
   };
 
   if (!to?.trim()) {
@@ -58,6 +59,7 @@ export async function POST(
     companyName: company.companyName,
     logoUrl: company.logoUrl,
     recipientName,
+    greeting,
     subject: finalSubject,
     bodyLines: messageLines,
     footerLines: [

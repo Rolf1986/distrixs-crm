@@ -15,6 +15,8 @@ interface Props {
   documentLanguage?: string;
   /** Bekende e-mailadressen van de klantkaart (hoofdadres + contactpersonen) */
   emailOptions?: Array<{ label: string; email: string }>;
+  /** Voornaam van de contactpersoon — voor de standaard-aanhef */
+  recipientFirstName?: string;
 }
 
 type Lang = "NL" | "EN";
@@ -57,6 +59,7 @@ export function SendDocumentButton({
   defaultTo = "",
   documentLanguage = "NL",
   emailOptions = [],
+  recipientFirstName = "",
 }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -64,6 +67,7 @@ export function SendDocumentButton({
   const [to, setTo] = useState(defaultTo);
   const [cc, setCc] = useState("");
   const [subject, setSubject] = useState("");
+  const [greeting, setGreeting] = useState("");
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; simulated?: boolean; error?: string } | null>(null);
@@ -106,9 +110,16 @@ export function SendDocumentButton({
     }
   }
 
+  function defaultGreeting(l: Lang): string {
+    const name = recipientFirstName.trim();
+    if (l === "EN") return name ? `Hi ${name},` : "Hi,";
+    return name ? `Hoi ${name},` : "Hoi,";
+  }
+
   function openDialog() {
     const initialLang: Lang = documentLanguage === "EN" ? "EN" : "NL";
     setLang(initialLang);
+    setGreeting(defaultGreeting(initialLang));
     setResult(null);
     setOpen(true);
     loadTemplate(initialLang);
@@ -127,7 +138,7 @@ export function SendDocumentButton({
       const res = await fetch(apiPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, cc, subject, message }),
+        body: JSON.stringify({ to, cc, subject, greeting, message }),
       });
       const data = await res.json() as { ok?: boolean; simulated?: boolean; error?: string };
       if (!res.ok || !data.ok) {
@@ -238,6 +249,20 @@ export function SendDocumentButton({
                   type="text"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
+                  className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+                />
+              </div>
+
+              {/* Aanhef */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                  {lang === "EN" ? "Salutation" : "Aanhef"}
+                </label>
+                <input
+                  type="text"
+                  value={greeting}
+                  onChange={(e) => setGreeting(e.target.value)}
+                  placeholder={lang === "EN" ? "Hi John," : "Hoi Jan,"}
                   className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
                 />
               </div>

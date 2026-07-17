@@ -23,7 +23,7 @@ export async function POST(
 
   const { id } = await params;
   const body = await req.json();
-  const { to, cc } = body as { to: string; cc?: string };
+  const { to, cc, greeting } = body as { to: string; cc?: string; greeting?: string };
   let { subject, message } = body as { subject: string; message: string };
 
   if (!to?.trim()) {
@@ -94,6 +94,7 @@ export async function POST(
     companyName: company.companyName,
     logoUrl: company.logoUrl,
     recipientName,
+    greeting,
     subject,
     ctaUrl: paymentCtaUrl,
     ctaLabel: paymentCtaUrl ? `Betaal online (${formatCurrency(Number(invoice.openAmount))})` : undefined,
