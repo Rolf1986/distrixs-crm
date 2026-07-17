@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -24,6 +25,8 @@ import {
   Activity,
   LogOut,
   Send,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -83,9 +86,41 @@ const navGroups: Array<{ title: string | null; items: Array<{ label: string; hre
 
 export function Sidebar({ overdueActivityCount = 0 }: { overdueActivityCount?: number }) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  // Sluit het mobiele menu bij navigatie
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 flex flex-col" style={{ backgroundColor: "#2a2a2a" }}>
+    <>
+      {/* Mobiele topbalk met hamburger (alleen < md) */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 z-40 flex items-center gap-3 px-4 border-b border-white/10" style={{ backgroundColor: "#2a2a2a" }}>
+        <button onClick={() => setOpen(true)} aria-label="Menu openen" className="text-white/80 hover:text-white">
+          <Menu className="w-6 h-6" />
+        </button>
+        <img src="/logo.png" alt="Distrixs" className="h-6 w-auto" style={{ filter: "brightness(0) invert(1)" }} />
+      </div>
+
+      {/* Achtergrond-overlay bij open mobiel menu */}
+      {open && (
+        <div className="md:hidden fixed inset-0 z-40 bg-black/50" onClick={() => setOpen(false)} />
+      )}
+
+      <aside
+        className={cn(
+          "fixed left-0 top-0 h-screen w-56 flex flex-col z-50 transition-transform duration-200 md:translate-x-0",
+          open ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{ backgroundColor: "#2a2a2a" }}
+      >
+        {/* Sluitknop (alleen mobiel) */}
+        <button
+          onClick={() => setOpen(false)}
+          aria-label="Menu sluiten"
+          className="md:hidden absolute top-3 right-3 text-white/60 hover:text-white"
+        >
+          <X className="w-5 h-5" />
+        </button>
       {/* Logo / branding */}
       <div className="px-5 py-4 border-b" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
         <img
@@ -160,6 +195,7 @@ export function Sidebar({ overdueActivityCount = 0 }: { overdueActivityCount?: n
         </button>
         <p className="text-xs px-3 mt-1" style={{ color: "rgba(255,255,255,0.2)" }}>Distrixs · v0.1</p>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
