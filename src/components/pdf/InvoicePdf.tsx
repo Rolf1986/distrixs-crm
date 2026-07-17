@@ -14,6 +14,7 @@ export interface InvoicePdfData {
   vatAmount: number;
   total: number;
   openAmount?: number;
+  reverseCharge?: boolean;
   company?: {
     companyName?: string | null;
     logoUrl?: string | null;
@@ -249,7 +250,9 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
             <Text style={shared.totalsValue}>{fmt(data.subtotal, lang)}</Text>
           </View>
           <View style={shared.totalsRow}>
-            <Text style={shared.totalsLabel}>{t("vat21", lang)}</Text>
+            <Text style={shared.totalsLabel}>
+              {data.reverseCharge ? (lang === "EN" ? "VAT reverse-charged" : "BTW verlegd") : t("vat21", lang)}
+            </Text>
             <Text style={shared.totalsValue}>{fmt(data.vatAmount, lang)}</Text>
           </View>
           <View style={shared.totalsRow}>
@@ -261,6 +264,17 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
             <Text style={shared.totalFinalValue}>{fmt(data.total, lang)}</Text>
           </View>
         </View>
+
+        {/* Btw verlegd (intracommunautaire levering) */}
+        {data.reverseCharge && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={{ fontSize: 8.5, color: C.muted }}>
+              {lang === "EN"
+                ? `Intra-Community supply — VAT reverse-charged to the recipient.${data.customer.vatNumber ? ` Customer VAT no.: ${data.customer.vatNumber}` : ""}`
+                : `Intracommunautaire levering — btw verlegd naar de afnemer.${data.customer.vatNumber ? ` Btw-nummer afnemer: ${data.customer.vatNumber}` : ""}`}
+            </Text>
+          </View>
+        )}
 
         {/* Onze referentie */}
         {data.ourReference && (

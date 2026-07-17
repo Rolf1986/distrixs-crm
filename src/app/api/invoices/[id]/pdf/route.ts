@@ -5,6 +5,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { InvoicePdf } from "@/components/pdf/InvoicePdf";
 import { getCompanyInfo } from "@/lib/companySettings";
+import { isEuReverseCharge } from "@/lib/vat";
 
 const PAYMENT_TERM_DAYS: Record<string, number> = {
   DAYS_14: 14,
@@ -58,6 +59,7 @@ export async function GET(
     vatAmount: Number(invoice.vatAmount),
     total: Number(invoice.total),
     openAmount: Number(invoice.openAmount),
+    reverseCharge: isEuReverseCharge(addr?.country, invoice.customer.vatNumber),
     company,
     customer: {
       companyName: invoice.customer.companyName,

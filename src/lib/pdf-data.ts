@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCompanyInfo } from "@/lib/companySettings";
+import { isEuReverseCharge } from "@/lib/vat";
 
 /**
  * Gedeelde PDF-databouwers: zorgen dat de download-route en de e-mailbijlage
@@ -56,6 +57,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
     vatAmount: Number(invoice.vatAmount),
     total: Number(invoice.total),
     openAmount: Number(invoice.openAmount),
+    reverseCharge: isEuReverseCharge(addr?.country, invoice.customer.vatNumber),
     company,
     customer: {
       companyName: invoice.customer.companyName,
@@ -163,6 +165,7 @@ export async function buildQuotePdfData(quoteId: string) {
     subtotal: Number(quote.subtotal),
     vatAmount: Number(quote.vatAmount),
     total: Number(quote.total),
+    reverseCharge: isEuReverseCharge(addr?.country, quote.customer.vatNumber),
     company,
     customer: {
       companyName: quote.customer.companyName,
