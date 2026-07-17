@@ -5,6 +5,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { QuotePdf } from "@/components/pdf/QuotePdf";
 import { getCompanyInfo } from "@/lib/companySettings";
+import { isEuReverseCharge } from "@/lib/vat";
 
 export async function GET(
   req: NextRequest,
@@ -47,6 +48,7 @@ export async function GET(
     projectName: quote.deal?.title,
     quoteDate: quote.quoteDate,
     validUntil: quote.validUntil,
+    reverseCharge: isEuReverseCharge(addr?.country, quote.customer.vatNumber),
     subtotal: Number(quote.subtotal),
     vatAmount: Number(quote.vatAmount),
     total: Number(quote.total),
