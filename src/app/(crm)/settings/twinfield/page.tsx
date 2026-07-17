@@ -37,6 +37,8 @@ async function getData() {
   const settings = settingsRows[0] ?? null;
 
   const invoices: InvoiceRow[] = await prisma.invoice.findMany({
+    // Concepten kunnen niet naar Twinfield → niet tonen in dit overzicht
+    where: { status: { not: "DRAFT" } },
     select: {
       id: true,
       invoiceNumber: true,
