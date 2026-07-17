@@ -4,12 +4,19 @@ import { formatCurrency } from "@/lib/utils";
 import { Lock } from "lucide-react";
 import { QuoteLinesClient } from "./QuoteLinesClient";
 import { calcTotals } from "@/lib/recalc";
+import { defaultVatRateForCustomer } from "@/lib/vat";
 
 async function getQuote(id: string) {
   return prisma.quote.findUnique({
     where: { id },
     include: {
       lines: { orderBy: { createdAt: "asc" } },
+      customer: {
+        select: {
+          vatNumber: true,
+          addresses: { where: { type: "BILLING" }, orderBy: { isDefault: "desc" }, take: 1, select: { country: true } },
+        },
+      },
     },
   });
 }
@@ -28,11 +35,16 @@ export default async function QuoteLinesPage({ params }: { params: Promise<{ id:
   if (!quote) notFound();
 
   const isDraft = quote.status === "DRAFT";
+  const defaultVatRate = defaultVatRateForCustomer(
+    quote.customer?.addresses[0]?.country,
+    quote.customer?.vatNumber
+  );
 
   if (isDraft) {
     return (
       <QuoteLinesClient
         quoteId={id}
+        defaultVatRate={defaultVatRate}
         initialLines={quote.lines.map((l) => ({
           id: l.id,
           skuSnapshot: l.skuSnapshot,

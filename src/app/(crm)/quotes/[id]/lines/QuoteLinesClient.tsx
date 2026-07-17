@@ -60,10 +60,12 @@ export function QuoteLinesClient({
   quoteId,
   initialLines,
   products,
+  defaultVatRate = 21,
 }: {
   quoteId: string;
   initialLines: Line[];
   products: Product[];
+  defaultVatRate?: number;
 }) {
   const router = useRouter();
   const [lines, setLines] = useState<Line[]>(initialLines);
@@ -82,7 +84,7 @@ export function QuoteLinesClient({
   const [addQty, setAddQty] = useState("1");
   const [addPrice, setAddPrice] = useState("");
   const [addDiscount, setAddDiscount] = useState("0");
-  const [addVatRate, setAddVatRate] = useState<VatRate>(21);
+  const [addVatRate, setAddVatRate] = useState<VatRate>(defaultVatRate as VatRate);
   const [addCostPrice, setAddCostPrice] = useState(0);
 
   const filteredProducts = products.filter(
@@ -208,7 +210,7 @@ export function QuoteLinesClient({
       setAddQty("1");
       setAddPrice("");
       setAddDiscount("0");
-      setAddVatRate(21);
+      setAddVatRate(defaultVatRate as VatRate);
       setAddCostPrice(0);
       router.refresh();
     } finally {
@@ -476,6 +478,11 @@ export function QuoteLinesClient({
           <Plus className="w-3.5 h-3.5" />
           Regel toevoegen
         </h3>
+        {defaultVatRate === 0 && (
+          <div className="mb-4 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            EU-klant met btw-nummer → nieuwe regels staan standaard op <strong>0% (btw verlegd)</strong>.
+          </div>
+        )}
         <div className="space-y-3">
           {/* Zoeken */}
           <input
