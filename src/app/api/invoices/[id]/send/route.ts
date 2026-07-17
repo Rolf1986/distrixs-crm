@@ -23,12 +23,8 @@ export async function POST(
 
   const { id } = await params;
   const body = await req.json();
-  const { to, cc, subject, message } = body as {
-    to: string;
-    cc?: string;
-    subject: string;
-    message: string;
-  };
+  const { to, cc } = body as { to: string; cc?: string };
+  let { subject, message } = body as { subject: string; message: string };
 
   if (!to?.trim()) {
     return NextResponse.json({ error: "E-mailadres verplicht" }, { status: 400 });
@@ -48,6 +44,10 @@ export async function POST(
       where: { id },
       data: { invoiceNumber: definitiveNumber },
     });
+    // Onderwerp/bericht zijn in het venster vaak vooraf ingevuld met het
+    // DRAFT-nummer → vervang dat door het definitieve nummer.
+    subject = (subject ?? "").split(current.invoiceNumber).join(definitiveNumber);
+    message = (message ?? "").split(current.invoiceNumber).join(definitiveNumber);
   }
 
   // PDF via gedeelde databouwer (zelfde layout als de download-route)
