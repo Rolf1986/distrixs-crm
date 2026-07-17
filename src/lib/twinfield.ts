@@ -377,20 +377,21 @@ export async function findOrCreateDebtor(
   }
 
   // 3. If not found, create a new debtor
-  // Nieuwe debiteuren in de 2xxxx-reeks (20000-29999). De oude, uit het
-  // Teamleader-tijdperk in Twinfield bestaande debiteuren zitten in de
-  // 1xxxx-reeks; door voortaan met 2 te beginnen kunnen we nooit een
-  // bestaande code overschrijven (Twinfield geeft geen fout bij dubbele code).
+  // Twinfield dwingt in dit kantoor het formaat 1[0-9]{4} af (10000-19999),
+  // dus 2xxxx kan niet. De oude Teamleader-debiteuren zijn van ONDERAF
+  // toegekend (10000+); wij kennen daarom van BOVENAF toe (19999 aflopend)
+  // om zo ver mogelijk uit hun bereik te blijven. Definitieve botsingvrije
+  // oplossing volgt zodra de DEB-list-call werkt (dan zoeken we bestaande op).
   if (!foundCode) {
     const usedRows = await prisma.$queryRaw<Array<{ twinfield_debtor_code: string }>>`
       SELECT twinfield_debtor_code FROM customers
-      WHERE twinfield_debtor_code IS NOT NULL AND twinfield_debtor_code ~ '^2[0-9]{4}$'
+      WHERE twinfield_debtor_code IS NOT NULL AND twinfield_debtor_code ~ '^1[0-9]{4}$'
     `;
     const usedCodes = new Set(usedRows.map((r) => r.twinfield_debtor_code));
 
-    let nextCode = 20000;
-    while (usedCodes.has(String(nextCode)) && nextCode < 29999) {
-      nextCode++;
+    let nextCode = 19999;
+    while (usedCodes.has(String(nextCode)) && nextCode > 10000) {
+      nextCode--;
     }
     const candidateCode = String(nextCode);
 
