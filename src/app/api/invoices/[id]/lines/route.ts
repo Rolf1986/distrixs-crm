@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcTotals, calcLineVat } from "@/lib/recalc";
 import { assertInvoiceEditable } from "@/lib/document-guard";
+import { isEuReverseCharge } from "@/lib/vat";
 
 function calcNetLineTotal(grossUnitPrice: number, qty: number, discountPercent: number) {
   return grossUnitPrice * qty * (1 - discountPercent / 100);
@@ -35,7 +36,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const discount = discountPercent ?? 0;
-  const rate = vatRate !== undefined ? Number(vatRate) : 21;
+
+  // EU-klant met btw-nummer → altijd 0% (verlegd), ongeacht meegestuurde waarde
+  const invForVat = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    select: {
+      customer: {
+        select: {
+          vatNumber: true,
+          addresses: { where: { type: "BILLING" }, orderBy: { isDefault: "desc" }, take: 1, select: { country: true } },
+        },
+      },
+    },
+  });
+  const reverseCharge = isEuReverseCharge(
+    invForVat?.customer?.addresses[0]?.country,
+    invForVat?.customer?.vatNumber
+  );
+  const rate = reverseCharge ? 0 : (vatRate !== undefined ? Number(vatRate) : 21);
   const netLineTotal = calcNetLineTotal(Number(grossUnitPrice), Number(qty), Number(discount));
   const lineVatAmount = calcLineVat(netLineTotal, rate);
 
