@@ -19,7 +19,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar overdueActivityCount={overdueActivityCount} />
-      <main className="flex-1 ml-56 min-h-screen">{children}</main>
+      <main className="flex-1 md:ml-56 pt-14 md:pt-0 min-h-screen w-full min-w-0">{children}</main>
       <InstallAppHint />
     </div>
   );
