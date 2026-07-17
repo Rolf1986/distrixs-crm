@@ -83,6 +83,8 @@ function esc(v: string): string {
 export function buildEmailHtml(opts: {
   companyName: string;
   recipientName?: string;
+  /** Zelf opgegeven aanhef (bv. "Hoi Jan,"). Overschrijft de standaard-aanhef. */
+  greeting?: string;
   subject: string;
   bodyLines: string[];
   ctaUrl?: string;
@@ -95,7 +97,9 @@ export function buildEmailHtml(opts: {
   // companyName/recipientName/ctaLabel/URLs escapen; bodyLines/footerLines zijn
   // door de aanroepers al opgemaakt (bevatten bewust HTML) en blijven ongewijzigd.
   const safeCompany = esc(companyName);
-  const greeting = recipientName ? `Beste ${esc(recipientName)},` : "Geachte relatie,";
+  const greeting = opts.greeting?.trim()
+    ? esc(opts.greeting.trim())
+    : (recipientName ? `Beste ${esc(recipientName)},` : "Geachte relatie,");
 
   const body = bodyLines.map((l) => `<p style="margin:0 0 12px 0;color:#374151;">${l}</p>`).join("");
 

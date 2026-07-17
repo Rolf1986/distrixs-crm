@@ -234,6 +234,7 @@ export default async function InvoiceLayout({
               defaultTo={invoice.customer.email ?? invoice.contact?.email ?? ""}
               documentLanguage={"language" in invoice ? (invoice.language as string) : "NL"}
               emailOptions={emailOptions}
+              recipientFirstName={invoice.contact?.firstName ?? ""}
             />
             <TwinfieldSyncButton
               invoiceId={id}
