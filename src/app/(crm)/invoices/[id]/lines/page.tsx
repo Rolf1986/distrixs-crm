@@ -4,11 +4,20 @@ import { formatCurrency } from "@/lib/utils";
 import { Lock } from "lucide-react";
 import { InvoiceLinesClient } from "./InvoiceLinesClient";
 import { calcTotals } from "@/lib/recalc";
+import { defaultVatRateForCustomer } from "@/lib/vat";
 
 async function getInvoice(id: string) {
   return prisma.invoice.findUnique({
     where: { id },
-    include: { lines: { orderBy: { createdAt: "asc" } } },
+    include: {
+      lines: { orderBy: { createdAt: "asc" } },
+      customer: {
+        select: {
+          vatNumber: true,
+          addresses: { where: { type: "BILLING" }, orderBy: { isDefault: "desc" }, take: 1, select: { country: true } },
+        },
+      },
+    },
   });
 }
 
@@ -30,11 +39,16 @@ export default async function InvoiceLinesPage({
   if (!invoice) notFound();
 
   const isDraft = invoice.status === "DRAFT";
+  const defaultVatRate = defaultVatRateForCustomer(
+    invoice.customer?.addresses[0]?.country,
+    invoice.customer?.vatNumber
+  );
 
   if (isDraft) {
     return (
       <InvoiceLinesClient
         invoiceId={id}
+        defaultVatRate={defaultVatRate}
         paidAmount={Number(invoice.paidAmount)}
         initialLines={invoice.lines.map((l) => ({
           id: l.id,

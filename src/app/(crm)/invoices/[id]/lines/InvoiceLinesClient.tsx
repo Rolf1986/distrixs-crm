@@ -60,11 +60,13 @@ export function InvoiceLinesClient({
   initialLines,
   products,
   paidAmount,
+  defaultVatRate = 21,
 }: {
   invoiceId: string;
   initialLines: Line[];
   products: Product[];
   paidAmount: number;
+  defaultVatRate?: number;
 }) {
   const router = useRouter();
   const [lines, setLines] = useState<Line[]>(initialLines);
@@ -83,7 +85,7 @@ export function InvoiceLinesClient({
   const [addQty, setAddQty] = useState("1");
   const [addPrice, setAddPrice] = useState("");
   const [addDiscount, setAddDiscount] = useState("0");
-  const [addVatRate, setAddVatRate] = useState<VatRate>(21);
+  const [addVatRate, setAddVatRate] = useState<VatRate>(defaultVatRate as VatRate);
 
   const filteredProducts = products.filter(
     (p) =>
@@ -208,7 +210,7 @@ export function InvoiceLinesClient({
       setAddQty("1");
       setAddPrice("");
       setAddDiscount("0");
-      setAddVatRate(21);
+      setAddVatRate(defaultVatRate as VatRate);
       router.refresh();
     } finally {
       setAdding(false);
@@ -492,6 +494,11 @@ export function InvoiceLinesClient({
           <Plus className="w-3.5 h-3.5" />
           Regel toevoegen
         </h3>
+        {defaultVatRate === 0 && (
+          <div className="mb-4 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+            EU-klant met btw-nummer → nieuwe regels staan standaard op <strong>0% (btw verlegd)</strong>.
+          </div>
+        )}
         <div className="space-y-3">
           {/* Zoeken */}
           <input
