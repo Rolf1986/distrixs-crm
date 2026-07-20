@@ -282,7 +282,7 @@ export default async function ReportsPage() {
         {/* ── A. Omzet overzicht ──────────────────────────────────────────── */}
         <section>
           <h2 className="text-sm font-semibold text-slate-700 mb-3">Omzet overzicht</h2>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             {[
               {
                 label: "Deze maand",

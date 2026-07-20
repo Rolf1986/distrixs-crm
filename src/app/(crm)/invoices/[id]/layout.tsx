@@ -90,7 +90,7 @@ export default async function InvoiceLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Breadcrumb + prev/next nav */}
-      <div className="px-8 pt-6 flex items-center justify-between">
+      <div className="px-4 md:px-8 pt-6 flex items-center justify-between">
         <div className="flex items-center gap-1.5 text-sm text-slate-400">
           <Link href="/invoices" className="hover:text-slate-600 transition-colors">Facturen</Link>
           {invoice.deal && (
@@ -138,10 +138,10 @@ export default async function InvoiceLayout({
       </div>
 
       {/* Header */}
-      <div className="px-8 pt-3 pb-5 bg-white border-b border-slate-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
+      <div className="px-4 md:px-8 pt-3 pb-5 bg-white border-b border-slate-200">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-semibold text-slate-900 font-mono">{invoice.invoiceNumber}</h1>
               <StatusBadge status={invoice.status} type="invoice" />
               {invoice.twinfieldLocked && (
@@ -150,7 +150,7 @@ export default async function InvoiceLayout({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500">
+            <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500 flex-wrap">
               <Link href={`/customers/${invoice.customer.id}`} className="text-brand-blue hover:underline">
                 {invoice.customer.companyName}
               </Link>
@@ -178,7 +178,7 @@ export default async function InvoiceLayout({
           </div>
 
           {/* Actieknoppen */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <DeleteInvoiceButton invoiceId={id} status={invoice.status} />
             <CreateCreditNoteButton
               invoiceId={id}
@@ -251,7 +251,7 @@ export default async function InvoiceLayout({
         </div>
 
         {/* KPI's */}
-        <div className="grid grid-cols-4 gap-3 mt-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
           <KpiCard label="Subtotaal excl. BTW" value={formatCurrency(Number(invoice.subtotal))} />
           <KpiCard label="BTW 21%" value={formatCurrency(Number(invoice.vatAmount))} />
           <KpiCard label="Totaal incl. BTW" value={formatCurrency(Number(invoice.total))} />
@@ -297,7 +297,7 @@ export default async function InvoiceLayout({
       </div>
 
       {/* Tab content */}
-      <div className="px-8 py-6">{children}</div>
+      <div className="px-4 md:px-8 py-6">{children}</div>
     </div>
   );
 }

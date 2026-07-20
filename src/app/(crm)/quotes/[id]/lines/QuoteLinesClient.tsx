@@ -248,8 +248,8 @@ export function QuoteLinesClient({
           <span className="text-xs text-slate-400">{lines.length} regel{lines.length !== 1 ? "s" : ""}</span>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-slate-100">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</th>

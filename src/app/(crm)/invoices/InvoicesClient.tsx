@@ -194,8 +194,8 @@ export function InvoicesClient({ invoices, creditNotes = [] }: { invoices: Invoi
 
       {/* Creditnota's */}
       {filter === "credit" && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Nummer</th>
@@ -261,8 +261,8 @@ export function InvoicesClient({ invoices, creditNotes = [] }: { invoices: Invoi
 
       {/* Table */}
       {filter !== "credit" && (
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50">
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wide">Nummer</th>

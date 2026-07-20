@@ -198,7 +198,7 @@ export default async function AnalyticsPage({
       </div>
 
       {/* KPI-rij */}
-      <div className="px-8 grid grid-cols-4 gap-4 mb-8">
+      <div className="px-4 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {kpis.map((k) => {
           const Icon = k.icon;
           return (
