@@ -67,7 +67,7 @@ export default async function QuoteLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Breadcrumb */}
-      <div className="px-8 pt-6 flex items-center gap-1.5 text-sm text-slate-400">
+      <div className="px-4 md:px-8 pt-6 flex items-center gap-1.5 text-sm text-slate-400 overflow-x-auto whitespace-nowrap">
         <Link href="/quotes" className="hover:text-slate-600 transition-colors">Offertes</Link>
         {quote.deal && (
           <>
@@ -82,14 +82,14 @@ export default async function QuoteLayout({
       </div>
 
       {/* Header */}
-      <div className="px-8 pt-3 pb-5 bg-white border-b border-slate-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3">
+      <div className="px-4 md:px-8 pt-3 pb-5 bg-white border-b border-slate-200">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl font-semibold text-slate-900 font-mono">{quote.quoteNumber}</h1>
               <StatusBadge status={quote.status} type="quote" />
             </div>
-            <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500">
+            <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500 flex-wrap">
               <span>{quote.customer.companyName}</span>
               {quote.contact && (
                 <span className="text-slate-400">
@@ -102,7 +102,7 @@ export default async function QuoteLayout({
           </div>
 
           {/* Actieknoppen */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <DeleteQuoteButton quoteId={id} status={quote.status} />
             <LanguageToggle
               documentType="quote"
@@ -136,7 +136,7 @@ export default async function QuoteLayout({
         </div>
 
         {/* KPI's */}
-        <div className="grid grid-cols-4 gap-3 mt-5">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
           <KpiCard label="Subtotaal excl. BTW" value={formatCurrency(Number(quote.subtotal))} />
           <KpiCard label="BTW 21%" value={formatCurrency(Number(quote.vatAmount))} />
           <KpiCard label="Totaal incl. BTW" value={formatCurrency(Number(quote.total))} />
@@ -157,7 +157,7 @@ export default async function QuoteLayout({
       </div>
 
       {/* Tab content */}
-      <div className="px-8 py-6">{children}</div>
+      <div className="px-4 md:px-8 py-6">{children}</div>
     </div>
   );
 }

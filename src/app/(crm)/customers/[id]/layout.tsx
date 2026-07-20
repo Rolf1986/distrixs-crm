@@ -36,7 +36,7 @@ export default async function CustomerLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Breadcrumb */}
-      <div className="px-8 pt-6 flex items-center gap-1.5 text-sm text-slate-400">
+      <div className="px-4 md:px-8 pt-6 flex items-center gap-1.5 text-sm text-slate-400">
         <Link href="/customers" className="hover:text-slate-600 transition-colors">
           Klanten
         </Link>
@@ -45,9 +45,9 @@ export default async function CustomerLayout({
       </div>
 
       {/* Header */}
-      <div className="px-8 pt-3 pb-5 bg-white border-b border-slate-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <div className="px-4 md:px-8 pt-3 pb-5 bg-white border-b border-slate-200">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div className="min-w-0">
             <h1 className="text-xl font-semibold text-slate-900">{customer.companyName}</h1>
             <div className="flex items-center gap-3 mt-1.5">
               <span className="font-mono text-xs text-slate-400">{customer.customerNumber}</span>
@@ -58,7 +58,7 @@ export default async function CustomerLayout({
         </div>
 
         {/* KPI's */}
-        <div className="grid grid-cols-5 gap-3 mt-5">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-5">
           <KpiCard label="Deals" value={String(customer._count.deals)} />
           <KpiCard label="Offertes" value={String(customer._count.quotes)} />
           <KpiCard label="Facturen" value={String(customer._count.invoices)} />
@@ -82,7 +82,7 @@ export default async function CustomerLayout({
       </div>
 
       {/* Tab content */}
-      <div className="px-8 py-6">{children}</div>
+      <div className="px-4 md:px-8 py-6">{children}</div>
     </div>
   );
 }

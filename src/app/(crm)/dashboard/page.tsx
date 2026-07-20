@@ -124,7 +124,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="px-8 grid grid-cols-4 gap-4 mb-8">
+      <div className="px-4 md:px-8 grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <Link
           href="/deals"
           className="relative overflow-hidden bg-gradient-to-br from-blue-50/70 to-white rounded-xl border border-slate-200 border-l-4 border-l-brand-blue px-5 py-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
