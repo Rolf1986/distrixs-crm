@@ -340,61 +340,41 @@ export async function findOrCreateDebtor(
 
   const { officeCode, cluster } = settings;
 
-  // 2. Search Twinfield by name
-  const searchXml = `<list><type>DEB</type><office>${escapeXml(officeCode)}</office><filters><filter field="name" operator="like">${escapeXml(customer.companyName)}</filter></filters></list>`;
+  // 2. Alle bestaande DEB-debiteuren ophalen (correcte call, bevestigd met Twinfield).
+  //    Matchen op naam → hergebruik; en de hoogste bestaande 1xxxx-code bepalen
+  //    zodat een nieuwe code gegarandeerd vrij is (geen overschrijven/duplicaat).
+  const decodeXml = (s: string) =>
+    s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+     .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'");
+  const normName = (s: string) => decodeXml(s).trim().toLowerCase().replace(/\s+/g, " ");
+
   let foundCode: string | null = null;
+  let maxCode = 10000;
+  const target = normName(customer.companyName);
 
   try {
-    const searchResponse = await callXml(token, officeCode, searchXml, cluster);
-    const debtors = [...searchResponse.matchAll(/<dimension>([\s\S]*?)<\/dimension>/gi)].map(
-      (m) => m[1]
-    );
-
-    for (const debtor of debtors) {
-      const code = debtor.match(/<code>(.*?)<\/code>/i)?.[1] ?? "";
-      const vatno =
-        debtor.match(/<vatno>(.*?)<\/vatno>/i)?.[1] ??
-        debtor.match(/<vatnumber>(.*?)<\/vatnumber>/i)?.[1] ??
-        "";
-      const name = debtor.match(/<name>(.*?)<\/name>/i)?.[1] ?? "";
-
-      if (customer.vatNumber && vatno) {
-        const normalizedVat = customer.vatNumber.replace(/\s/g, "").toUpperCase();
-        const normalizedVatno = vatno.replace(/\s/g, "").toUpperCase();
-        if (normalizedVat === normalizedVatno) {
-          foundCode = code;
-          break;
-        }
+    const listXml = `<list><type>dimensions</type><office>${escapeXml(officeCode)}</office><dimtype>DEB</dimtype></list>`;
+    const resp = await callXml(token, officeCode, listXml, cluster);
+    for (const m of resp.matchAll(/<dimension\b[^>]*\bname="([^"]*)"[^>]*>([^<]+)<\/dimension>/gi)) {
+      const name = m[1];
+      const code = m[2].trim();
+      if (/^1[0-9]{4}$/.test(code)) {
+        const n = parseInt(code, 10);
+        if (n > maxCode) maxCode = n;
       }
-
-      if (name.trim().toLowerCase() === customer.companyName.trim().toLowerCase()) {
+      if (!foundCode && normName(name) === target) {
         foundCode = code;
-        break;
       }
     }
   } catch (err) {
-    console.error("[twinfield] findOrCreateDebtor search error:", err);
+    console.error("[twinfield] debiteurenlijst ophalen mislukt:", err);
+    // Bij twijfel liever niet blind aanmaken → fout doorgeven
+    throw new Error("Debiteurenlijst uit Twinfield kon niet worden opgehaald");
   }
 
-  // 3. If not found, create a new debtor
-  // Twinfield dwingt in dit kantoor het formaat 1[0-9]{4} af (10000-19999),
-  // dus 2xxxx kan niet. De oude Teamleader-debiteuren zijn van ONDERAF
-  // toegekend (10000+); wij kennen daarom van BOVENAF toe (19999 aflopend)
-  // om zo ver mogelijk uit hun bereik te blijven. Definitieve botsingvrije
-  // oplossing volgt zodra de DEB-list-call werkt (dan zoeken we bestaande op).
+  // 3. Niet gevonden → nieuwe debiteur met de eerstvolgende vrije 1xxxx-code
   if (!foundCode) {
-    const usedRows = await prisma.$queryRaw<Array<{ twinfield_debtor_code: string }>>`
-      SELECT twinfield_debtor_code FROM customers
-      WHERE twinfield_debtor_code IS NOT NULL AND twinfield_debtor_code ~ '^1[0-9]{4}$'
-    `;
-    const usedCodes = new Set(usedRows.map((r) => r.twinfield_debtor_code));
-
-    let nextCode = 19999;
-    while (usedCodes.has(String(nextCode)) && nextCode > 10000) {
-      nextCode--;
-    }
-    const candidateCode = String(nextCode);
-
+    const candidateCode = String(maxCode + 1);
     const shortname = customer.companyName
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
