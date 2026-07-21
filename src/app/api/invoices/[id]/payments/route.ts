@@ -19,12 +19,8 @@ export async function POST(
     return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
   }
 
-  if (invoice.twinfieldLocked) {
-    return NextResponse.json(
-      { error: "Factuur is vergrendeld via Twinfield" },
-      { status: 403 }
-    );
-  }
+  // Een Twinfield-vergrendelde factuur mag WEL betalingen ontvangen; de lock
+  // beschermt de factuurinhoud, niet de betaaladministratie.
 
   const body = await req.json();
   const { amount, paymentDate, method, reference } = body;
