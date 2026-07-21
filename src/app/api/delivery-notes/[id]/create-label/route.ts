@@ -54,6 +54,7 @@ export async function POST(
       street: addr.street,
       number: addr.houseNumber || "",
       person,
+      company: dn.customer.companyName,
       email,
     },
     carrier: carrierId,

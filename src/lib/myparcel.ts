@@ -172,7 +172,8 @@ export interface MyParcelRecipient {
   city: string;
   street: string;
   number: string;
-  person: string;        // naam/bedrijf
+  person: string;        // contactpersoon
+  company?: string | null; // bedrijfsnaam (verplicht bij o.a. DHL Europlus)
   email?: string | null;
 }
 
@@ -190,6 +191,8 @@ export async function createMyParcelShipments(opts: {
   if (!apiKey) return { ids: [], error: "MyParcel API-sleutel niet ingesteld" };
 
   const n = Math.max(1, Math.min(20, Math.floor(opts.numberOfPackages || 1)));
+  // DHL Europlus (11) eist een bedrijfsnaam én handtekening bij ontvangst
+  const isEuroplus = opts.carrier === 11;
   const shipment: Record<string, unknown> = {
     recipient: {
       cc: opts.recipient.cc,
@@ -198,11 +201,13 @@ export async function createMyParcelShipments(opts: {
       street: opts.recipient.street,
       number: opts.recipient.number,
       person: opts.recipient.person,
+      ...(opts.recipient.company ? { company: opts.recipient.company } : {}),
       ...(opts.recipient.email ? { email: opts.recipient.email } : {}),
     },
     carrier: opts.carrier,
     options: {
       package_type: 1,
+      ...(isEuroplus ? { signature: 1 } : {}),
       ...(opts.reference ? { label_description: opts.reference.slice(0, 45) } : {}),
     },
     ...(n > 1 ? { secondary_shipments: Array.from({ length: n - 1 }, () => ({})) } : {}),
