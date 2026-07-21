@@ -2,21 +2,49 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CreditCard, CheckCircle2, AlertTriangle } from "lucide-react";
+import { CreditCard, CheckCircle2, AlertTriangle, Navigation } from "lucide-react";
 
 export function PaymentSettingsClient({
   keyConfigured,
   keyMode,
   keyHint,
+  myparcelConfigured = false,
+  myparcelHint = null,
 }: {
   keyConfigured: boolean;
   keyMode: "live" | "test" | null;
   keyHint: string | null;
+  myparcelConfigured?: boolean;
+  myparcelHint?: string | null;
 }) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+
+  const [mpValue, setMpValue] = useState("");
+  const [mpSaving, setMpSaving] = useState(false);
+  const [mpMessage, setMpMessage] = useState<{ type: "ok" | "error"; text: string } | null>(null);
+
+  async function saveMyparcel(newKey: string) {
+    setMpSaving(true); setMpMessage(null);
+    try {
+      const res = await fetch("/api/settings/payments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ myparcelApiKey: newKey }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) { setMpMessage({ type: "error", text: data.error ?? "Opslaan mislukt" }); return; }
+      setMpMessage({ type: "ok", text: newKey ? "MyParcel-sleutel opgeslagen" : "MyParcel-sleutel verwijderd" });
+      setMpValue("");
+      router.refresh();
+    } catch {
+      setMpMessage({ type: "error", text: "Netwerk- of serverfout" });
+    } finally {
+      setMpSaving(false);
+    }
+  }
 
   async function save(newKey: string) {
     setSaving(true);
@@ -126,6 +154,57 @@ export function PaymentSettingsClient({
           <p className={`text-sm ${message.type === "ok" ? "text-green-700" : "text-red-600"}`}>
             {message.text}
           </p>
+        )}
+      </div>
+
+      {/* MyParcel */}
+      <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Navigation className="w-4 h-4 text-brand-blue" />
+          <h2 className="text-base font-semibold text-slate-900">MyParcel — verzendlabels</h2>
+        </div>
+        <p className="text-sm text-slate-500">
+          Met een MyParcel API-sleutel kun je vanuit een verzenddocument direct een label aanmaken
+          (DHL Europlus, PostNL e.a.), met keuze voor het aantal pakketten; de tracking staat dan meteen goed.
+          De sleutel vind je in je MyParcel-account onder <span className="font-medium text-slate-700">Instellingen → API</span>.
+        </p>
+
+        <div className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${myparcelConfigured ? "bg-green-50 border-green-200 text-green-700" : "bg-slate-50 border-slate-200 text-slate-600"}`}>
+          {myparcelConfigured ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />}
+          <span>{myparcelConfigured ? <>Sleutel ingesteld ({myparcelHint}).</> : "Nog geen MyParcel-sleutel — labels aanmaken is uitgeschakeld."}</span>
+        </div>
+
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-600">{myparcelConfigured ? "Nieuwe sleutel (vervangt de huidige)" : "API-sleutel"}</label>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={mpValue}
+              onChange={(e) => setMpValue(e.target.value)}
+              placeholder="MyParcel API-sleutel"
+              className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+              autoComplete="off"
+            />
+            <button
+              onClick={() => saveMyparcel(mpValue.trim())}
+              disabled={mpSaving || !mpValue.trim()}
+              className="px-4 py-2 rounded-lg bg-brand-blue text-white text-sm font-medium hover:bg-brand-blue-dark disabled:opacity-50 transition-colors"
+            >
+              {mpSaving ? "Bezig…" : "Opslaan"}
+            </button>
+          </div>
+          {myparcelConfigured && (
+            <button
+              onClick={() => { if (confirm("MyParcel-sleutel verwijderen?")) saveMyparcel(""); }}
+              disabled={mpSaving}
+              className="text-xs text-red-600 hover:underline disabled:opacity-50"
+            >
+              Sleutel verwijderen
+            </button>
+          )}
+        </div>
+        {mpMessage && (
+          <p className={`text-sm ${mpMessage.type === "ok" ? "text-green-700" : "text-red-600"}`}>{mpMessage.text}</p>
         )}
       </div>
     </div>

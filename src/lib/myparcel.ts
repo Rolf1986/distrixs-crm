@@ -3,8 +3,22 @@
 // Base URL: https://api.myparcel.nl
 // Auth: Basic auth with API key (base64 encoded)
 
+import { prisma } from "@/lib/prisma";
+import { normalizeCountry } from "@/lib/vat";
+
 const MYPARCEL_BASE_URL = "https://api.myparcel.nl";
 const MYPARCEL_TRACKING_BASE = "https://myparcel.me/track-trace";
+
+// MyParcel carrier-ID's (api.myparcel.nl). Uitbreidbaar.
+export const MYPARCEL_CARRIERS: Array<{ id: number; label: string }> = [
+  { id: 11, label: "DHL Europlus" },
+  { id: 1, label: "PostNL" },
+  { id: 2, label: "bpost" },
+  { id: 4, label: "DPD" },
+  { id: 9, label: "DHL for you" },
+  { id: 10, label: "DHL Parcel Connect" },
+  { id: 12, label: "UPS Standard" },
+];
 
 // Map MyParcel numeric status codes to internal status strings and NL labels
 const STATUS_MAP: Record<number, { status: string; label: string }> = {
@@ -39,7 +53,13 @@ const STATUS_MAP: Record<number, { status: string; label: string }> = {
   45: { status: "DELIVERED",  label: "Afgeleverd" },
 };
 
-function getApiKey(): string | null {
+async function getApiKey(): Promise<string | null> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ myparcel_api_key: string | null }>>`
+      SELECT myparcel_api_key FROM company_settings WHERE id = 'singleton' LIMIT 1
+    `;
+    if (rows[0]?.myparcel_api_key) return rows[0].myparcel_api_key;
+  } catch { /* kolom bestaat nog niet / geen DB → val terug op env */ }
   return process.env.MYPARCEL_API_KEY ?? null;
 }
 
@@ -58,7 +78,7 @@ export interface ShipmentStatusResult {
 export async function getShipmentStatus(
   myParcelShipmentId: string
 ): Promise<ShipmentStatusResult | null> {
-  const apiKey = getApiKey();
+  const apiKey = await getApiKey();
   if (!apiKey) return null;
 
   try {
@@ -137,6 +157,105 @@ export function getTrackingUrl(
   return `${MYPARCEL_TRACKING_BASE}/${trackingCode}`;
 }
 
-export function hasApiKey(): boolean {
-  return Boolean(getApiKey());
+export async function hasApiKey(): Promise<boolean> {
+  return Boolean(await getApiKey());
 }
+
+function makeAuth(apiKey: string): string {
+  return `Basic ${Buffer.from(apiKey + ":").toString("base64")}`;
+}
+
+export interface MyParcelRecipient {
+  cc: string;            // landcode, bv. NL
+  postal_code: string;
+  city: string;
+  street: string;
+  number: string;
+  person: string;        // naam/bedrijf
+  email?: string | null;
+}
+
+/**
+ * Maak één MyParcel-zending aan (multicollo bij >1 pakket) en geef de
+ * MyParcel shipment-id's terug. Package_type 1 = pakket.
+ */
+export async function createMyParcelShipments(opts: {
+  recipient: MyParcelRecipient;
+  carrier: number;
+  numberOfPackages: number;
+  reference?: string;
+}): Promise<{ ids: number[]; error?: string }> {
+  const apiKey = await getApiKey();
+  if (!apiKey) return { ids: [], error: "MyParcel API-sleutel niet ingesteld" };
+
+  const n = Math.max(1, Math.min(20, Math.floor(opts.numberOfPackages || 1)));
+  const shipment: Record<string, unknown> = {
+    recipient: {
+      cc: opts.recipient.cc,
+      postal_code: opts.recipient.postal_code,
+      city: opts.recipient.city,
+      street: opts.recipient.street,
+      number: opts.recipient.number,
+      person: opts.recipient.person,
+      ...(opts.recipient.email ? { email: opts.recipient.email } : {}),
+    },
+    carrier: opts.carrier,
+    options: {
+      package_type: 1,
+      ...(opts.reference ? { label_description: opts.reference.slice(0, 45) } : {}),
+    },
+    ...(n > 1 ? { secondary_shipments: Array.from({ length: n - 1 }, () => ({})) } : {}),
+  };
+
+  try {
+    const res = await fetch(`${MYPARCEL_BASE_URL}/shipments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/vnd.shipment+json;charset=utf-8;version=1.1",
+        Accept: "application/json;charset=utf-8",
+        Authorization: makeAuth(apiKey),
+      },
+      body: JSON.stringify({ data: { shipments: [shipment] } }),
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      console.error("[myparcel] create shipment fout:", res.status, text.slice(0, 500));
+      return { ids: [], error: `MyParcel-fout (${res.status})` };
+    }
+    const json = JSON.parse(text);
+    const ids: number[] = (json?.data?.ids ?? []).map((x: { id: number }) => x.id).filter(Boolean);
+    return { ids };
+  } catch (e) {
+    console.error("[myparcel] create shipment error:", e);
+    return { ids: [], error: "Netwerkfout richting MyParcel" };
+  }
+}
+
+/** Haal het barcode/tracking van een MyParcel-zending op (kan even duren na aanmaken). */
+export async function getBarcode(myParcelShipmentId: number | string): Promise<string | null> {
+  const s = await getShipmentStatus(String(myParcelShipmentId));
+  return s?.trackingCode ?? null;
+}
+
+/** Label-PDF (A6) van één of meer MyParcel-zendingen ophalen. */
+export async function fetchLabelPdf(ids: Array<number | string>): Promise<Buffer | null> {
+  const apiKey = await getApiKey();
+  if (!apiKey || ids.length === 0) return null;
+  try {
+    const res = await fetch(`${MYPARCEL_BASE_URL}/shipment_labels/${ids.join(";")}?format=A6`, {
+      method: "GET",
+      headers: { Accept: "application/pdf", Authorization: makeAuth(apiKey) },
+    });
+    if (!res.ok) {
+      console.error("[myparcel] label ophalen fout:", res.status);
+      return null;
+    }
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch (e) {
+    console.error("[myparcel] label error:", e);
+    return null;
+  }
+}
+
+export { normalizeCountry };
