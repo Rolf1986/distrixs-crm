@@ -62,6 +62,8 @@ export function TwinfieldSettingsClient({
 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [listTesting, setListTesting] = useState(false);
+  const [listResult, setListResult] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [syncResults, setSyncResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
 
@@ -401,6 +403,34 @@ export function TwinfieldSettingsClient({
             )}
           </div>
         </form>
+      </div>
+
+      {/* LIST-call test (juiste XML verifiëren) */}
+      <div className="bg-white rounded-lg border border-slate-200 p-6">
+        <h2 className="text-base font-semibold text-slate-900 mb-2">Twinfield-lijst testen</h2>
+        <p className="text-sm text-slate-500 mb-3">
+          Test de correcte lijst-calls (kantoren + debiteuren via <code>dimensions/DEB</code>). Toont de ruwe Twinfield-respons.
+        </p>
+        <button
+          type="button"
+          onClick={async () => {
+            setListTesting(true); setListResult(null);
+            try {
+              const res = await fetch("/api/twinfield/list-test", { method: "POST" });
+              const data = await res.json();
+              setListResult(res.ok ? JSON.stringify(data.result, null, 2) : `Fout: ${data.error ?? res.status}`);
+            } catch {
+              setListResult("Netwerkfout");
+            } finally { setListTesting(false); }
+          }}
+          disabled={listTesting}
+          className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg"
+        >
+          {listTesting ? "Testen…" : "Test lijst-calls"}
+        </button>
+        {listResult && (
+          <pre className="mt-3 text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 overflow-x-auto max-h-96 whitespace-pre-wrap break-all">{listResult}</pre>
+        )}
       </div>
 
       {/* Recent invoices sync status */}

@@ -438,6 +438,34 @@ function getVatMapping(country: string, defaultSettings: TwinfieldSettings): Vat
   return { revenueAccount: "8500", vatCode: "VN" };
 }
 
+// ─── LIST-test (verificatie juiste XML per Twan/Twinfield) ───────────────────
+export async function twinfieldListTest(): Promise<Record<string, string>> {
+  const token = await getValidToken();
+  const cluster = await getCluster();
+  const rows = await prisma.$queryRaw<Array<{ twinfield_office_code: string | null }>>`
+    SELECT twinfield_office_code FROM company_settings WHERE id = 'singleton' LIMIT 1
+  `;
+  const office = rows[0]?.twinfield_office_code ?? "";
+
+  const calls: Record<string, string> = {
+    offices: `<list><type>offices</type></list>`,
+    debtors_dimensions: `<list><type>dimensions</type><office>${escapeXml(office)}</office><dimtype>DEB</dimtype><pattern>*</pattern><field>1</field><firstRow>1</firstRow><maxRows>5</maxRows></list>`,
+  };
+
+  const out: Record<string, string> = {};
+  for (const [key, xml] of Object.entries(calls)) {
+    try {
+      const res = await callXml(token, office, xml, cluster);
+      out[key] = res.slice(0, 4000);
+      console.log(`[twinfield-test] ${key} OK:`, res.slice(0, 1500));
+    } catch (e) {
+      out[key] = `FOUT: ${e instanceof Error ? e.message : String(e)}`;
+      console.log(`[twinfield-test] ${key} FOUT:`, e instanceof Error ? e.message : e);
+    }
+  }
+  return out;
+}
+
 // ─── Invoice sync ─────────────────────────────────────────────────────────────
 
 /** Staat de automatische Twinfield-boeking bij verzenden aan? (default: ja) */
