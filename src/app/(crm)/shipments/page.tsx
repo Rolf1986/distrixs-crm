@@ -66,7 +66,7 @@ export default async function ShipmentsPage() {
           }))}
           customers={customers}
           deliveryNotes={deliveryNotes}
-          hasApiKey={hasApiKey()}
+          hasApiKey={await hasApiKey()}
         />
       </div>
     </div>

@@ -9,7 +9,17 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
   }
 
-  const body = (await req.json()) as { mollieApiKey?: unknown };
+  const body = (await req.json()) as { mollieApiKey?: unknown; myparcelApiKey?: unknown };
+
+  // MyParcel-sleutel (los opslaan via raw SQL)
+  if (typeof body.myparcelApiKey === "string") {
+    const mp = body.myparcelApiKey.trim();
+    await prisma.$executeRaw`UPDATE company_settings SET myparcel_api_key = ${mp || null} WHERE id = 'singleton'`;
+    if (typeof body.mollieApiKey !== "string") {
+      return NextResponse.json({ ok: true, myparcelConfigured: !!mp });
+    }
+  }
+
   if (typeof body.mollieApiKey !== "string") {
     return NextResponse.json({ error: "Geen geldige velden" }, { status: 400 });
   }
