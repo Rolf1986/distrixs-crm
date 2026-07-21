@@ -51,7 +51,7 @@ export function DeliveryNoteShipmentsSection({
   const [showForm, setShowForm] = useState(false);
   const [trackingCode, setTrackingCode] = useState("");
   const [myParcelShipmentId, setMyParcelShipmentId] = useState("");
-  const [carrier, setCarrier] = useState("PostNL");
+  const [carrier, setCarrier] = useState("");
   const [deliveryNoteId, setDeliveryNoteId] = useState("");
   const [saving, setSaving] = useState(false);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
@@ -257,15 +257,19 @@ export function DeliveryNoteShipmentsSection({
               <label className="block text-xs font-medium text-slate-500 mb-1">
                 Vervoerder
               </label>
-              <select
+              <input
+                type="text"
+                list="carrier-suggestions"
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
+                placeholder="bijv. Transmission, PostNL, DHL…"
                 className="w-full border border-slate-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {["PostNL", "DHL", "DPD", "Other"].map((c) => (
-                  <option key={c} value={c}>{c}</option>
+              />
+              <datalist id="carrier-suggestions">
+                {["Transmission", "PostNL", "DHL Europlus", "DHL", "DPD", "bpost", "UPS"].map((c) => (
+                  <option key={c} value={c} />
                 ))}
-              </select>
+              </datalist>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-500 mb-1">
