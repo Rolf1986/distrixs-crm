@@ -193,7 +193,11 @@ export async function createMyParcelShipments(opts: {
   const n = Math.max(1, Math.min(20, Math.floor(opts.numberOfPackages || 1)));
   // DHL Europlus (11) eist een bedrijfsnaam én handtekening bij ontvangst
   const isEuroplus = opts.carrier === 11;
-  const shipment: Record<string, unknown> = {
+  // Multicollo (gekoppelde pakketten) wordt alleen door PostNL ondersteund;
+  // andere vervoerders krijgen bij >1 pakket losse zendingen in één POST.
+  const useMulticollo = n > 1 && opts.carrier === 1;
+
+  const baseShipment: Record<string, unknown> = {
     recipient: {
       cc: opts.recipient.cc,
       postal_code: opts.recipient.postal_code,
@@ -210,8 +214,11 @@ export async function createMyParcelShipments(opts: {
       ...(isEuroplus ? { signature: 1 } : {}),
       ...(opts.reference ? { label_description: opts.reference.slice(0, 45) } : {}),
     },
-    ...(n > 1 ? { secondary_shipments: Array.from({ length: n - 1 }, () => ({})) } : {}),
   };
+
+  const shipments = useMulticollo
+    ? [{ ...baseShipment, secondary_shipments: Array.from({ length: n - 1 }, () => ({})) }]
+    : Array.from({ length: n }, () => ({ ...baseShipment }));
 
   try {
     const res = await fetch(`${MYPARCEL_BASE_URL}/shipments`, {
@@ -221,7 +228,7 @@ export async function createMyParcelShipments(opts: {
         Accept: "application/json;charset=utf-8",
         Authorization: makeAuth(apiKey),
       },
-      body: JSON.stringify({ data: { shipments: [shipment] } }),
+      body: JSON.stringify({ data: { shipments } }),
     });
     const text = await res.text();
     if (!res.ok) {
