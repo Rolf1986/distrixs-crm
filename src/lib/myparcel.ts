@@ -63,9 +63,10 @@ async function getApiKey(): Promise<string | null> {
   return process.env.MYPARCEL_API_KEY ?? null;
 }
 
+// MyParcel wijkt af van standaard Basic-auth: base64 van de kale sleutel,
+// ZONDER ":" erachter (zie developer.myparcel.nl → Authentication).
 function makeAuthHeader(apiKey: string): string {
-  const encoded = Buffer.from(apiKey + ":").toString("base64");
-  return `Basic ${encoded}`;
+  return `basic ${Buffer.from(apiKey).toString("base64")}`;
 }
 
 export interface ShipmentStatusResult {
@@ -162,7 +163,7 @@ export async function hasApiKey(): Promise<boolean> {
 }
 
 function makeAuth(apiKey: string): string {
-  return `Basic ${Buffer.from(apiKey + ":").toString("base64")}`;
+  return makeAuthHeader(apiKey);
 }
 
 export interface MyParcelRecipient {
