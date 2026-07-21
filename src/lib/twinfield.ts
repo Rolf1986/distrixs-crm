@@ -447,9 +447,13 @@ export async function twinfieldListTest(): Promise<Record<string, string>> {
   `;
   const office = rows[0]?.twinfield_office_code ?? "";
 
+  const o = escapeXml(office);
   const calls: Record<string, string> = {
-    offices: `<list><type>offices</type></list>`,
-    debtors_dimensions: `<list><type>dimensions</type><office>${escapeXml(office)}</office><dimtype>DEB</dimtype><pattern>*</pattern><field>1</field><firstRow>1</firstRow><maxRows>5</maxRows></list>`,
+    deb_minimal: `<list><type>dimensions</type><office>${o}</office><dimtype>DEB</dimtype></list>`,
+    deb_no_office: `<list><type>dimensions</type><dimtype>DEB</dimtype></list>`,
+    deb_office_attr: `<list><type>dimensions</type><dimtype>DEB</dimtype><office>${o}</office></list>`,
+    deb_dimensions_type_deb: `<list><type>dimensions</type><office>${o}</office><dimtype>DEB</dimtype><pattern>*</pattern></list>`,
+    read_one: `<read><type>dimensions</type><office>${o}</office><dimtype>DEB</dimtype><code>10001</code></read>`,
   };
 
   const out: Record<string, string> = {};
