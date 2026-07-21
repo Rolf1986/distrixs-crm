@@ -237,10 +237,18 @@ export async function createMyParcelShipments(opts: {
   }
 }
 
-/** Haal het barcode/tracking van een MyParcel-zending op (kan even duren na aanmaken). */
+/**
+ * Haal het barcode/tracking van een MyParcel-zending op. Direct na het
+ * aanmaken is de barcode er vaak nog niet — probeer daarom een paar keer
+ * met korte tussenpozen (totaal max ~6s).
+ */
 export async function getBarcode(myParcelShipmentId: number | string): Promise<string | null> {
-  const s = await getShipmentStatus(String(myParcelShipmentId));
-  return s?.trackingCode ?? null;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, 2000));
+    const s = await getShipmentStatus(String(myParcelShipmentId));
+    if (s?.trackingCode) return s.trackingCode;
+  }
+  return null;
 }
 
 /** Label-PDF (A6) van één of meer MyParcel-zendingen ophalen. */
