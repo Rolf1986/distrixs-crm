@@ -72,10 +72,13 @@ export function DeliveryNoteShipmentsSection({
   const [mpLabelDn, setMpLabelDn] = useState<string | null>(null);
 
   async function createLabel() {
-    if (!mpDnId) { setMpError("Kies eerst een verzenddocument"); return; }
+    // Val terug op het eerste document: de state kan leeg zijn als het
+    // verzenddocument ná het laden van dit blok is aangemaakt.
+    const dnId = mpDnId || deliveryNoteOptions[0]?.id || "";
+    if (!dnId) { setMpError("Kies eerst een verzenddocument"); return; }
     setMpBusy(true); setMpError(null);
     try {
-      const res = await fetch(`/api/delivery-notes/${mpDnId}/create-label`, {
+      const res = await fetch(`/api/delivery-notes/${dnId}/create-label`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ carrier: mpCarrier, numberOfPackages: Number(mpPackages) || 1 }),
@@ -86,11 +89,11 @@ export function DeliveryNoteShipmentsSection({
       setShipments((prev) => [
         ...data.shipments.map((s: { id: string; trackingCode: string | null }) => ({
           id: s.id, trackingCode: s.trackingCode, carrier: carrierLabel,
-          status: "PENDING", statusLabel: "Aangemeld", estimatedDelivery: null, deliveryNoteId: mpDnId,
+          status: "PENDING", statusLabel: "Aangemeld", estimatedDelivery: null, deliveryNoteId: dnId,
         })),
         ...prev,
       ]);
-      setMpLabelDn(mpDnId);
+      setMpLabelDn(dnId);
     } catch {
       setMpError("Netwerkfout");
     } finally {
