@@ -34,13 +34,9 @@ export function InvoiceStatusActions({ invoiceId, currentStatus, twinfieldLocked
     }
   }
 
-  if (twinfieldLocked) {
-    return (
-      <span className="text-xs text-slate-400 border border-slate-200 rounded px-2 py-1">
-        🔒 Twinfield vergrendeld
-      </span>
-    );
-  }
+  // Let op: een Twinfield-vergrendelde factuur mag WEL van betaalstatus
+  // wijzigen (betaald/deels betaald/verlopen) — de knoppen blijven zichtbaar.
+  // De lock beschermt alleen de inhoud (regels/bedragen).
 
   const btnClass = (color: string) =>
     `flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50 ${color}`;

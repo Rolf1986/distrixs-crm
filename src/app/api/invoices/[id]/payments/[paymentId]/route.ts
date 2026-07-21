@@ -15,9 +15,8 @@ export async function DELETE(
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId } });
   if (!invoice) return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
 
-  if (invoice.twinfieldLocked) {
-    return NextResponse.json({ error: "Factuur is vergrendeld via Twinfield" }, { status: 403 });
-  }
+  // Betaaladministratie mag ook op een Twinfield-vergrendelde factuur (de lock
+  // beschermt de factuurinhoud, niet de betalingen).
 
   // Fetch payment amount before deletion for audit log
   const paymentToDelete = await prisma.payment.findUnique({

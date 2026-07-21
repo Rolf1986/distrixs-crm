@@ -32,12 +32,9 @@ export async function PATCH(
     return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
   }
 
-  if (invoice.twinfieldLocked) {
-    return NextResponse.json(
-      { error: "Factuur is vergrendeld door Twinfield en kan niet worden gewijzigd." },
-      { status: 403 }
-    );
-  }
+  // Let op: een Twinfield-vergrendelde factuur mag WEL van betaalstatus wijzigen
+  // (betaald/deels betaald/verlopen). De lock beschermt de inhoud (regels/
+  // bedragen), niet het registreren van betalingen.
 
   const allowed = VALID_TRANSITIONS[invoice.status] ?? [];
   if (!allowed.includes(newStatus)) {
