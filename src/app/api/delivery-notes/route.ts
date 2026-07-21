@@ -35,16 +35,38 @@ export async function POST(req: NextRequest) {
         where: { dealId, status: "SENT" },
         orderBy: { createdAt: "desc" },
         select: { id: true },
+      })) ??
+      // Ook een concept-offerte is beter dan een leeg verzenddocument
+      (await prisma.quote.findFirst({
+        where: { dealId },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
       }));
     sourceQuoteId = quote?.id ?? null;
   }
-  const quoteLines = sourceQuoteId
+  let lines: Array<{ skuSnapshot: string; titleSnapshot: string; qty: unknown }> = sourceQuoteId
     ? await prisma.quoteLine.findMany({
         where: { quoteId: sourceQuoteId },
         select: { skuSnapshot: true, titleSnapshot: true, qty: true },
         orderBy: { createdAt: "asc" },
       })
     : [];
+
+  // Laatste redmiddel: regels van de recentste factuur van de deal
+  if (lines.length === 0) {
+    const invoice = await prisma.invoice.findFirst({
+      where: { dealId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true },
+    });
+    if (invoice) {
+      lines = await prisma.invoiceLine.findMany({
+        where: { invoiceId: invoice.id },
+        select: { skuSnapshot: true, titleSnapshot: true, qty: true },
+        orderBy: { createdAt: "asc" },
+      });
+    }
+  }
 
   const year = new Date().getFullYear();
   const deliveryNumber = await nextDeliveryNoteNumber(year);
@@ -62,10 +84,10 @@ export async function POST(req: NextRequest) {
       notes: notes || null,
       createdBy: session.user.id,
       lines: {
-        create: quoteLines.map((l) => ({
+        create: lines.map((l) => ({
           skuSnapshot: l.skuSnapshot,
           titleSnapshot: l.titleSnapshot,
-          qty: l.qty,
+          qty: l.qty as never,
         })),
       },
     },
