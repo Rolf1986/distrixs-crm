@@ -349,7 +349,7 @@ export async function findOrCreateDebtor(
   const normName = (s: string) => decodeXml(s).trim().toLowerCase().replace(/\s+/g, " ");
 
   let foundCode: string | null = null;
-  let maxCode = 10000;
+  const usedCodes = new Set<number>();
   const target = normName(customer.companyName);
 
   try {
@@ -359,8 +359,7 @@ export async function findOrCreateDebtor(
       const name = m[1];
       const code = m[2].trim();
       if (/^1[0-9]{4}$/.test(code)) {
-        const n = parseInt(code, 10);
-        if (n > maxCode) maxCode = n;
+        usedCodes.add(parseInt(code, 10));
       }
       if (!foundCode && normName(name) === target) {
         foundCode = code;
@@ -372,9 +371,16 @@ export async function findOrCreateDebtor(
     throw new Error("Debiteurenlijst uit Twinfield kon niet worden opgehaald");
   }
 
-  // 3. Niet gevonden → nieuwe debiteur met de eerstvolgende vrije 1xxxx-code
+  // 3. Niet gevonden → nieuwe debiteur met de LAAGSTE vrije code in 10000-19999.
+  //    (Twinfield dwingt het masker 1[0-9]{4} af; "hoogste+1" liep vast zodra
+  //    19999 bestond — die was in een eerdere fase van bovenaf uitgedeeld.)
   if (!foundCode) {
-    const candidateCode = String(maxCode + 1);
+    let candidate = 10000;
+    while (usedCodes.has(candidate) && candidate <= 19999) candidate++;
+    if (candidate > 19999) {
+      throw new Error("Geen vrije debiteurcode meer beschikbaar (1xxxx-reeks vol)");
+    }
+    const candidateCode = String(candidate);
     const shortname = customer.companyName
       .toUpperCase()
       .replace(/[^A-Z0-9]/g, "")
@@ -564,22 +570,27 @@ export async function syncInvoiceToTwinfield(
     // Intracommunautaire levering (EU, bv. België): Twinfield eist een
     // uitvoeringstype (performancetype) op de regel + een prestatiedatum in
     // de header. Distrixs levert goederen → "goods".
-    const isEuIcp = vatMapping.vatCode === "ICL";
-    // Intracommunautaire levering van goederen: alleen het uitvoeringstype.
-    // Bij "goods" mag GEEN uitvoeringsdatum mee (die is enkel voor diensten).
-    const perfLines = isEuIcp ? `\n        <performancetype>goods</performancetype>` : "";
-
+    // BTW-code PER REGEL op basis van het werkelijke tarief van de factuur.
+    // Alleen op land afgaan gaf een balansfout: een BE-factuur mét 21%-regels
+    // kreeg ICL (0%) terwijl het headertotaal incl. btw is.
+    // - tarief > 0  → VH (NL hoog) op omzetrekening 8100
+    // - tarief = 0  → landafhankelijk: EU → ICL/8600 (+performancetype goods),
+    //                 anders VN/8500 (buiten EU of NL-0%)
+    const isEu = EU_COUNTRIES.has(billingCountry);
     const detailLines = invoice.lines
       .map((line, i) => {
+        const rate = Number(line.vatRate);
+        const hasVat = rate > 0;
+        const lineVatCode = hasVat ? "VH" : (isEu ? "ICL" : "VN");
+        const lineAccount = hasVat ? "8100" : (isEu ? "8600" : "8500");
+        const perf = !hasVat && isEu ? `\n        <performancetype>goods</performancetype>` : "";
         const netValue = Number(line.netLineTotal).toFixed(2);
         const desc = (line.titleSnapshot ?? "").slice(0, 40);
-        const vatLine = vatMapping.vatCode
-          ? `\n        <vatcode>${escapeXml(vatMapping.vatCode)}</vatcode>`
-          : "";
         return `      <line type="detail" id="${2 + i}">
-        <dim1>${escapeXml(vatMapping.revenueAccount)}</dim1>
-        <value>${netValue}</value>${vatLine}
-        <description>${escapeXml(desc)}</description>${perfLines}
+        <dim1>${escapeXml(lineAccount)}</dim1>
+        <value>${netValue}</value>
+        <vatcode>${escapeXml(lineVatCode)}</vatcode>
+        <description>${escapeXml(desc)}</description>${perf}
       </line>`;
       })
       .join("\n");

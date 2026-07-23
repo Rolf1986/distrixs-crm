@@ -10,9 +10,9 @@ export async function assertQuoteEditable(quoteId: string): Promise<string | nul
     select: { status: true },
   });
   if (!quote) return "Offerte niet gevonden";
-  if (quote.status !== "DRAFT") {
-    return "Offerte is verzonden en kan niet meer gewijzigd worden";
-  }
+  // Offertes zijn op verzoek van Rolf ALTIJD bewerkbaar, ook na verzenden/
+  // akkoord. Facturen die eruit voortkwamen zijn losse snapshots en
+  // veranderen niet mee.
   return null;
 }
 

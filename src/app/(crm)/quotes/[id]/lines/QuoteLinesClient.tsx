@@ -18,6 +18,7 @@ type Line = {
   netLineTotal: number;
   vatRate: number;
   vatAmount: number;
+  costSnapshot?: number;
 };
 
 type Product = {
@@ -102,6 +103,7 @@ export function QuoteLinesClient({
         grossUnitPrice: line.grossUnitPrice,
         discountPercent: line.discountPercent,
         vatRate: line.vatRate,
+        costSnapshot: line.costSnapshot ?? 0,
       },
     }));
   }
@@ -143,6 +145,7 @@ export function QuoteLinesClient({
                 netLineTotal: Number(updated.netLineTotal),
                 vatRate: Number(updated.vatRate),
                 vatAmount: Number(updated.vatAmount),
+                costSnapshot: Number(updated.costSnapshot ?? 0),
               }
             : l
         )
@@ -293,17 +296,34 @@ export function QuoteLinesClient({
                     <td className="px-4 py-3 font-mono text-xs text-slate-400">{line.skuSnapshot}</td>
                     <td className="px-4 py-3">
                       {isEditing ? (
-                        <input
-                          className={`${inputClass} w-full`}
-                          value={String(ed.titleSnapshot ?? line.titleSnapshot)}
-                          onChange={(e) =>
-                            setEditing((prev) => ({
-                              ...prev,
-                              [line.id]: { ...prev[line.id], titleSnapshot: e.target.value },
-                            }))
-                          }
-                          onClick={(e) => e.stopPropagation()}
-                        />
+                        <div className="space-y-1.5" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            className={`${inputClass} w-full`}
+                            value={String(ed.titleSnapshot ?? line.titleSnapshot)}
+                            onChange={(e) =>
+                              setEditing((prev) => ({
+                                ...prev,
+                                [line.id]: { ...prev[line.id], titleSnapshot: e.target.value },
+                              }))
+                            }
+                          />
+                          <label className="flex items-center gap-1.5 text-xs text-slate-500">
+                            Inkoop (€)
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              className={`${inputClass} w-28`}
+                              value={String(ed.costSnapshot ?? line.costSnapshot ?? 0)}
+                              onChange={(e) =>
+                                setEditing((prev) => ({
+                                  ...prev,
+                                  [line.id]: { ...prev[line.id], costSnapshot: Number(e.target.value) },
+                                }))
+                              }
+                            />
+                          </label>
+                        </div>
                       ) : (
                         <span className="text-slate-700 font-medium">{line.titleSnapshot}</span>
                       )}

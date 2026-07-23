@@ -12,6 +12,7 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ChevronRight, Download } from "lucide-react";
 import { DeleteQuoteButton } from "@/components/DeleteQuoteButton";
+import { QuoteDealLink } from "@/components/QuoteDealLink";
 
 async function getQuote(id: string) {
   return prisma.quote.findUnique({
@@ -46,6 +47,16 @@ export default async function QuoteLayout({
   const { id } = await params;
   const quote = await getQuote(id);
   if (!quote) notFound();
+
+  // Zonder deal: bestaande deals van deze klant aanbieden om te koppelen
+  const customerDeals = quote.deal
+    ? []
+    : await prisma.deal.findMany({
+        where: { customerId: quote.customerId },
+        select: { id: true, dealNumber: true, title: true },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
 
   const marge = quote.lines.reduce((s, l) => s + Number(l.expectedMarginSnapshot), 0);
 
@@ -98,6 +109,14 @@ export default async function QuoteLayout({
               )}
               <span className="text-slate-400">· {formatDate(quote.quoteDate)}</span>
               <ValidUntilEditor quoteId={id} value={quote.validUntil ?? null} />
+              {!quote.deal && (
+                <QuoteDealLink
+                  quoteId={id}
+                  customerId={quote.customerId}
+                  quoteTitle={`Offerte ${quote.quoteNumber}`}
+                  deals={customerDeals}
+                />
+              )}
             </div>
           </div>
 
