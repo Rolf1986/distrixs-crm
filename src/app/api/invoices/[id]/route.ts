@@ -17,6 +17,24 @@ export async function PATCH(
   if ("notes" in body) data.notes = body.notes ?? null;
   if ("language" in body && ["NL", "EN"].includes(body.language)) data.language = body.language;
 
+  // Factuur achteraf aan een deal koppelen (metadata; mag ook op verzonden/
+  // vergrendelde facturen). Deal moet van dezelfde klant zijn.
+  if ("dealId" in body) {
+    if (body.dealId) {
+      const [inv, deal] = await Promise.all([
+        prisma.invoice.findUnique({ where: { id }, select: { customerId: true } }),
+        prisma.deal.findUnique({ where: { id: body.dealId }, select: { customerId: true } }),
+      ]);
+      if (!deal) return NextResponse.json({ error: "Deal niet gevonden" }, { status: 404 });
+      if (inv && deal.customerId !== inv.customerId) {
+        return NextResponse.json({ error: "Deal hoort bij een andere klant" }, { status: 400 });
+      }
+      data.dealId = body.dealId;
+    } else {
+      data.dealId = null;
+    }
+  }
+
   // Vervaldatum aanpasbaar (bv. betaalafspraak verlengen). Niet op een
   // via Twinfield vergrendelde factuur.
   const wantsDueDate = "dueDate" in body && body.dueDate;
