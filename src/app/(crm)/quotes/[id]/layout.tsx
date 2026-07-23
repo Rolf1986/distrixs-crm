@@ -94,10 +94,10 @@ export default async function QuoteLayout({
 
       {/* Header */}
       <div className="px-4 md:px-8 pt-3 pb-5 bg-white border-b border-slate-200">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div className="min-w-0">
+        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+          <div className="min-w-[260px] shrink-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl font-semibold text-slate-900 font-mono">{quote.quoteNumber}</h1>
+              <h1 className="text-xl font-semibold text-slate-900 font-mono whitespace-nowrap">{quote.quoteNumber}</h1>
               <StatusBadge status={quote.status} type="quote" />
             </div>
             <div className="flex items-center gap-3 mt-1.5 text-sm text-slate-500 flex-wrap">
@@ -121,7 +121,7 @@ export default async function QuoteLayout({
           </div>
 
           {/* Actieknoppen */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             <DeleteQuoteButton quoteId={id} status={quote.status} />
             <LanguageToggle
               documentType="quote"

@@ -5,6 +5,7 @@ export interface QuotePdfData {
   language?: string;
   quoteNumber: string;
   projectName?: string;
+  customerReference?: string | null;
   quoteDate: string | Date;
   validUntil: string | Date | null;
   subtotal: number;
@@ -144,6 +145,12 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
             <View>
               <Text style={shared.metaLabel}>{t("validUntil", lang)}</Text>
               <Text style={shared.metaValue}>{fmtDate(data.validUntil, lang)}</Text>
+            </View>
+          )}
+          {data.customerReference && (
+            <View>
+              <Text style={shared.metaLabel}>{t("yourRef", lang)}</Text>
+              <Text style={shared.metaValue}>{data.customerReference}</Text>
             </View>
           )}
         </View>

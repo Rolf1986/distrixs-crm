@@ -29,7 +29,7 @@ export async function GET(
         },
       },
       contact: true,
-      deal: { select: { title: true } },
+      deal: { select: { title: true, orderReference: true } },
       lines: { orderBy: { createdAt: "asc" } },
     },
   });
@@ -46,6 +46,7 @@ export async function GET(
     language: quote.language ?? "NL",
     quoteNumber: quote.quoteNumber,
     projectName: quote.deal?.title,
+    customerReference: quote.deal?.orderReference ?? null,
     quoteDate: quote.quoteDate,
     validUntil: quote.validUntil,
     reverseCharge: isEuReverseCharge(addr?.country, quote.customer.vatNumber),

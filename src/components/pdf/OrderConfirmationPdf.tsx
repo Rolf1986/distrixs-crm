@@ -8,6 +8,7 @@ export interface OrderConfirmationPdfData {
   expectedDelivery?: string | Date | null;
   projectName?: string | null;
   quoteNumber?: string | null;
+  customerReference?: string | null;
   notes?: string | null;
   subtotal: number;
   vatAmount: number;
@@ -132,6 +133,12 @@ export function OrderConfirmationPdf({ data }: { data: OrderConfirmationPdfData 
             <View style={{ marginRight: 24 }}>
               <Text style={shared.metaLabel}>{lang === "EN" ? "Expected delivery" : "Verwachte levering"}</Text>
               <Text style={shared.metaValue}>{fmtDate(data.expectedDelivery, lang)}</Text>
+            </View>
+          )}
+          {data.customerReference && (
+            <View style={{ marginRight: 24 }}>
+              <Text style={shared.metaLabel}>{t("yourRef", lang)}</Text>
+              <Text style={shared.metaValue}>{data.customerReference}</Text>
             </View>
           )}
           <Text style={S.docTypeLabel}>{title}</Text>

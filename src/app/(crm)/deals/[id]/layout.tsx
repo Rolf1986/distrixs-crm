@@ -12,6 +12,7 @@ import { DealStatusActions } from "@/components/DealStatusActions";
 import { DealPipeline } from "@/components/DealPipeline";
 import { WinProbabilityEditor } from "@/components/WinProbabilityEditor";
 import { ExpectedCloseDateEditor } from "@/components/ExpectedCloseDateEditor";
+import { DealOrderReferenceEditor } from "@/components/DealOrderReferenceEditor";
 
 async function getDeal(id: string) {
   return prisma.deal.findUnique({
@@ -80,6 +81,7 @@ export default async function DealLayout({
               )}
               <WinProbabilityEditor dealId={id} value={deal.winProbability ?? null} />
               <ExpectedCloseDateEditor dealId={id} value={deal.expectedCloseDate ?? null} />
+              <DealOrderReferenceEditor dealId={id} value={deal.orderReference ?? null} />
             </div>
           </div>
 

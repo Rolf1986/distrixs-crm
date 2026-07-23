@@ -147,7 +147,7 @@ export async function buildQuotePdfData(quoteId: string) {
         },
       },
       contact: true,
-      deal: { select: { title: true } },
+      deal: { select: { title: true, orderReference: true } },
       lines: { orderBy: { createdAt: "asc" } },
     },
   });
@@ -160,6 +160,7 @@ export async function buildQuotePdfData(quoteId: string) {
     language: quote.language ?? "NL",
     quoteNumber: quote.quoteNumber,
     projectName: quote.deal?.title,
+    customerReference: quote.deal?.orderReference ?? null,
     quoteDate: quote.quoteDate,
     validUntil: quote.validUntil,
     subtotal: Number(quote.subtotal),
