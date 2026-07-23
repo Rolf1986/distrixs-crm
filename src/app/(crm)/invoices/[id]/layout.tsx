@@ -17,6 +17,7 @@ import { CreateCreditNoteButton } from "@/components/CreateCreditNoteButton";
 import { DeleteInvoiceButton } from "@/components/DeleteInvoiceButton";
 import { TwinfieldSyncButton } from "@/components/TwinfieldSyncButton";
 import { CopyInvoiceButton } from "@/components/CopyInvoiceButton";
+import { DealLink } from "@/components/QuoteDealLink";
 
 async function getInvoice(id: string) {
   return prisma.invoice.findUnique({
@@ -74,6 +75,16 @@ export default async function InvoiceLayout({
   if (!invoice) notFound();
 
   const { prev, next } = await getAdjacentInvoices(id, invoice.invoiceDate);
+
+  // Zonder deal: bestaande deals van deze klant aanbieden om te koppelen
+  const customerDeals = invoice.deal
+    ? []
+    : await prisma.deal.findMany({
+        where: { customerId: invoice.customerId },
+        select: { id: true, dealNumber: true, title: true },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+      });
 
   // E-mailadressen van de klantkaart: hoofd-/factuuradres + contactpersonen
   const emailOptions = [
@@ -167,6 +178,14 @@ export default async function InvoiceLayout({
                 locked={invoice.twinfieldLocked}
               />
               <OurReferenceEditor invoiceId={id} value={invoice.ourReference ?? null} />
+              {!invoice.deal && (
+                <DealLink
+                  patchUrl={`/api/invoices/${id}`}
+                  customerId={invoice.customerId}
+                  defaultTitle={`Factuur ${invoice.invoiceNumber}`}
+                  deals={customerDeals}
+                />
+              )}
               {invoice.quote && (
                 <Link
                   href={`/quotes/${invoice.quote.id}/lines`}

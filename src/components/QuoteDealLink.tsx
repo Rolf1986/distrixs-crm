@@ -11,18 +11,19 @@ interface DealOption {
 }
 
 /**
- * Offerte zonder deal → achteraf koppelen aan een bestaande deal van de
- * klant, of in één klik een nieuwe deal aanmaken en koppelen.
+ * Document (offerte/factuur) zonder deal → achteraf koppelen aan een
+ * bestaande deal van de klant, of in één klik een nieuwe deal aanmaken
+ * en koppelen. patchUrl krijgt een PATCH met { dealId }.
  */
-export function QuoteDealLink({
-  quoteId,
+export function DealLink({
+  patchUrl,
   customerId,
-  quoteTitle,
+  defaultTitle,
   deals,
 }: {
-  quoteId: string;
+  patchUrl: string;
   customerId: string;
-  quoteTitle: string;
+  defaultTitle: string;
   deals: DealOption[];
 }) {
   const router = useRouter();
@@ -34,7 +35,7 @@ export function QuoteDealLink({
     if (!dealId) return;
     setBusy(true); setError(null);
     try {
-      const res = await fetch(`/api/quotes/${quoteId}`, {
+      const res = await fetch(patchUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dealId }),
@@ -55,7 +56,7 @@ export function QuoteDealLink({
       const res = await fetch("/api/deals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: quoteTitle, customerId }),
+        body: JSON.stringify({ title: defaultTitle, customerId }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok || !d.id) { setError(d.error ?? "Deal aanmaken mislukt"); return; }
@@ -68,7 +69,7 @@ export function QuoteDealLink({
       <button
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-brand-blue transition-colors"
-        title="Deze offerte aan een deal koppelen"
+        title="Aan een deal koppelen"
       >
         <Link2 className="w-3.5 h-3.5" />
         deal koppelen…
@@ -99,5 +100,27 @@ export function QuoteDealLink({
       </button>
       {error && <span className="text-xs text-red-600">{error}</span>}
     </span>
+  );
+}
+
+/** Backwards-compatibele wrapper voor offertes. */
+export function QuoteDealLink({
+  quoteId,
+  customerId,
+  quoteTitle,
+  deals,
+}: {
+  quoteId: string;
+  customerId: string;
+  quoteTitle: string;
+  deals: DealOption[];
+}) {
+  return (
+    <DealLink
+      patchUrl={`/api/quotes/${quoteId}`}
+      customerId={customerId}
+      defaultTitle={quoteTitle}
+      deals={deals}
+    />
   );
 }
