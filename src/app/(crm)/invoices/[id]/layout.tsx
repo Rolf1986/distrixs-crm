@@ -151,10 +151,10 @@ export default async function InvoiceLayout({
 
       {/* Header */}
       <div className="px-4 md:px-8 pt-3 pb-5 bg-white border-b border-slate-200">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-          <div className="min-w-0">
+        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+          <div className="min-w-[260px] shrink-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl font-semibold text-slate-900 font-mono">{invoice.invoiceNumber}</h1>
+              <h1 className="text-xl font-semibold text-slate-900 font-mono whitespace-nowrap">{invoice.invoiceNumber}</h1>
               <StatusBadge status={invoice.status} type="invoice" />
               {invoice.twinfieldLocked && (
                 <span className="text-xs text-slate-400 border border-slate-200 rounded px-2 py-1">
@@ -198,7 +198,7 @@ export default async function InvoiceLayout({
           </div>
 
           {/* Actieknoppen */}
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             <DeleteInvoiceButton invoiceId={id} status={invoice.status} />
             <CopyInvoiceButton invoiceId={id} />
             <CreateCreditNoteButton

@@ -618,13 +618,24 @@ export async function syncInvoiceToTwinfield(
     // - tarief = 0  → landafhankelijk: EU → ICL/8600 (+performancetype goods),
     //                 anders VN/8500 (buiten EU of NL-0%)
     const isEu = EU_COUNTRIES.has(billingCountry);
+    const hasIclLines = invoice.lines.some((l) => Number(l.vatRate) === 0) && isEu;
+    const custVat = invoice.customer.vatNumber?.trim().replace(/\s/g, "") ?? "";
+    if (hasIclLines && !custVat) {
+      return {
+        success: false,
+        error: "Voor een intracommunautaire boeking is het btw-nummer van de klant verplicht — vul dit in op de klantkaart.",
+      };
+    }
     const detailLines = invoice.lines
       .map((line, i) => {
         const rate = Number(line.vatRate);
         const hasVat = rate > 0;
         const lineVatCode = hasVat ? "VH" : (isEu ? "ICL" : "VN");
         const lineAccount = hasVat ? "8100" : (isEu ? "8600" : "8500");
-        const perf = !hasVat && isEu ? `\n        <performancetype>goods</performancetype>` : "";
+        // ICP-regel: uitvoeringstype + -land + -btw-nummer expliciet meegeven
+        const perf = !hasVat && isEu
+          ? `\n        <performancetype>goods</performancetype>\n        <performancecountry>${escapeXml(billingCountry)}</performancecountry>\n        <performancevatnumber>${escapeXml(custVat)}</performancevatnumber>`
+          : "";
         const netValue = Number(line.netLineTotal).toFixed(2);
         const desc = (line.titleSnapshot ?? "").slice(0, 40);
         return `      <line type="detail" id="${2 + i}">

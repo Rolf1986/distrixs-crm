@@ -30,6 +30,7 @@ export async function GET(
         },
       },
       lines: { orderBy: { createdAt: "asc" } },
+      deal: { select: { orderReference: true } },
     },
   });
 
@@ -44,6 +45,7 @@ export async function GET(
   const data = {
     language: "NL",
     noteNumber: dn.deliveryNumber,
+    customerReference: dn.deal?.orderReference ?? null,
     deliveryDate: dn.deliveryDate ?? new Date(),
     notes: dn.notes,
     company,

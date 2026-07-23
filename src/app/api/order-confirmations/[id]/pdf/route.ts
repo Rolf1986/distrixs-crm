@@ -20,7 +20,7 @@ export async function GET(
   const oc = await prisma.orderConfirmation.findUnique({
     where: { id },
     include: {
-      deal: { select: { title: true } },
+      deal: { select: { title: true, orderReference: true } },
       quote: {
         select: {
           quoteNumber: true,
@@ -57,6 +57,7 @@ export async function GET(
     confirmationDate: oc.confirmationDate,
     expectedDelivery: oc.expectedDelivery,
     projectName: oc.deal?.title ?? null,
+    customerReference: oc.deal?.orderReference ?? null,
     quoteNumber: oc.quote?.quoteNumber ?? null,
     notes: oc.notes ?? null,
     subtotal: Number(oc.quote?.subtotal ?? 0),

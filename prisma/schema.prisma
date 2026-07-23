@@ -407,6 +407,7 @@ model Deal {
   status            DealStatus @default(NEW)
   winProbability    Int?       @map("win_probability")
   expectedCloseDate DateTime?  @map("expected_close_date")
+  orderReference    String?    @map("order_reference")   // klant-/orderreferentie → op offerte/OC/verzenddocument
   notes             String?
   externalId        String?    @unique @map("external_id")
   createdBy         String     @map("created_by")
