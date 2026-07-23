@@ -25,6 +25,9 @@ export function SearchableSelect({
   const [q, setQ] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  // Beschermt op touch-apparaten tegen de "ghost click": de tik die het menu
+  // opent, mag niet meteen de optie selecteren die eronder verschijnt.
+  const openedAtRef = useRef(0);
 
   const selected = options.find((o) => o.id === value);
 
@@ -51,6 +54,8 @@ export function SearchableSelect({
   }, []);
 
   function select(id: string) {
+    // Negeer klikken binnen 350ms na openen (ghost click op mobiel)
+    if (Date.now() - openedAtRef.current < 350) return;
     onChange(id);
     setOpen(false);
     setQ("");
@@ -66,7 +71,7 @@ export function SearchableSelect({
       {/* Trigger */}
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => { openedAtRef.current = Date.now(); setOpen(!open); }}
         className="w-full flex items-center justify-between gap-2 border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white text-left focus:outline-none focus:ring-2 focus:ring-brand-blue/30 hover:border-slate-300 transition-colors"
       >
         <span className={selected ? "text-slate-800" : "text-slate-400"}>

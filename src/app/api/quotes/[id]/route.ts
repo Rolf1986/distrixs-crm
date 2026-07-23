@@ -20,6 +20,24 @@ export async function PATCH(
     data.language = body.language;
   }
 
+  // Offerte achteraf aan een deal koppelen (of loskoppelen met null).
+  // De deal moet van dezelfde klant zijn.
+  if ("dealId" in body) {
+    if (body.dealId) {
+      const [quoteRow, deal] = await Promise.all([
+        prisma.quote.findUnique({ where: { id }, select: { customerId: true } }),
+        prisma.deal.findUnique({ where: { id: body.dealId }, select: { customerId: true } }),
+      ]);
+      if (!deal) return NextResponse.json({ error: "Deal niet gevonden" }, { status: 404 });
+      if (quoteRow && deal.customerId !== quoteRow.customerId) {
+        return NextResponse.json({ error: "Deal hoort bij een andere klant" }, { status: 400 });
+      }
+      data.dealId = body.dealId;
+    } else {
+      data.dealId = null;
+    }
+  }
+
   const quote = await prisma.quote.update({ where: { id }, data });
   return NextResponse.json(quote);
 }

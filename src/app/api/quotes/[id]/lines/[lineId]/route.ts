@@ -39,8 +39,10 @@ export async function PATCH(
   const netLineTotal = calcNetLineTotal(grossUnitPrice, qty, discountPercent);
   const lineVatAmount = calcLineVat(netLineTotal, vatRate);
 
-  // Herbereken margin op basis van bestaande costSnapshot
-  const costSnapshot = Number(existing.costSnapshot ?? 0);
+  // Inkoopprijs is achteraf aanpasbaar; marge rekent mee met de nieuwe waarde
+  const costSnapshot = body.costSnapshot !== undefined
+    ? Math.max(0, Number(body.costSnapshot) || 0)
+    : Number(existing.costSnapshot ?? 0);
   const expectedMarginSnapshot = netLineTotal - (qty * costSnapshot);
 
   const line = await prisma.quoteLine.update({
@@ -54,6 +56,7 @@ export async function PATCH(
       vatRate,
       netLineTotal,
       vatAmount: lineVatAmount,
+      costSnapshot,
       expectedMarginSnapshot,
     },
   });
