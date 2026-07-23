@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { normalizeCountry } from "@/lib/vat";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -321,6 +322,27 @@ export async function fetchTwinfieldSetup(
 
 // ─── Debtor helpers ───────────────────────────────────────────────────────────
 
+type DebtorAddress = {
+  country: string;      // ISO-code, bv. BE
+  city: string;
+  postalCode: string;
+  street: string;
+  houseNumber: string;
+};
+
+/** Adres-/btw-blok voor de debiteur-dimensie. Twinfield leidt het
+ *  uitvoeringsland voor ICP af van het debiteuradres — zonder adres valt
+ *  dat terug op NL en weigert Twinfield de intracommunautaire boeking. */
+function debtorDetailsXml(companyName: string, vatNumber: string | null | undefined, addr: DebtorAddress | null | undefined): string {
+  const vat = vatNumber?.trim()
+    ? `<vatnumber>${escapeXml(vatNumber.trim().replace(/\s/g, ""))}</vatnumber>`
+    : "";
+  const address = addr
+    ? `<addresses><address default="true" type="invoice"><name>${escapeXml(companyName)}</name><country>${escapeXml(addr.country)}</country><city>${escapeXml(addr.city)}</city><postcode>${escapeXml(addr.postalCode)}</postcode><field2>${escapeXml(`${addr.street} ${addr.houseNumber}`.trim())}</field2></address></addresses>`
+    : "";
+  return vat + address;
+}
+
 export async function findOrCreateDebtor(
   token: string,
   settings: TwinfieldSettings,
@@ -328,17 +350,30 @@ export async function findOrCreateDebtor(
     id: string;
     companyName: string;
     vatNumber?: string | null;
+    address?: DebtorAddress | null;
   }
 ): Promise<string> {
+  const { officeCode, cluster } = settings;
+  const shortnameFor = (name: string) =>
+    name.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "DEBITOR";
+
   // 1. Check if already stored in our DB
   const existing = await prisma.$queryRaw<
     Array<{ twinfield_debtor_code: string | null }>
   >`SELECT twinfield_debtor_code FROM customers WHERE id = ${customer.id} LIMIT 1`;
 
   const storedCode = existing[0]?.twinfield_debtor_code;
-  if (storedCode) return storedCode;
-
-  const { officeCode, cluster } = settings;
+  if (storedCode) {
+    // Adres/btw-nummer up-to-date houden (dimension-XML met bestaande code =
+    // update). Nodig voor eerder door ons zonder adres aangemaakte debiteuren.
+    if (customer.address) {
+      const upsertXml = `<dimension><office>${escapeXml(officeCode)}</office><type>DEB</type><code>${escapeXml(storedCode)}</code><name>${escapeXml(customer.companyName)}</name><shortname>${escapeXml(shortnameFor(customer.companyName))}</shortname>${debtorDetailsXml(customer.companyName, customer.vatNumber, customer.address)}</dimension>`;
+      await callXml(token, officeCode, upsertXml, cluster).catch((e) =>
+        console.warn("[twinfield] debiteur-adres bijwerken mislukt:", e instanceof Error ? e.message : e)
+      );
+    }
+    return storedCode;
+  }
 
   // 2. Alle bestaande DEB-debiteuren ophalen (correcte call, bevestigd met Twinfield).
   //    Matchen op naam → hergebruik; en de hoogste bestaande 1xxxx-code bepalen
@@ -381,12 +416,7 @@ export async function findOrCreateDebtor(
       throw new Error("Geen vrije debiteurcode meer beschikbaar (1xxxx-reeks vol)");
     }
     const candidateCode = String(candidate);
-    const shortname = customer.companyName
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .slice(0, 8) || "DEBITOR";
-
-    const createXml = `<dimension><office>${escapeXml(officeCode)}</office><type>DEB</type><code>${candidateCode}</code><name>${escapeXml(customer.companyName)}</name><shortname>${escapeXml(shortname)}</shortname></dimension>`;
+    const createXml = `<dimension><office>${escapeXml(officeCode)}</office><type>DEB</type><code>${candidateCode}</code><name>${escapeXml(customer.companyName)}</name><shortname>${escapeXml(shortnameFor(customer.companyName))}</shortname>${debtorDetailsXml(customer.companyName, customer.vatNumber, customer.address)}</dimension>`;
 
     const createResponse = await callXml(token, officeCode, createXml, cluster);
     foundCode = createResponse.match(/<code[^>]*>(.*?)<\/code>/i)?.[1] ?? null;
@@ -550,16 +580,27 @@ export async function syncInvoiceToTwinfield(
       cluster,
     };
 
-    // 4. Bepaal BTW/omzetrekening op basis van klantland
-    const billingCountry =
-      invoice.customer.addresses[0]?.country?.toUpperCase().trim() ?? "NL";
+    // 4. Bepaal BTW/omzetrekening op basis van klantland (genormaliseerd:
+    //    "België"/"Belgium" → BE, "Nederland" → NL)
+    const custAddr = invoice.customer.addresses[0] ?? null;
+    const billingCountry = normalizeCountry(custAddr?.country);
     const vatMapping = getVatMapping(billingCountry, tfSettings);
 
-    // 5. Find or create debtor
+    // 5. Find or create debtor — mét adres, zodat Twinfield het juiste
+    //    uitvoeringsland kent bij intracommunautaire boekingen
     const customerCode = await findOrCreateDebtor(token, tfSettings, {
       id: invoice.customer.id,
       companyName: invoice.customer.companyName,
       vatNumber: invoice.customer.vatNumber,
+      address: custAddr
+        ? {
+            country: billingCountry,
+            city: custAddr.city,
+            postalCode: custAddr.postalCode,
+            street: custAddr.street,
+            houseNumber: custAddr.houseNumber,
+          }
+        : null,
     });
 
     // 6. Build transaction XML

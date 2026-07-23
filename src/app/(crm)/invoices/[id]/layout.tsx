@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { CreateCreditNoteButton } from "@/components/CreateCreditNoteButton";
 import { DeleteInvoiceButton } from "@/components/DeleteInvoiceButton";
 import { TwinfieldSyncButton } from "@/components/TwinfieldSyncButton";
+import { CopyInvoiceButton } from "@/components/CopyInvoiceButton";
 
 async function getInvoice(id: string) {
   return prisma.invoice.findUnique({
@@ -180,6 +181,7 @@ export default async function InvoiceLayout({
           {/* Actieknoppen */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <DeleteInvoiceButton invoiceId={id} status={invoice.status} />
+            <CopyInvoiceButton invoiceId={id} />
             <CreateCreditNoteButton
               invoiceId={id}
               invoiceNumber={invoice.invoiceNumber}
