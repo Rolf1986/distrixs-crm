@@ -1,5 +1,7 @@
 "use client";
 
+import { RowLink } from "@/components/RowLink";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -224,7 +226,7 @@ export function PurchaseInvoicesClient({ invoices, suppliers, purchaseOrders }: 
                   }`}
                 >
                   <td className="px-4 py-3 text-slate-700">
-                    <Link href={`/purchase-invoices/${inv.id}`} className="absolute inset-0" />
+                    <RowLink href={`/purchase-invoices/${inv.id}`} />
                     {inv.supplierName}
                   </td>
                   <td className="px-4 py-3 font-mono font-medium text-slate-900 group-hover:text-blue-600 transition-colors">

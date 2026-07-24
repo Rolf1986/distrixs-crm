@@ -1,5 +1,7 @@
 "use client";
 
+import { RowLink } from "@/components/RowLink";
+
 import { useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
@@ -121,7 +123,7 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
             {paginated.map((c) => (
               <tr key={c.id} className="hover:bg-slate-50 transition-colors cursor-pointer group relative">
                 <td className="px-4 py-3 font-medium text-slate-900">
-                  <Link href={`/customers/${c.id}`} className="absolute inset-0" />
+                  <RowLink href={`/customers/${c.id}`} />
                   <span className="group-hover:text-brand-blue transition-colors">{c.companyName}</span>
                 </td>
                 <td className="px-4 py-3 text-slate-400 font-mono text-xs">{c.customerNumber}</td>

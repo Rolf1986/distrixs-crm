@@ -1,5 +1,7 @@
 "use client";
 
+import { RowLink } from "@/components/RowLink";
+
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { LayoutList, LayoutGrid, ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
@@ -178,7 +180,7 @@ export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
                     } hover:bg-slate-50 cursor-pointer transition-colors group relative`}
                   >
                     <td className="px-4 py-3 text-center">
-                      <Link href={`/deals/${d.id}/quotes`} className="absolute inset-0" aria-label={d.dealNumber} />
+                      <RowLink href={`/deals/${d.id}/quotes`} />
                       <ActivityDot hasOverdue={d.hasOverdueActivity} hasOpen={d.hasOpenActivity} />
                     </td>
                     <td className="px-4 py-3">

@@ -1,5 +1,7 @@
 "use client";
 
+import { RowLink } from "@/components/RowLink";
+
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Bell, Download } from "lucide-react";
@@ -232,7 +234,7 @@ export function InvoicesClient({ invoices, creditNotes = [] }: { invoices: Invoi
                 .map((cn) => (
                   <tr key={cn.id} className="border-l-4 border-l-red-400 hover:bg-slate-50 transition-colors group relative">
                     <td className="px-4 py-3 font-mono font-medium text-slate-900">
-                      <Link href={`/credit-notes/${cn.id}`} className="absolute inset-0" />
+                      <RowLink href={`/credit-notes/${cn.id}`} />
                       <span className="group-hover:text-brand-blue transition-colors">{cn.creditNoteNumber}</span>
                     </td>
                     <td className="px-4 py-3 text-slate-700">{cn.customerName}</td>
@@ -308,7 +310,7 @@ export function InvoicesClient({ invoices, creditNotes = [] }: { invoices: Invoi
                   }`}
                 >
                   <td className="px-4 py-3 font-mono font-medium text-slate-900">
-                    <Link href={`/invoices/${inv.id}/lines`} className="absolute inset-0" />
+                    <RowLink href={`/invoices/${inv.id}/lines`} />
                     <span className="group-hover:text-brand-blue transition-colors">{inv.invoiceNumber}</span>
                     {inv.ourReference && (
                       <span className="block text-xs text-slate-400 font-normal">{inv.ourReference}</span>

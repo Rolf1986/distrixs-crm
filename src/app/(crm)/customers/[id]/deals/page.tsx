@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { RowLink } from "@/components/RowLink";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -54,7 +55,7 @@ function DealTable({
             return (
               <tr key={deal.id} className="hover:bg-slate-50 transition-colors relative">
                 <td className="px-4 py-3 font-mono text-xs text-slate-500 relative">
-                  <Link href={`/deals/${deal.id}/quotes`} className="absolute inset-0" />
+                  <RowLink href={`/deals/${deal.id}/quotes`} />
                   {deal.dealNumber}
                 </td>
                 <td className="px-4 py-3 font-medium text-slate-900">{deal.title}</td>
