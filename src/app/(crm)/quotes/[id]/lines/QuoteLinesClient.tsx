@@ -95,6 +95,13 @@ export function QuoteLinesClient({
   );
 
   function startEdit(line: Line) {
+    // Inkoopprijs: staat er nog geen (0), vul dan de inkoopprijs van het
+    // product in (op SKU) als startwaarde — altijd nog aanpasbaar.
+    let cost = line.costSnapshot ?? 0;
+    if (!cost) {
+      const product = products.find((p) => p.sku === line.skuSnapshot);
+      if (product?.baseCostPrice) cost = product.baseCostPrice;
+    }
     setEditing((prev) => ({
       ...prev,
       [line.id]: {
@@ -103,7 +110,7 @@ export function QuoteLinesClient({
         grossUnitPrice: line.grossUnitPrice,
         discountPercent: line.discountPercent,
         vatRate: line.vatRate,
-        costSnapshot: line.costSnapshot ?? 0,
+        costSnapshot: cost,
       },
     }));
   }

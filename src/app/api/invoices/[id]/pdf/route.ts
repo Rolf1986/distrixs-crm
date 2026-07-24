@@ -36,6 +36,7 @@ export async function GET(
       },
       contact: true,
       lines: { orderBy: { createdAt: "asc" } },
+      deal: { select: { orderReference: true } },
     },
   });
 
@@ -54,7 +55,7 @@ export async function GET(
     invoiceDate: invoice.invoiceDate,
     dueDate: invoice.dueDate,
     paymentTermDays: PAYMENT_TERM_DAYS[invoice.paymentTermType] ?? 30,
-    ourReference: invoice.ourReference,
+    ourReference: invoice.ourReference ?? invoice.deal?.orderReference ?? null,
     subtotal: Number(invoice.subtotal),
     vatAmount: Number(invoice.vatAmount),
     total: Number(invoice.total),

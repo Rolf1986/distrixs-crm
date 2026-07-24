@@ -69,11 +69,14 @@ export async function POST(
     ].filter(Boolean),
   });
 
+  // Offertes gaan vanuit info@ zodat de klant direct kan antwoorden
   const result = await sendEmail({
     to: to.trim(),
     cc: cc?.trim() ? [cc.trim()] : undefined,
     subject: finalSubject,
     html,
+    from: "Distrixs <info@distrixs.nl>",
+    replyTo: "info@distrixs.nl",
     attachments: [{ filename: `${quote.quoteNumber}.pdf`, content: pdfBuffer }],
   });
 
