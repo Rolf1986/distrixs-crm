@@ -9,6 +9,10 @@ interface SendEmailOptions {
   subject: string;
   html: string;
   attachments?: Array<{ filename: string; content: Buffer }>;
+  /** Afzender-override (zelfde geverifieerde domein), bv. "Distrixs <info@distrixs.nl>" */
+  from?: string;
+  /** Reply-To adres zodat de klant direct kan antwoorden */
+  replyTo?: string;
 }
 
 interface SendResult {
@@ -20,7 +24,7 @@ interface SendResult {
 
 export async function sendEmail(opts: SendEmailOptions): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM ?? "Distrixs CRM <noreply@distrixs.nl>";
+  const from = opts.from ?? process.env.EMAIL_FROM ?? "Distrixs CRM <noreply@distrixs.nl>";
 
   if (!apiKey) {
     // Development fallback — logt naar console
@@ -42,6 +46,7 @@ export async function sendEmail(opts: SendEmailOptions): Promise<SendResult> {
     };
 
     if (opts.cc?.length) body.cc = opts.cc;
+    if (opts.replyTo) body.reply_to = opts.replyTo;
 
     if (opts.attachments?.length) {
       body.attachments = opts.attachments.map((a) => ({

@@ -22,14 +22,18 @@ export async function PATCH(
   if ("dealId" in body) {
     if (body.dealId) {
       const [inv, deal] = await Promise.all([
-        prisma.invoice.findUnique({ where: { id }, select: { customerId: true } }),
-        prisma.deal.findUnique({ where: { id: body.dealId }, select: { customerId: true } }),
+        prisma.invoice.findUnique({ where: { id }, select: { customerId: true, ourReference: true } }),
+        prisma.deal.findUnique({ where: { id: body.dealId }, select: { customerId: true, orderReference: true } }),
       ]);
       if (!deal) return NextResponse.json({ error: "Deal niet gevonden" }, { status: 404 });
       if (inv && deal.customerId !== inv.customerId) {
         return NextResponse.json({ error: "Deal hoort bij een andere klant" }, { status: 400 });
       }
       data.dealId = body.dealId;
+      // Lege factuurreferentie → orderreferentie van de deal overnemen
+      if (inv && !inv.ourReference?.trim() && deal.orderReference) {
+        data.ourReference = deal.orderReference;
+      }
     } else {
       data.dealId = null;
     }

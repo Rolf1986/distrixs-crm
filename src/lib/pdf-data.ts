@@ -38,6 +38,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
       },
       contact: true,
       lines: { orderBy: { createdAt: "asc" } },
+      deal: { select: { orderReference: true } },
     },
   });
   if (!invoice) return null;
@@ -52,7 +53,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
     invoiceDate: invoice.invoiceDate,
     dueDate: invoice.dueDate,
     paymentTermDays: PAYMENT_TERM_DAYS[invoice.paymentTermType] ?? 30,
-    ourReference: invoice.ourReference ?? null,
+    ourReference: invoice.ourReference ?? invoice.deal?.orderReference ?? null,
     subtotal: Number(invoice.subtotal),
     vatAmount: Number(invoice.vatAmount),
     total: Number(invoice.total),

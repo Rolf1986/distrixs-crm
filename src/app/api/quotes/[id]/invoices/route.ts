@@ -18,6 +18,7 @@ export async function POST(
     include: {
       lines: true,
       customer: { select: { defaultPaymentTerm: true } },
+      deal: { select: { orderReference: true } },
     },
   });
 
@@ -52,6 +53,7 @@ export async function POST(
       quoteId: quote.id,
       customerId: quote.customerId,
       contactId: quote.contactId,
+      ourReference: quote.deal?.orderReference ?? null,
       status: "DRAFT",
       invoiceDate,
       dueDate,

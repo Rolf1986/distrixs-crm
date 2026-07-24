@@ -35,11 +35,22 @@ export async function POST(req: NextRequest) {
     else                              computedDueDate.setDate(computedDueDate.getDate() + 30);
   }
 
+  // Orderreferentie van de deal overnemen als startwaarde
+  let dealOrderRef: string | null = null;
+  if (dealId) {
+    const deal = await prisma.deal.findUnique({
+      where: { id: dealId },
+      select: { orderReference: true },
+    });
+    dealOrderRef = deal?.orderReference ?? null;
+  }
+
   const invoice = await prisma.invoice.create({
     data: {
       invoiceNumber,
       customerId,
       dealId: dealId || null,
+      ourReference: dealOrderRef,
       status: "DRAFT",
       invoiceDate,
       dueDate: computedDueDate,
