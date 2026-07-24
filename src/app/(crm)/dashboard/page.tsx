@@ -119,7 +119,7 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="px-8 pt-8 pb-6">
+      <div className="px-4 md:px-8 pt-8 pb-6">
         <h1 className="text-2xl font-semibold text-slate-900 capitalize">{dayName}</h1>
         <p className="text-sm text-slate-400 mt-0.5">{dateStr}</p>
       </div>
@@ -136,7 +136,7 @@ export default async function DashboardPage() {
               <TrendingUp className="w-4 h-4" />
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(pipelineValue)}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900 mt-1 break-words">{formatCurrency(pipelineValue)}</p>
           <p className="text-xs text-slate-400 mt-0.5">{activeDeals.length} actieve deals</p>
         </Link>
 
@@ -154,7 +154,7 @@ export default async function DashboardPage() {
               <Receipt className="w-4 h-4" />
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(openInvoiceAmount)}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900 mt-1 break-words">{formatCurrency(openInvoiceAmount)}</p>
           <p className="text-xs mt-0.5">
             <span className="text-slate-400">{openInvoiceCount} facturen</span>
             {overdueInvoiceCount > 0 && (
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
               <FileText className="w-4 h-4" />
             </span>
           </div>
-          <p className="text-2xl font-bold text-slate-900 mt-1">{sentQuotesCount}</p>
+          <p className="text-xl md:text-2xl font-bold text-slate-900 mt-1 break-words">{sentQuotesCount}</p>
           <p className="text-xs text-slate-400 mt-0.5">{formatCurrency(sentQuotesTotal)} openstaand</p>
         </Link>
 
@@ -193,7 +193,7 @@ export default async function DashboardPage() {
               {overdueActivities.length > 0 ? <AlertTriangle className="w-4 h-4" /> : <CheckSquare className="w-4 h-4" />}
             </span>
           </div>
-          <p className={`text-2xl font-bold mt-1 ${overdueActivities.length > 0 ? "text-red-600" : "text-slate-900"}`}>
+          <p className={`text-xl md:text-2xl font-bold mt-1 ${overdueActivities.length > 0 ? "text-red-600" : "text-slate-900"}`}>
             {overdueActivities.length}
           </p>
           <p className="text-xs text-slate-400 mt-0.5">

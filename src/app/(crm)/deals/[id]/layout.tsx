@@ -59,18 +59,18 @@ export default async function DealLayout({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Breadcrumb */}
-      <div className="px-8 pt-6 flex items-center gap-1.5 text-sm text-slate-400">
+      <div className="px-4 md:px-8 pt-6 flex items-center gap-1.5 text-sm text-slate-400 overflow-x-auto whitespace-nowrap">
         <Link href="/deals" className="hover:text-slate-600 transition-colors">Deals</Link>
         <ChevronRight className="w-3.5 h-3.5" />
         <span className="text-slate-600 font-medium">{deal.dealNumber}</span>
       </div>
 
       {/* Header */}
-      <div className="px-8 pt-3 pb-0 bg-white border-b border-slate-200">
-        <div className="flex items-start justify-between gap-4 pb-4">
-          <div>
+      <div className="px-4 md:px-8 pt-3 pb-0 bg-white border-b border-slate-200">
+        <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4 pb-4">
+          <div className="min-w-[260px]">
             <h1 className="text-xl font-semibold text-slate-900">{deal.title}</h1>
-            <div className="flex items-center gap-3 mt-1.5">
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
               <Link href={`/customers/${deal.customerId}`} className="text-sm text-brand-blue hover:underline">
                 {deal.customer.companyName}
               </Link>
@@ -86,9 +86,9 @@ export default async function DealLayout({
           </div>
 
           {/* Actieknoppen */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-3 xl:justify-end">
             <DealStatusActions dealId={id} currentStatus={deal.status} />
-            <div className="w-px h-6 bg-slate-200" />
+            <div className="w-px h-6 bg-slate-200 hidden md:block" />
             <CreateQuoteButton dealId={id} />
             <CreatePoButton dealId={id} suppliers={suppliers} />
           </div>
@@ -96,13 +96,15 @@ export default async function DealLayout({
 
         {/* Pipeline progress bar — alleen bij open deals */}
         {isOpenStatus && (
-          <div className="pb-2">
-            <DealPipeline dealId={id} status={deal.status} />
+          <div className="pb-2 overflow-x-auto">
+            <div className="min-w-[560px]">
+              <DealPipeline dealId={id} status={deal.status} />
+            </div>
           </div>
         )}
 
         {/* KPI's — gebaseerd op offertes */}
-        <div className="grid grid-cols-3 gap-3 py-4 border-t border-slate-100">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 py-4 border-t border-slate-100">
           <KpiCard
             label="Offertewaarde"
             value={formatCurrency(omzet)}
@@ -128,7 +130,7 @@ export default async function DealLayout({
       </div>
 
       {/* Tab inhoud */}
-      <div className="px-8 py-6">{children}</div>
+      <div className="px-4 md:px-8 py-6">{children}</div>
     </div>
   );
 }
