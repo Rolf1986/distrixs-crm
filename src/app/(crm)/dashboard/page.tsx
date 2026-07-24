@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RowLink } from "@/components/RowLink";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -286,7 +287,7 @@ export default async function DashboardPage() {
                   return (
                     <tr key={inv.id} className="hover:bg-slate-50 transition-colors relative">
                       <td className="px-5 py-3 font-mono text-xs text-slate-500">
-                        <Link href={`/invoices/${inv.id}/payments`} className="absolute inset-0" />
+                        <RowLink href={`/invoices/${inv.id}/payments`} />
                         {inv.invoiceNumber}
                       </td>
                       <td className="px-5 py-3 text-slate-700">{inv.customer.companyName}</td>
@@ -331,7 +332,7 @@ export default async function DashboardPage() {
                 return (
                   <tr key={deal.id} className="hover:bg-slate-50 transition-colors relative">
                     <td className="px-5 py-3 font-mono text-xs text-slate-400">
-                      <Link href={`/deals/${deal.id}/info`} className="absolute inset-0" />
+                      <RowLink href={`/deals/${deal.id}/info`} />
                       {deal.dealNumber}
                     </td>
                     <td className="px-5 py-3 font-medium text-slate-900">{deal.title}</td>

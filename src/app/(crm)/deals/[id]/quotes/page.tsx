@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { RowLink } from "@/components/RowLink";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
@@ -81,7 +82,7 @@ export default async function DealQuotesPage({ params }: { params: Promise<{ id:
                     return (
                       <tr key={q.id} className="hover:bg-slate-50 cursor-pointer transition-colors group relative">
                         <td className="px-4 py-3">
-                          <Link href={`/quotes/${q.id}/lines`} className="absolute inset-0" aria-label={q.quoteNumber} />
+                          <RowLink href={`/quotes/${q.id}/lines`} />
                           <span className="font-medium font-mono text-slate-900 group-hover:text-brand-blue transition-colors">
                             {q.quoteNumber}
                           </span>

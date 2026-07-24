@@ -1,5 +1,7 @@
 "use client";
 
+import { RowLink } from "@/components/RowLink";
+
 import { useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
@@ -184,7 +186,7 @@ export function QuotesClient({ quotes }: { quotes: Quote[] }) {
               return (
                 <tr key={q.id} className={`border-l-4 ${accentBar} hover:bg-slate-50 cursor-pointer transition-colors group relative`}>
                   <td className="px-4 py-3">
-                    <Link href={`/quotes/${q.id}/lines`} className="absolute inset-0" aria-label={q.quoteNumber} />
+                    <RowLink href={`/quotes/${q.id}/lines`} />
                     <span className="font-medium text-slate-900 group-hover:text-brand-blue transition-colors font-mono">
                       {q.quoteNumber}
                     </span>

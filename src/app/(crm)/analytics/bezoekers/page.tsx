@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RowLink } from "@/components/RowLink";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { AnalyticsTabs } from "@/components/analytics/AnalyticsTabs";
@@ -73,7 +74,7 @@ export default async function AnalyticsBezoekersPage() {
               {visitors.map((v) => (
                 <tr key={v.id} className="hover:bg-slate-50 transition-colors relative">
                   <td className="px-5 py-3">
-                    <Link href={`/analytics/bezoekers/${v.id}`} className="absolute inset-0" />
+                    <RowLink href={`/analytics/bezoekers/${v.id}`} />
                     <div className="flex items-center gap-2.5">
                       <div
                         className={`p-1.5 rounded-full shrink-0 ${

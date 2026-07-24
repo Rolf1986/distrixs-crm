@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { RowLink } from "@/components/RowLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatDate } from "@/lib/utils";
@@ -59,7 +60,7 @@ export default async function RmaPage() {
               {rmas.map((rma) => (
                 <tr key={rma.id} className="hover:bg-slate-50 cursor-pointer transition-colors group relative">
                   <td className="px-4 py-3">
-                    <Link href={`/rma/${rma.id}`} className="absolute inset-0" aria-label={rma.rmaNumber} />
+                    <RowLink href={`/rma/${rma.id}`} />
                     <span className="font-mono text-slate-900 font-medium group-hover:text-brand-blue transition-colors">
                       {rma.rmaNumber}
                     </span>

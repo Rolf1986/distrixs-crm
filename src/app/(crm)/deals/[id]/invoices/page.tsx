@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RowLink } from "@/components/RowLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -59,7 +60,7 @@ export default async function DealInvoicesPage({
               {invoices.map((inv) => (
                 <tr key={inv.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono font-medium text-slate-900 relative">
-                    <Link href={`/invoices/${inv.id}/lines`} className="absolute inset-0" />
+                    <RowLink href={`/invoices/${inv.id}/lines`} />
                     {inv.invoiceNumber}
                   </td>
                   <td className="px-4 py-3 text-slate-500">{formatDate(inv.invoiceDate)}</td>

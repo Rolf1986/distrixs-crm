@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RowLink } from "@/components/RowLink";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -117,7 +118,7 @@ export default async function DealPurchaseOrdersPage({
               {pos.map((po) => (
                 <tr key={po.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono font-medium text-slate-900 relative">
-                    <Link href={`/purchase-orders/${po.id}/lines`} className="absolute inset-0" />
+                    <RowLink href={`/purchase-orders/${po.id}/lines`} />
                     {po.poNumber}
                   </td>
                   <td className="px-4 py-3 text-slate-700">{po.supplier.name}</td>

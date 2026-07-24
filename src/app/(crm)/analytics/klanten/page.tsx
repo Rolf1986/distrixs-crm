@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RowLink } from "@/components/RowLink";
 import { prisma } from "@/lib/prisma";
 import { formatDateTime } from "@/lib/utils";
 import { AnalyticsTabs } from "@/components/analytics/AnalyticsTabs";
@@ -88,7 +89,7 @@ export default async function AnalyticsKlantenPage() {
               {accounts.map((a) => (
                 <tr key={a.id} className="hover:bg-slate-50 transition-colors relative">
                   <td className="px-5 py-3">
-                    <Link href={`/analytics/klanten/${a.id}`} className="absolute inset-0" />
+                    <RowLink href={`/analytics/klanten/${a.id}`} />
                     <p className="font-medium text-slate-800">{a.display_name ?? `Klant #${a.wc_user_id}`}</p>
                     {a.email && <p className="text-xs text-slate-400">{a.email}</p>}
                   </td>

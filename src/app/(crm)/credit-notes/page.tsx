@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { RowLink } from "@/components/RowLink";
 import { prisma } from "@/lib/prisma";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -58,7 +59,7 @@ export default async function CreditNotesPage() {
                   className="hover:bg-slate-50 transition-colors cursor-pointer group relative"
                 >
                   <td className="px-4 py-3 font-mono font-medium text-slate-900">
-                    <Link href={`/credit-notes/${cn.id}`} className="absolute inset-0" />
+                    <RowLink href={`/credit-notes/${cn.id}`} />
                     <span className="group-hover:text-brand-blue transition-colors">
                       {cn.creditNoteNumber}
                     </span>
