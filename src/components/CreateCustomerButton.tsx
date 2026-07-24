@@ -22,6 +22,29 @@ export function CreateCustomerButton() {
   const [houseNumber, setHouseNumber] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
+  const [country, setCountry] = useState("NL");
+
+  const COUNTRIES = [
+    { code: "NL", label: "🇳🇱 Nederland" },
+    { code: "BE", label: "🇧🇪 België" },
+    { code: "DE", label: "🇩🇪 Duitsland" },
+    { code: "FR", label: "🇫🇷 Frankrijk" },
+    { code: "LU", label: "🇱🇺 Luxemburg" },
+    { code: "AT", label: "🇦🇹 Oostenrijk" },
+    { code: "DK", label: "🇩🇰 Denemarken" },
+    { code: "ES", label: "🇪🇸 Spanje" },
+    { code: "IT", label: "🇮🇹 Italië" },
+    { code: "PL", label: "🇵🇱 Polen" },
+    { code: "PT", label: "🇵🇹 Portugal" },
+    { code: "SE", label: "🇸🇪 Zweden" },
+    { code: "IE", label: "🇮🇪 Ierland" },
+    { code: "FI", label: "🇫🇮 Finland" },
+    { code: "CZ", label: "🇨🇿 Tsjechië" },
+    { code: "GB", label: "🇬🇧 Verenigd Koninkrijk" },
+    { code: "CH", label: "🇨🇭 Zwitserland" },
+    { code: "NO", label: "🇳🇴 Noorwegen" },
+    { code: "US", label: "🇺🇸 Verenigde Staten" },
+  ];
   // Contactpersoon
   const [cFirst, setCFirst] = useState("");
   const [cLast, setCLast] = useState("");
@@ -30,8 +53,9 @@ export function CreateCustomerButton() {
   const [lookupBusy, setLookupBusy] = useState(false);
   const [lookupMsg, setLookupMsg] = useState("");
 
-  // Postcode + huisnummer → straat + plaats automatisch invullen (PDOK)
+  // Postcode + huisnummer → straat + plaats automatisch invullen (PDOK, alleen NL)
   async function lookupAddress(pc: string, nr: string) {
+    if (country !== "NL") return;
     const clean = pc.replace(/\s+/g, "").toUpperCase();
     if (!/^\d{4}[A-Z]{2}$/.test(clean) || !nr.trim()) return;
     setLookupBusy(true);
@@ -56,7 +80,7 @@ export function CreateCustomerButton() {
   function reset() {
     setCompanyName(""); setKvkNumber(""); setVatNumber("");
     setStatus("ACTIVE"); setPaymentTerm("DAYS_14"); setLanguage("NL"); setEmail("");
-    setStreet(""); setHouseNumber(""); setPostalCode(""); setCity("");
+    setStreet(""); setHouseNumber(""); setPostalCode(""); setCity(""); setCountry("NL");
     setCFirst(""); setCLast(""); setCEmail(""); setCPhone("");
     setLookupMsg(""); setError("");
   }
@@ -78,7 +102,7 @@ export function CreateCustomerButton() {
           defaultPaymentTerm: paymentTerm,
           defaultLanguage: language,
           address: (street.trim() && city.trim())
-            ? { street: street.trim(), houseNumber: houseNumber.trim(), postalCode: postalCode.trim(), city: city.trim() }
+            ? { street: street.trim(), houseNumber: houseNumber.trim(), postalCode: postalCode.trim(), city: city.trim(), country }
             : null,
           contact: (cFirst.trim() || cLast.trim())
             ? { firstName: cFirst.trim(), lastName: cLast.trim(), email: cEmail.trim() || null, phone: cPhone.trim() || null }
@@ -165,6 +189,13 @@ export function CreateCustomerButton() {
                 </span>
               )}
             </div>
+            <div className="mb-3">
+              <FormField label="Land">
+                <select className={inputClass} value={country} onChange={(e) => setCountry(e.target.value)}>
+                  {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                </select>
+              </FormField>
+            </div>
             <div className="grid grid-cols-3 gap-3">
               <FormField label="Postcode">
                 <input
@@ -172,7 +203,7 @@ export function CreateCustomerButton() {
                   value={postalCode}
                   onChange={(e) => setPostalCode(e.target.value)}
                   onBlur={(e) => lookupAddress(e.target.value, houseNumber)}
-                  placeholder="1234 AB"
+                  placeholder={country === "NL" ? "1234 AB" : "Postcode"}
                 />
               </FormField>
               <FormField label="Nr.">
