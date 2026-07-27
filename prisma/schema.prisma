@@ -475,6 +475,7 @@ model Quote {
   total           Decimal     @default(0) @db.Decimal(12, 2)
   language        String      @default("NL")
   termsVersion    String?     @map("terms_version")
+  publicNote      String?     @map("public_note")     // vrij bericht, zichtbaar voor de klant op de PDF
   externalId      String?     @unique @map("external_id")
   createdBy       String      @map("created_by")
   createdAt       DateTime    @default(now()) @map("created_at")

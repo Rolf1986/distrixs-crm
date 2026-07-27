@@ -162,6 +162,7 @@ export async function buildQuotePdfData(quoteId: string) {
     quoteNumber: quote.quoteNumber,
     projectName: quote.deal?.title,
     customerReference: quote.deal?.orderReference ?? null,
+    publicNote: quote.publicNote ?? null,
     quoteDate: quote.quoteDate,
     validUntil: quote.validUntil,
     subtotal: Number(quote.subtotal),
