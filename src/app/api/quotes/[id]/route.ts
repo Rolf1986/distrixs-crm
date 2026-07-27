@@ -19,6 +19,11 @@ export async function PATCH(
   if ("language" in body && ["NL", "EN"].includes(body.language)) {
     data.language = body.language;
   }
+  if ("publicNote" in body) {
+    data.publicNote = typeof body.publicNote === "string" && body.publicNote.trim()
+      ? body.publicNote.trim()
+      : null;
+  }
 
   // Offerte achteraf aan een deal koppelen (of loskoppelen met null).
   // De deal moet van dezelfde klant zijn.

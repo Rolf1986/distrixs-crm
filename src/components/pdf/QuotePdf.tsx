@@ -6,6 +6,7 @@ export interface QuotePdfData {
   quoteNumber: string;
   projectName?: string;
   customerReference?: string | null;
+  publicNote?: string | null;
   quoteDate: string | Date;
   validUntil: string | Date | null;
   subtotal: number;
@@ -231,6 +232,23 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
                 ? `Intra-Community supply — VAT reverse-charged to the recipient.${data.customer.vatNumber ? ` Customer VAT no.: ${data.customer.vatNumber}` : ""}`
                 : `Intracommunautaire levering — btw verlegd naar de afnemer.${data.customer.vatNumber ? ` Btw-nummer afnemer: ${data.customer.vatNumber}` : ""}`}
             </Text>
+          </View>
+        )}
+
+        {/* Vrij bericht voor de klant (bv. vooruitbetaling) */}
+        {data.publicNote && (
+          <View style={{
+            marginTop: 10,
+            backgroundColor: "#fff8eb",
+            borderWidth: 0.5,
+            borderColor: "#f0c36d",
+            borderRadius: 3,
+            padding: 8,
+          }}>
+            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 8.5, color: "#8a5a00", marginBottom: 3 }}>
+              {lang === "EN" ? "Please note" : "Let op"}
+            </Text>
+            <Text style={{ fontSize: 9, color: "#4a3a10", lineHeight: 1.5 }}>{data.publicNote}</Text>
           </View>
         )}
 

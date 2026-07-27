@@ -13,6 +13,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { ChevronRight, Download } from "lucide-react";
 import { DeleteQuoteButton } from "@/components/DeleteQuoteButton";
 import { QuoteDealLink } from "@/components/QuoteDealLink";
+import { QuoteNoteEditor } from "@/components/QuoteNoteEditor";
 
 async function getQuote(id: string) {
   return prisma.quote.findUnique({
@@ -166,6 +167,9 @@ export default async function QuoteLayout({
             highlight={marge > 0}
           />
         </div>
+
+        {/* Vrij bericht voor de klant op de PDF */}
+        <QuoteNoteEditor quoteId={id} value={quote.publicNote ?? null} />
 
         {/* Tabs */}
         <TabNav tabs={[

@@ -47,6 +47,7 @@ export async function GET(
     quoteNumber: quote.quoteNumber,
     projectName: quote.deal?.title,
     customerReference: quote.deal?.orderReference ?? null,
+    publicNote: quote.publicNote ?? null,
     quoteDate: quote.quoteDate,
     validUntil: quote.validUntil,
     reverseCharge: isEuReverseCharge(addr?.country, quote.customer.vatNumber),
