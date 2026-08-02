@@ -79,6 +79,14 @@ export async function PATCH(
   // factuurnummer — net als bij verzenden via e-mail.
   if (invoice.status === "DRAFT" && newStatus === "SENT" && invoice.invoiceNumber.startsWith("DRAFT-")) {
     extraData.invoiceNumber = await nextInvoiceNumber(new Date().getFullYear());
+    // Factuurdatum = boekdatum (vandaag), niet de dag waarop het concept
+    // werd aangemaakt; vervaldatum schuift mee met de betaaltermijn.
+    const TERM_DAYS: Record<string, number> = { DAYS_14: 14, DAYS_30: 30, PREPAYMENT: 0, INSTALLMENTS: 30 };
+    const bookDate = new Date();
+    const newDue = new Date(bookDate);
+    newDue.setDate(newDue.getDate() + (TERM_DAYS[invoice.paymentTermType] ?? 14));
+    extraData.invoiceDate = bookDate;
+    extraData.dueDate = newDue;
   }
 
   const updated = await prisma.invoice.update({

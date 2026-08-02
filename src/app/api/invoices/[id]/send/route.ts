@@ -30,19 +30,25 @@ export async function POST(
     return NextResponse.json({ error: "E-mailadres verplicht" }, { status: 400 });
   }
 
-  // Concept dat voor het eerst verzonden wordt krijgt nu zijn definitieve nummer
+  // Concept dat voor het eerst verzonden wordt krijgt nu zijn definitieve
+  // nummer én de datum van vandaag als factuurdatum (boekdatum, niet de dag
+  // waarop het concept werd aangemaakt); vervaldatum schuift mee.
+  const TERM_DAYS: Record<string, number> = { DAYS_14: 14, DAYS_30: 30, PREPAYMENT: 0, INSTALLMENTS: 30 };
   const current = await prisma.invoice.findUnique({
     where: { id },
-    select: { invoiceNumber: true },
+    select: { invoiceNumber: true, paymentTermType: true },
   });
   if (!current) {
     return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
   }
   if (current.invoiceNumber.startsWith("DRAFT-")) {
     const definitiveNumber = await nextInvoiceNumber(new Date().getFullYear());
+    const bookDate = new Date();
+    const newDue = new Date(bookDate);
+    newDue.setDate(newDue.getDate() + (TERM_DAYS[current.paymentTermType] ?? 14));
     await prisma.invoice.update({
       where: { id },
-      data: { invoiceNumber: definitiveNumber },
+      data: { invoiceNumber: definitiveNumber, invoiceDate: bookDate, dueDate: newDue },
     });
     // Onderwerp/bericht zijn in het venster vaak vooraf ingevuld met het
     // DRAFT-nummer → vervang dat door het definitieve nummer.
