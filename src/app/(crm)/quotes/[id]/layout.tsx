@@ -166,7 +166,7 @@ export default async function QuoteLayout({
           <KpiCard
             label="Verwachte marge"
             value={formatCurrency(marge)}
-            sub={`${margePct.toFixed(1)}% van verkoop${opslagPct !== null ? ` · ${opslagPct.toFixed(0)}% op inkoop` : ""} · ${gefactureerd ? "Gefactureerd ✓" : "Niet gefactureerd"}`}
+            sub={`${opslagPct !== null ? `${opslagPct.toFixed(0)}% op inkoop · ` : ""}${margePct.toFixed(1)}% van verkoop · ${gefactureerd ? "Gefactureerd ✓" : "Niet gefactureerd"}`}
             highlight={marge > 0}
           />
         </div>
