@@ -73,7 +73,10 @@ export default async function QuoteLayout({
         email: c.email as string,
       })),
   ];
+  // Twee marge-definities: % van de verkoop (brutomarge) én opslag op de inkoop
   const margePct = Number(quote.subtotal) > 0 ? (marge / Number(quote.subtotal)) * 100 : 0;
+  const inkoop = Number(quote.subtotal) - marge;
+  const opslagPct = inkoop > 0 ? (marge / inkoop) * 100 : null;
   const gefactureerd = quote._count.invoices > 0;
 
   return (
@@ -163,7 +166,7 @@ export default async function QuoteLayout({
           <KpiCard
             label="Verwachte marge"
             value={formatCurrency(marge)}
-            sub={`${margePct.toFixed(1)}% · ${gefactureerd ? "Gefactureerd ✓" : "Niet gefactureerd"}`}
+            sub={`${margePct.toFixed(1)}% van verkoop${opslagPct !== null ? ` · ${opslagPct.toFixed(0)}% op inkoop` : ""} · ${gefactureerd ? "Gefactureerd ✓" : "Niet gefactureerd"}`}
             highlight={marge > 0}
           />
         </div>
