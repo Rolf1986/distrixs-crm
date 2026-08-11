@@ -25,6 +25,9 @@ CRM/ERP-light voor Distrixs. Deal-centered architectuur met snapshotflow.
 - Fase 4: Factuuradministratie (betalingen, reminders, Twinfield-lock)
 - Fase 5: Inkoop & nacalculatie (PO, China extra costs, expected vs real marge)
 
+## Nieuwe sessie? Lees eerst `context/HANDOFF.md`
+Actuele status, deploy-werkwijze, afwijkende besluiten (o.a. offertes altijd bewerkbaar) en openstaande taken. Het systeem is LIVE in productie.
+
 ## Bestanden
 - `prisma/schema.prisma` – volledig datamodel (20 entiteiten)
 - `src/lib/prisma.ts` – Prisma client singleton (PrismaPg adapter)
