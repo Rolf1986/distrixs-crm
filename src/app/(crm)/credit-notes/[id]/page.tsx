@@ -5,6 +5,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { ChevronRight, Download } from "lucide-react";
 import { SendCreditNoteButton } from "@/components/SendCreditNoteButton";
+import { SettleCreditNoteButton } from "@/components/SettleCreditNoteButton";
 
 async function getCreditNote(id: string) {
   return prisma.creditNote.findUnique({
@@ -33,6 +34,12 @@ export default async function CreditNoteDetailPage({
   const { id } = await params;
   const cn = await getCreditNote(id);
   if (!cn) notFound();
+
+  // Al verrekend met de factuur? (betaling met vast referentieformaat)
+  const settlement = await prisma.payment.findFirst({
+    where: { invoiceId: cn.invoiceId, reference: `Verrekening ${cn.creditNoteNumber}` },
+    select: { id: true },
+  });
 
   // Group VAT for breakdown
   const vatGroups = new Map<number, { base: number; vat: number }>();
@@ -93,6 +100,7 @@ export default async function CreditNoteDetailPage({
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <SettleCreditNoteButton creditNoteId={cn.id} settled={!!settlement} />
             <a
               href={`/api/credit-notes/${cn.id}/pdf`}
               className="flex items-center gap-1.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 text-sm font-medium px-3 py-2 rounded-lg transition-colors"

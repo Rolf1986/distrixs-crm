@@ -38,7 +38,8 @@ async function getInvoice(id: string) {
       deal: { select: { id: true, dealNumber: true } },
       quote: { select: { id: true, quoteNumber: true } },
       contact: { select: { firstName: true, lastName: true, email: true } },
-      creditNotes: { select: { id: true, total: true } },
+      creditNotes: { select: { id: true, total: true, creditNoteNumber: true } },
+      payments: { select: { reference: true } },
       lines: {
         select: { id: true, skuSnapshot: true, titleSnapshot: true, qty: true, grossUnitPrice: true, netLineTotal: true, vatRate: true },
         orderBy: { createdAt: "asc" },
@@ -285,7 +286,13 @@ export default async function InvoiceLayout({
 
         {/* Creditnota's: laat zien wat er gecrediteerd is en wat er netto resteert */}
         {(() => {
-          const credited = invoice.creditNotes.reduce((s, c) => s + Number(c.total), 0);
+          // Alleen nog niet verrekende creditnota's tellen mee in de hint;
+          // verrekende zitten al als betaling in het openstaande bedrag.
+          const settledRefs = new Set(invoice.payments.map((p) => p.reference));
+          const unsettled = invoice.creditNotes.filter(
+            (c) => !settledRefs.has(`Verrekening ${c.creditNoteNumber}`)
+          );
+          const credited = unsettled.reduce((s, c) => s + Math.abs(Number(c.total)), 0);
           if (credited <= 0) return null;
           const net = Math.max(0, Number(invoice.openAmount) - credited);
           return (
@@ -300,7 +307,7 @@ export default async function InvoiceLayout({
                 = Netto te betalen <span className="font-semibold text-slate-900">{formatCurrency(net)}</span>
               </span>
               <span className="text-xs text-slate-400">
-                (creditnota staat administratief los van de factuur)
+                (verreken de creditnota op de creditnota-pagina om dit in het open bedrag te verwerken)
               </span>
             </div>
           );
