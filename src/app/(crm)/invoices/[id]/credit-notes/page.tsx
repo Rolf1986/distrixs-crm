@@ -3,6 +3,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { CreateCreditNoteButton } from "@/components/CreateCreditNoteButton";
+import { SettleCreditNoteButton } from "@/components/SettleCreditNoteButton";
 import { FileX, ExternalLink } from "lucide-react";
 
 async function getInvoiceWithCreditNotes(id: string) {
@@ -39,6 +40,13 @@ export default async function InvoiceCreditNotesPage({
 
   const creditNotes = invoice.creditNotes;
   const totalCredited = creditNotes.reduce((s, cn) => s + Number(cn.total), 0);
+
+  // Welke creditnota's zijn al verrekend? (betaling met vast referentieformaat)
+  const settlements = await prisma.payment.findMany({
+    where: { invoiceId: id, reference: { startsWith: "Verrekening " } },
+    select: { reference: true },
+  });
+  const settledRefs = new Set(settlements.map((s) => s.reference));
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -88,6 +96,7 @@ export default async function InvoiceCreditNotesPage({
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Reden</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Aangemaakt door</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Totaal</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Verrekening</th>
                 <th className="w-10" />
               </tr>
             </thead>
@@ -110,6 +119,13 @@ export default async function InvoiceCreditNotesPage({
                     {formatCurrency(Number(cn.total))}
                   </td>
                   <td className="px-4 py-3">
+                    <SettleCreditNoteButton
+                      creditNoteId={cn.id}
+                      settled={settledRefs.has(`Verrekening ${cn.creditNoteNumber}`)}
+                      compact
+                    />
+                  </td>
+                  <td className="px-4 py-3">
                     <Link
                       href={`/credit-notes/${cn.id}`}
                       className="text-slate-400 hover:text-brand-blue transition-colors"
@@ -130,7 +146,7 @@ export default async function InvoiceCreditNotesPage({
                   <td className="px-4 py-3 text-right font-bold text-red-600">
                     {formatCurrency(totalCredited)}
                   </td>
-                  <td />
+                  <td colSpan={2} />
                 </tr>
               </tfoot>
             )}
