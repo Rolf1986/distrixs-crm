@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     ? await prisma.quoteLine.findMany({
         where: { quoteId: sourceQuoteId },
         select: { skuSnapshot: true, titleSnapshot: true, qty: true },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       })
     : [];
 

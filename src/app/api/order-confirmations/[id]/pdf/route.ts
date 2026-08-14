@@ -28,7 +28,7 @@ export async function GET(
           subtotal: true,
           vatAmount: true,
           total: true,
-          lines: { orderBy: { createdAt: "asc" } },
+          lines: { orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
         },
       },
       customer: {

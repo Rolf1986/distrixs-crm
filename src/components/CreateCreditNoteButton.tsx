@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileX, Loader2 } from "lucide-react";
+import { FileX, Loader2, Plus, Trash2 } from "lucide-react";
 
 interface InvoiceLine {
   id: string;
@@ -40,6 +40,10 @@ export function CreateCreditNoteButton({
   const [reason, setReason] = useState("");
   // per regel: te crediteren aantal (0 = niet crediteren)
   const [creditQty, setCreditQty] = useState<Record<string, number>>({});
+  // vrije regels (bijv. "Compensatie"), bedrag excl. btw
+  type CustomLine = { key: number; description: string; amount: string; vatRate: number };
+  const [customLines, setCustomLines] = useState<CustomLine[]>([]);
+  const [customKey, setCustomKey] = useState(1);
 
   if (!CREDITABLE_STATUSES.includes(status)) return null;
 
@@ -48,9 +52,30 @@ export function CreateCreditNoteButton({
     const init: Record<string, number> = {};
     for (const l of lines) init[l.id] = l.qty;
     setCreditQty(init);
+    setCustomLines([]);
     setReason("");
     setError(null);
     setOpen(true);
+  }
+
+  function clearAllQty() {
+    const zeroed: Record<string, number> = {};
+    for (const l of lines) zeroed[l.id] = 0;
+    setCreditQty(zeroed);
+  }
+
+  function addCustomLine() {
+    const defaultVat = lines[0]?.vatRate ?? 21;
+    setCustomLines((p) => [...p, { key: customKey, description: "", amount: "", vatRate: Number(defaultVat) }]);
+    setCustomKey((k) => k + 1);
+  }
+
+  function updateCustomLine(key: number, patch: Partial<CustomLine>) {
+    setCustomLines((p) => p.map((c) => (c.key === key ? { ...c, ...patch } : c)));
+  }
+
+  function removeCustomLine(key: number) {
+    setCustomLines((p) => p.filter((c) => c.key !== key));
   }
 
   function setQty(id: string, qty: number, max: number) {
@@ -71,11 +96,14 @@ export function CreateCreditNoteButton({
       s + Math.abs(Number(line.netLineTotal)) * (qty / (line.qty || 1)) * (Number(line.vatRate) / 100),
     0
   );
-  const creditTotal = creditSubtotal + creditVat;
+  const validCustom = customLines.filter((c) => c.description.trim() && Number(c.amount) > 0);
+  const customSubtotal = validCustom.reduce((s, c) => s + Number(c.amount), 0);
+  const customVat = validCustom.reduce((s, c) => s + Number(c.amount) * (c.vatRate / 100), 0);
+  const creditTotal = creditSubtotal + creditVat + customSubtotal + customVat;
 
   async function handleConfirm() {
-    if (selected.length === 0) {
-      setError("Selecteer minstens één regel om te crediteren");
+    if (selected.length === 0 && validCustom.length === 0) {
+      setError("Selecteer minstens één regel of voeg een losse regel toe");
       return;
     }
     setLoading(true);
@@ -87,6 +115,11 @@ export function CreateCreditNoteButton({
         body: JSON.stringify({
           reason: reason.trim() || null,
           lines: selected.map(({ line, qty }) => ({ lineId: line.id, qty })),
+          customLines: validCustom.map((c) => ({
+            description: c.description.trim(),
+            amount: Number(c.amount),
+            vatRate: c.vatRate,
+          })),
         }),
       });
       if (!res.ok) {
@@ -122,7 +155,13 @@ export function CreateCreditNoteButton({
                 Creditnota voor <span className="font-mono">{invoiceNumber}</span>
               </h2>
               <p className="text-sm text-slate-500 mt-1">
-                Kies welke regel(s) en welk aantal je wilt crediteren.
+                Kies welke regel(s) en welk aantal je wilt crediteren, of voeg een losse regel toe.
+                <button
+                  onClick={clearAllQty}
+                  className="ml-2 text-brand-blue hover:underline text-xs font-medium"
+                >
+                  Zet alles op 0
+                </button>
               </p>
             </div>
 
@@ -169,6 +208,52 @@ export function CreateCreditNoteButton({
                 </tbody>
               </table>
 
+              {/* Vrije regels, los van de factuurregels (bijv. compensatie) */}
+              <div className="mt-4 space-y-2">
+                {customLines.map((c) => (
+                  <div key={c.key} className="flex items-center gap-2">
+                    <input
+                      value={c.description}
+                      onChange={(e) => updateCustomLine(c.key, { description: e.target.value })}
+                      placeholder="bijv. Compensatie"
+                      className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={c.amount}
+                      onChange={(e) => updateCustomLine(c.key, { amount: e.target.value })}
+                      placeholder="Bedrag excl."
+                      className="w-32 border border-slate-200 rounded-lg px-3 py-2 text-sm text-right focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+                    />
+                    <select
+                      value={c.vatRate}
+                      onChange={(e) => updateCustomLine(c.key, { vatRate: Number(e.target.value) })}
+                      className="w-24 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+                    >
+                      {[0, 9, 21].map((r) => (
+                        <option key={r} value={r}>{r}% btw</option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => removeCustomLine(c.key)}
+                      className="p-1.5 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      title="Regel verwijderen"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={addCustomLine}
+                  className="flex items-center gap-1.5 text-sm font-medium text-brand-blue hover:underline"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Losse regel toevoegen (bijv. compensatie)
+                </button>
+              </div>
+
               <div className="mt-4">
                 <label className="block text-xs text-slate-500 mb-1">Reden (optioneel)</label>
                 <input
@@ -202,7 +287,7 @@ export function CreateCreditNoteButton({
                 </button>
                 <button
                   onClick={handleConfirm}
-                  disabled={loading || selected.length === 0}
+                  disabled={loading || (selected.length === 0 && validCustom.length === 0)}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white transition-colors disabled:opacity-60"
                 >
                   {loading && <Loader2 className="w-4 h-4 animate-spin" />}
