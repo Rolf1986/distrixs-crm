@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus, Loader2, Check, X } from "lucide-react";
+import { Trash2, Plus, Loader2, Check, X, GripVertical } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 const VAT_RATES = [0, 9, 21] as const;
@@ -76,6 +76,42 @@ export function QuoteLinesClient({
 
   // Inline edit state per row
   const [editing, setEditing] = useState<Record<string, Partial<Line>>>({});
+
+  // Drag & drop volgorde: slepen start alleen vanaf het grip-handvat,
+  // zodat klikken-om-te-bewerken en tekstselectie blijven werken.
+  const [dragEnabledId, setDragEnabledId] = useState<string | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  function moveDraggedOver(overId: string) {
+    if (!dragId || dragId === overId) return;
+    setLines((prev) => {
+      const from = prev.findIndex((l) => l.id === dragId);
+      const to = prev.findIndex((l) => l.id === overId);
+      if (from < 0 || to < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
+
+  async function persistOrder() {
+    const currentDrag = dragId;
+    setDragId(null);
+    setDragEnabledId(null);
+    if (!currentDrag) return;
+    setLines((current) => {
+      fetch(`/api/quotes/${quoteId}/lines/reorder`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: current.map((l) => l.id) }),
+      }).then((res) => {
+        if (!res.ok) alert("Volgorde opslaan mislukt — ververs de pagina.");
+        else router.refresh();
+      });
+      return current;
+    });
+  }
 
   // Add form state
   const [addSearch, setAddSearch] = useState("");
@@ -244,8 +280,8 @@ export function QuoteLinesClient({
 
   const { subtotal, vatBreakdown, vatAmount, total } = calcTotalsFromLines(liveLines);
 
-  // colspan for the table: SKU, Omschrijving, Aantal, Bruto prijs, Korting %, BTW %, BTW bedrag, Regel totaal, Actions = 9
-  const COL_COUNT = 9;
+  // colspan for the table: Grip, SKU, Omschrijving, Aantal, Bruto prijs, Korting %, BTW %, BTW bedrag, Regel totaal, Actions = 10
+  const COL_COUNT = 10;
 
   return (
     <div className="space-y-6">
@@ -262,6 +298,7 @@ export function QuoteLinesClient({
           <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="border-b border-slate-100">
+                <th className="w-8 px-2 py-3" />
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">SKU</th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Omschrijving</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Aantal</th>
@@ -297,9 +334,30 @@ export function QuoteLinesClient({
                 return (
                   <tr
                     key={line.id}
-                    className={`transition-colors ${isEditing ? "bg-brand-blue-light" : "hover:bg-slate-50 cursor-pointer"}`}
+                    className={`transition-colors ${isEditing ? "bg-brand-blue-light" : "hover:bg-slate-50 cursor-pointer"} ${dragId === line.id ? "opacity-40" : ""}`}
                     onClick={() => !isEditing && startEdit(line)}
+                    draggable={dragEnabledId === line.id}
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = "move";
+                      setDragId(line.id);
+                    }}
+                    onDragOver={(e) => {
+                      if (!dragId) return;
+                      e.preventDefault();
+                      moveDraggedOver(line.id);
+                    }}
+                    onDrop={(e) => { e.preventDefault(); persistOrder(); }}
+                    onDragEnd={() => persistOrder()}
                   >
+                    <td
+                      className="px-2 py-3 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing"
+                      onClick={(e) => e.stopPropagation()}
+                      onMouseDown={() => setDragEnabledId(line.id)}
+                      onMouseUp={() => setDragEnabledId(null)}
+                      title="Sleep om de volgorde te wijzigen"
+                    >
+                      <GripVertical className="w-4 h-4" />
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-400">{line.skuSnapshot}</td>
                     <td className="px-4 py-3">
                       {isEditing ? (
@@ -496,7 +554,7 @@ export function QuoteLinesClient({
             </tfoot>
           </table>
         </div>
-        <p className="text-xs text-slate-400 mt-2">Klik op een regel om te bewerken.</p>
+        <p className="text-xs text-slate-400 mt-2">Klik op een regel om te bewerken · sleep aan ⠿ om de volgorde te wijzigen.</p>
       </div>
 
       {/* Regel toevoegen */}

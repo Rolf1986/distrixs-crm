@@ -30,7 +30,7 @@ export async function GET(
       },
       contact: true,
       deal: { select: { title: true, orderReference: true } },
-      lines: { orderBy: { createdAt: "asc" } },
+      lines: { orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
     },
   });
 

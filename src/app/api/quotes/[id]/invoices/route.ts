@@ -16,7 +16,7 @@ export async function POST(
   const quote = await prisma.quote.findUnique({
     where: { id: quoteId },
     include: {
-      lines: true,
+      lines: { orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
       customer: { select: { defaultPaymentTerm: true } },
       deal: { select: { orderReference: true } },
     },

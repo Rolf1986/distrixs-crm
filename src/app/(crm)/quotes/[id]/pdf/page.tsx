@@ -9,7 +9,7 @@ async function getQuote(id: string) {
     include: {
       customer: true,
       contact: true,
-      lines: { orderBy: { createdAt: "asc" } },
+      lines: { orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
     },
   });
 }

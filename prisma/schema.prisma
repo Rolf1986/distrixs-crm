@@ -554,6 +554,7 @@ model QuoteLine {
   vatAmount              Decimal  @default(0) @map("vat_amount") @db.Decimal(12, 2)
   costSnapshot           Decimal  @map("cost_snapshot") @db.Decimal(12, 2)
   expectedMarginSnapshot Decimal  @map("expected_margin_snapshot") @db.Decimal(12, 2)
+  position               Int      @default(0)
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
 

@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { CreateCreditNoteButton } from "@/components/CreateCreditNoteButton";
 import { SettleCreditNoteButton } from "@/components/SettleCreditNoteButton";
-import { FileX, ExternalLink } from "lucide-react";
+import { FileX, ExternalLink, Download } from "lucide-react";
+import { RowLink } from "@/components/RowLink";
 
 async function getInvoiceWithCreditNotes(id: string) {
   return prisma.invoice.findUnique({
@@ -126,13 +127,23 @@ export default async function InvoiceCreditNotesPage({
                     />
                   </td>
                   <td className="px-4 py-3">
-                    <Link
-                      href={`/credit-notes/${cn.id}`}
-                      className="text-slate-400 hover:text-brand-blue transition-colors"
-                      title="Bekijk creditnota"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </Link>
+                    <RowLink href={`/credit-notes/${cn.id}`} />
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`/api/credit-notes/${cn.id}/pdf`}
+                        className="text-slate-400 hover:text-brand-blue transition-colors"
+                        title="Download PDF"
+                      >
+                        <Download className="w-4 h-4" />
+                      </a>
+                      <Link
+                        href={`/credit-notes/${cn.id}`}
+                        className="text-slate-400 hover:text-brand-blue transition-colors"
+                        title="Bekijk creditnota"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

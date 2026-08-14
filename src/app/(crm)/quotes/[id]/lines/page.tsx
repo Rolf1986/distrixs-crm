@@ -7,7 +7,7 @@ async function getQuote(id: string) {
   return prisma.quote.findUnique({
     where: { id },
     include: {
-      lines: { orderBy: { createdAt: "asc" } },
+      lines: { orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
       customer: {
         select: {
           vatNumber: true,

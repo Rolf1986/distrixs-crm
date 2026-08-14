@@ -92,9 +92,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   const expectedMarginSnapshot = netLineTotal - (Number(qty) * costSnapshot);
 
+  // Nieuwe regel achteraan
+  const maxPos = await prisma.quoteLine.aggregate({
+    where: { quoteId },
+    _max: { position: true },
+  });
+
   const line = await prisma.quoteLine.create({
     data: {
       quoteId,
+      position: (maxPos._max.position ?? 0) + 1,
       productId: productId || null,
       skuSnapshot: sku,
       titleSnapshot,

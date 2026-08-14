@@ -32,9 +32,22 @@ export async function POST(
   }
 
   // Selectie uit de body: welke regels + welk aantal. Zonder body → alles volledig.
-  let body: { reason?: string | null; lines?: Array<{ lineId: string; qty: number }> } = {};
+  // Daarnaast kunnen vrije regels meegegeven worden (bijv. "Compensatie"),
+  // los van de factuurregels; bedrag is excl. btw.
+  let body: {
+    reason?: string | null;
+    lines?: Array<{ lineId: string; qty: number }>;
+    customLines?: Array<{ description: string; amount: number; vatRate: number }>;
+  } = {};
   try { body = await req.json(); } catch { /* geen body → alles crediteren */ }
   const selection = Array.isArray(body.lines) ? body.lines : null;
+  const customLines = (Array.isArray(body.customLines) ? body.customLines : [])
+    .filter((c) => c && typeof c.description === "string" && c.description.trim() && Number(c.amount) > 0)
+    .map((c) => ({
+      description: c.description.trim(),
+      amount: Math.abs(Number(c.amount)),
+      vatRate: [0, 9, 21].includes(Number(c.vatRate)) ? Number(c.vatRate) : 21,
+    }));
 
   // Bepaal per factuurregel het te crediteren aantal
   const toCredit = invoice.lines
@@ -49,7 +62,7 @@ export async function POST(
     })
     .filter((x) => x.creditQty > 0);
 
-  if (toCredit.length === 0) {
+  if (toCredit.length === 0 && customLines.length === 0) {
     return NextResponse.json({ error: "Geen regels geselecteerd om te crediteren" }, { status: 400 });
   }
 
@@ -71,6 +84,19 @@ export async function POST(
       vatAmount: Math.round(vatAmount * 100) / 100,
     };
   });
+
+  // Vrije regels: qty 1, bedrag excl. btw als (negatieve) regelwaarde
+  for (const c of customLines) {
+    creditLines.push({
+      skuSnapshot: "—",
+      titleSnapshot: c.description,
+      qty: 1,
+      unitPrice: c.amount,
+      vatRate: c.vatRate,
+      lineTotal: -Math.round(c.amount * 100) / 100,
+      vatAmount: -Math.round(c.amount * (c.vatRate / 100) * 100) / 100,
+    });
+  }
 
   const subtotal = Math.round(creditLines.reduce((s, l) => s + l.lineTotal, 0) * 100) / 100;
   const vatAmount = Math.round(creditLines.reduce((s, l) => s + l.vatAmount, 0) * 100) / 100;
