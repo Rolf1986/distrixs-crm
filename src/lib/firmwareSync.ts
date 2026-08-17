@@ -17,7 +17,12 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { scrapeFirmware, firmwareSlug, type ParsedRelease } from "@/lib/acmeFirmware";
-import { buildReleaseEmail, buildRegisteredEmail, buildInternalAlertEmail } from "@/lib/firmwareEmail";
+import {
+  buildReleaseEmail,
+  buildRegisteredEmail,
+  buildInternalAlertEmail,
+  buildFailureEmail,
+} from "@/lib/firmwareEmail";
 import { randomBytes } from "crypto";
 
 /** Releases ouder dan dit aantal dagen leveren nooit een klantmail op. */
@@ -351,6 +356,25 @@ export async function syncFirmware(opts: SyncOptions = {}): Promise<SyncSummary>
   } catch (err) {
     summary.ok = false;
     summary.error = err instanceof Error ? err.message : String(err);
+
+    // Meteen melden: een stille scraper is het gevaarlijkste scenario, want dan
+    // denken we dat er geen nieuwe firmware is terwijl we simpelweg niets zien.
+    const alertTo = process.env.FIRMWARE_ALERT_EMAIL;
+    if (alertTo) {
+      const { subject, html } = buildFailureEmail({
+        reason: "De firmware-controle is vastgelopen",
+        detail: summary.error,
+        lastOkAt: (
+          await prisma.firmwareSyncRun.findFirst({
+            where: { ok: true, finishedAt: { not: null } },
+            orderBy: { startedAt: "desc" },
+            select: { startedAt: true },
+          })
+        )?.startedAt ?? null,
+      });
+      // Faalt ook de mail, dan mag dat de sync niet verder ontregelen.
+      await sendEmail({ to: alertTo.split(",").map((s) => s.trim()), subject, html }).catch(() => undefined);
+    }
   }
 
   await prisma.firmwareSyncRun.update({
@@ -367,6 +391,83 @@ export async function syncFirmware(opts: SyncOptions = {}): Promise<SyncSummary>
   });
 
   return summary;
+}
+
+// ─── Bewaking ─────────────────────────────────────────────────────────────────
+
+export interface WatchdogResult {
+  healthy: boolean;
+  /** Uren sinds de laatste geslaagde controle; null als er nog nooit één was. */
+  hoursSinceLastOk: number | null;
+  lastOkAt: string | null;
+  lastRunAt: string | null;
+  lastRunOk: boolean | null;
+  lastError: string | null;
+  alerted: boolean;
+  reason?: string;
+}
+
+/**
+ * Kijkt of de dagelijkse controle nog gezond is en mailt als dat niet zo is.
+ *
+ * Dit vangt drie dingen: een vastgelopen scraper, een controle die om een andere
+ * reden nooit klaarkomt, en een cron die helemaal niet meer draait — dat laatste
+ * blijkt uit de leeftijd van de laatste geslaagde run.
+ *
+ * Wat het NIET kan vangen: een server die volledig plat ligt, want dan draait
+ * deze bewaking zelf ook niet. Zodra de server terug is, meldt hij het alsnog.
+ */
+export async function runWatchdog(maxAgeHours = 30): Promise<WatchdogResult> {
+  const [lastOk, lastRun] = await Promise.all([
+    prisma.firmwareSyncRun.findFirst({
+      where: { ok: true, finishedAt: { not: null } },
+      orderBy: { startedAt: "desc" },
+      select: { startedAt: true },
+    }),
+    prisma.firmwareSyncRun.findFirst({
+      orderBy: { startedAt: "desc" },
+      select: { startedAt: true, ok: true, error: true, finishedAt: true },
+    }),
+  ]);
+
+  const hoursSinceLastOk = lastOk ? (Date.now() - lastOk.startedAt.getTime()) / 3_600_000 : null;
+
+  let reason: string | undefined;
+  if (!lastOk) {
+    reason = "Er is nog nooit een geslaagde firmware-controle geweest";
+  } else if (hoursSinceLastOk !== null && hoursSinceLastOk > maxAgeHours) {
+    reason = `De laatste geslaagde firmware-controle is ${Math.round(hoursSinceLastOk)} uur oud`;
+  } else if (lastRun && !lastRun.ok) {
+    reason = "De laatste firmware-controle is mislukt";
+  } else if (lastRun && !lastRun.finishedAt) {
+    reason = "De laatste firmware-controle is nooit afgerond";
+  }
+
+  const result: WatchdogResult = {
+    healthy: !reason,
+    hoursSinceLastOk: hoursSinceLastOk === null ? null : Math.round(hoursSinceLastOk * 10) / 10,
+    lastOkAt: lastOk?.startedAt.toISOString() ?? null,
+    lastRunAt: lastRun?.startedAt.toISOString() ?? null,
+    lastRunOk: lastRun?.ok ?? null,
+    lastError: lastRun?.error ?? null,
+    alerted: false,
+    reason,
+  };
+
+  const alertTo = process.env.FIRMWARE_ALERT_EMAIL;
+  if (reason && alertTo) {
+    const { subject, html } = buildFailureEmail({
+      reason,
+      detail: lastRun?.error ?? null,
+      lastOkAt: lastOk?.startedAt ?? null,
+    });
+    const sent = await sendEmail({ to: alertTo.split(",").map((s) => s.trim()), subject, html }).catch(() => ({
+      ok: false,
+    }));
+    result.alerted = Boolean(sent?.ok);
+  }
+
+  return result;
 }
 
 // ─── Koppeling CRM-artikel ↔ firmwareproduct ─────────────────────────────────
