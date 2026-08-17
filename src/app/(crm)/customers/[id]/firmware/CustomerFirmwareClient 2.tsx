@@ -60,11 +60,6 @@ export function CustomerFirmwareClient({
   const [newSerial, setNewSerial] = useState("");
   const [checked, setChecked] = useState<Set<string>>(new Set(suggestions.map((s) => s.firmwareProductId)));
 
-  const selectedProductLabel = useMemo(
-    () => firmwareProducts.find((p) => p.id === newProductId)?.label ?? null,
-    [firmwareProducts, newProductId]
-  );
-
   const productMatches = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
     const base = q ? firmwareProducts.filter((p) => p.label.toLowerCase().includes(q)) : firmwareProducts;
@@ -74,13 +69,6 @@ export function CustomerFirmwareClient({
   async function addRegistration() {
     const contact = contacts.find((c) => c.id === newContactId);
     if (!newProductId || !contact) return;
-    const label = firmwareProducts.find((p) => p.id === newProductId)?.label ?? "dit product";
-    if (
-      !confirm(
-        `${contact.name} (${contact.email}) wordt aangemeld voor ${label} en krijgt direct een mail met de huidige firmwareversie. Doorgaan?`
-      )
-    )
-      return;
     setBusy("new");
     await fetch("/api/firmware/registrations", {
       method: "POST",
@@ -114,12 +102,6 @@ export function CustomerFirmwareClient({
         source: "INVOICE",
       }));
     if (items.length === 0) return;
-    if (
-      !confirm(
-        `${items.length} ${items.length === 1 ? "registratie" : "registraties"} aanmelden? Elke ontvanger krijgt direct één mail met de huidige firmwareversie van het betreffende product.`
-      )
-    )
-      return;
 
     setBusy("suggestions");
     await fetch("/api/firmware/registrations", {
@@ -158,8 +140,7 @@ export function CustomerFirmwareClient({
           <div>
             <h2 className="text-base font-semibold text-slate-900">Firmware-meldingen</h2>
             <p className="text-sm text-slate-500">
-              Bij het aanvinken krijgt de klant meteen een mail met de nieuwste bekende versie. Daarna
-              gaat er automatisch bericht uit zodra ACME nieuwe firmware publiceert.
+              Aangevinkte producten leveren automatisch een mail op zodra ACME nieuwe firmware publiceert.
             </p>
           </div>
           <button
@@ -214,37 +195,24 @@ export function CustomerFirmwareClient({
                     placeholder="Zoek ACME-product…"
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm mb-2"
                   />
-                  {/* Leeg beginitem: zonder dat markeert de browser de eerste regel,
-                      wat eruitziet als een keuze terwijl er nog niets gekozen is. */}
                   <select
                     value={newProductId}
                     onChange={(e) => setNewProductId(e.target.value)}
                     size={6}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
                   >
-                    <option value="">— klik hieronder op een product —</option>
                     {productMatches.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.label}
                       </option>
                     ))}
                   </select>
-                  {selectedProductLabel ? (
-                    <p className="text-xs text-slate-600 mt-1.5">
-                      Gekozen: <strong>{selectedProductLabel}</strong>
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-400 mt-1.5">
-                      Klik een product aan in de lijst; daarna wordt de knop actief.
-                    </p>
-                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={addRegistration}
                     disabled={!newProductId || busy === "new"}
-                    title={newProductId ? undefined : "Kies eerst een product"}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg bg-blue-700 text-white hover:bg-blue-800 disabled:bg-slate-300 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg bg-blue-700 text-white hover:bg-blue-800 disabled:bg-slate-300"
                   >
                     {busy === "new" && <Loader2 className="w-4 h-4 animate-spin" />}
                     Aanmelden
@@ -348,8 +316,8 @@ export function CustomerFirmwareClient({
         <section>
           <h2 className="text-base font-semibold text-slate-900 mb-1">Voorstellen uit factuurhistorie</h2>
           <p className="text-sm text-slate-500 mb-3">
-            Deze klant heeft de volgende producten gefactureerd gekregen. Wat je aanvinkt en aanmeldt,
-            levert per product direct één mail op met de huidige firmwareversie.
+            Deze klant heeft de volgende producten gefactureerd gekregen. Vink aan wie firmware-meldingen moet
+            krijgen.
           </p>
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             <table className="w-full text-sm">

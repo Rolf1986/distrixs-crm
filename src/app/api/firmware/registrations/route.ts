@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { newRegistrationToken } from "@/lib/firmwareSync";
+import { newRegistrationToken, sendCurrentFirmware } from "@/lib/firmwareSync";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
 
   const created: string[] = [];
   const skipped: string[] = [];
+  // Aanvinken = de klant meteen de nieuwste bekende versie sturen.
+  const sendCurrent = body.sendCurrent !== false;
 
   for (const item of items) {
     const firmwareProductId = typeof item.firmwareProductId === "string" ? item.firmwareProductId : null;
@@ -103,5 +105,12 @@ export async function POST(req: NextRequest) {
     created.push(reg.id);
   }
 
-  return NextResponse.json({ created: created.length, skipped });
+  let mailed = 0;
+  if (sendCurrent) {
+    for (const id of created) {
+      if (await sendCurrentFirmware(id)) mailed++;
+    }
+  }
+
+  return NextResponse.json({ created: created.length, mailed, skipped });
 }

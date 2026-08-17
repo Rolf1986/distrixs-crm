@@ -17,7 +17,7 @@
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { scrapeFirmware, firmwareSlug, type ParsedRelease } from "@/lib/acmeFirmware";
-import { buildReleaseEmail, buildInternalAlertEmail } from "@/lib/firmwareEmail";
+import { buildReleaseEmail, buildRegisteredEmail, buildInternalAlertEmail } from "@/lib/firmwareEmail";
 import { randomBytes } from "crypto";
 
 /** Releases ouder dan dit aantal dagen leveren nooit een klantmail op. */
@@ -195,6 +195,79 @@ export async function notifyRelease(releaseId: string, dryRun = false): Promise<
   }
 
   return sent;
+}
+
+/**
+ * Stuurt eenmalig de nieuwste bekende firmware naar een net aangevinkte registratie.
+ *
+ * Gebeurt zodra een product voor een klant wordt aangezet: dan heeft hij meteen
+ * iets aan de aanmelding in plaats van pas bij de volgende release. De verzending
+ * wordt als notificatie gelogd, zodat de dagelijkse sync diezelfde versie later
+ * niet nóg een keer mailt.
+ *
+ * De leeftijdsgrens van MAX_NOTIFY_AGE_DAYS geldt hier bewust NIET: dit is geen
+ * "er is nieuwe firmware"-melding maar een "dit is de versie die nu klaarstaat".
+ */
+export async function sendCurrentFirmware(registrationId: string): Promise<boolean> {
+  const reg = await prisma.firmwareRegistration.findUnique({
+    where: { id: registrationId },
+    include: { firmwareProduct: true, contact: true },
+  });
+  if (!reg || reg.status !== "ACTIVE") return false;
+
+  const email = reg.email?.trim();
+  if (!email) return false;
+
+  const latest = await prisma.firmwareRelease.findFirst({
+    where: { firmwareProductId: reg.firmwareProductId },
+    orderBy: [{ releaseDate: "desc" }, { firstSeenAt: "desc" }],
+  });
+
+  // Al eerder over deze release gemaild? Dan niets doen — voorkomt dubbele post
+  // als een registratie wordt uit- en weer aangezet.
+  if (latest) {
+    const already = await prisma.firmwareNotification.findUnique({
+      where: { releaseId_registrationId: { releaseId: latest.id, registrationId: reg.id } },
+      select: { id: true },
+    });
+    if (already) return false;
+  }
+
+  const name = reg.name ?? (reg.contact ? `${reg.contact.firstName} ${reg.contact.lastName}`.trim() : null);
+  const { subject, html } = buildRegisteredEmail({
+    recipientName: name,
+    productName: reg.firmwareProduct.name,
+    productModel: reg.firmwareProduct.model,
+    token: reg.token,
+    serialNumber: reg.serialNumber,
+    latestVersion: latest?.version ?? null,
+    latestDownloadUrl: latest?.downloadUrl ?? null,
+    latestReleaseDate: latest?.releaseDate ?? null,
+    latestReleaseNotes: latest?.releaseNotes ?? null,
+  });
+
+  const result = await sendEmail({ to: email, subject, html });
+
+  if (latest) {
+    await prisma.firmwareNotification.create({
+      data: {
+        releaseId: latest.id,
+        registrationId: reg.id,
+        email,
+        status: result.ok ? "SENT" : "FAILED",
+        error: result.ok ? null : (result.error ?? "onbekende fout"),
+      },
+    });
+  }
+
+  if (result.ok) {
+    await prisma.firmwareRegistration.update({
+      where: { id: reg.id },
+      data: { lastNotifiedAt: new Date() },
+    });
+  }
+
+  return result.ok;
 }
 
 // ─── De sync zelf ─────────────────────────────────────────────────────────────
