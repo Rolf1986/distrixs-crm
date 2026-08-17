@@ -1,9 +1,10 @@
 /**
- * E-mailteksten voor firmware-notificaties.
+ * E-mailteksten voor firmware-notificaties, in de Distrixs-huisstijl.
  *
- * Wie een registratie krijgt, wordt in het CRM aangevinkt; de klant hoeft daar
- * niets voor te doen. Meldt een klant zich zélf aan via de publieke pagina, dan
- * krijgt hij na goedkeuring de bevestigingsmail.
+ * Palet en opbouw volgen `src/components/pdf/PdfLayout.tsx`, zodat deze mails
+ * eruitzien als de offertes en facturen die de klant al van ons krijgt: wit vlak
+ * met het logo, oranje als accent, blauw voor de kop en een donkere merkbalk
+ * onderaan.
  *
  *  1. Welkomstmail — bij het aanvinken, met de nieuwste bekende versie erin
  *  2. Notificatie  — de melding dat er nieuwe firmware is
@@ -11,6 +12,23 @@
  */
 
 export const CRM_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl";
+
+// ─── Huisstijl (gelijk aan het PDF-palet) ─────────────────────────────────────
+
+const C = {
+  blue: "#0170B9",
+  orange: "#ff6600",
+  orangeSoft: "#ffb380",
+  dark: "#2a2a2a",
+  text: "#333333",
+  muted: "#666666",
+  light: "#999999",
+  border: "#e0e0e0",
+  tint: "#f5f5f5",
+  white: "#ffffff",
+};
+
+const FONT = "Helvetica, Arial, 'Helvetica Neue', sans-serif";
 
 function esc(s: string | null | undefined): string {
   if (!s) return "";
@@ -21,30 +39,133 @@ function esc(s: string | null | undefined): string {
     .replace(/"/g, "&quot;");
 }
 
-function shell(inner: string): string {
+/** Oranje knop als tabel: Outlook negeert padding op een gewone link. */
+function button(href: string, label: string): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:20px 0 4px 0;">
+          <tr>
+            <td style="background:${C.orange};border-radius:4px;">
+              <a href="${href}" style="display:inline-block;padding:13px 26px;font-family:${FONT};font-size:15px;font-weight:bold;color:${C.white};text-decoration:none;">${label}</a>
+            </td>
+          </tr>
+        </table>`;
+}
+
+/** Versieblok: lichte vulling met oranje kantlijn, zoals de totaalbalk in de PDF. */
+function versionBlock(opts: {
+  label: string;
+  version: string;
+  dateLabel: string | null;
+  downloadUrl: string;
+  buttonLabel: string;
+}): string {
+  return `              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+        <tr>
+          <td style="background:${C.tint};border-left:4px solid ${C.orange};padding:20px 24px;">
+            <p style="margin:0 0 6px 0;font-family:${FONT};font-size:11px;color:${C.muted};text-transform:uppercase;letter-spacing:0.08em;">${opts.label}</p>
+            <p style="margin:0;font-family:${FONT};font-size:28px;font-weight:bold;color:${C.dark};line-height:1.1;">${esc(opts.version)}</p>
+            ${
+              opts.dateLabel
+                ? `<p style="margin:6px 0 0 0;font-family:${FONT};font-size:13px;color:${C.muted};">Gepubliceerd op ${opts.dateLabel}</p>`
+                : ""
+            }
+            ${button(opts.downloadUrl, opts.buttonLabel)}
+          </td>
+        </tr>
+      </table>`;
+}
+
+/** Release notes van de fabrikant, met oranje streep als sectiemarkering. */
+function notesBlock(notes: string, title: string): string {
+  return `              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;">
+        <tr>
+          <td style="border:1px solid ${C.border};border-top:3px solid ${C.orange};padding:18px 22px;">
+            <p style="margin:0 0 10px 0;font-family:${FONT};font-size:11px;color:${C.muted};text-transform:uppercase;letter-spacing:0.08em;">${title}</p>
+            <div style="font-family:${FONT};font-size:14px;color:${C.text};line-height:1.65;">${notes
+              .split("\n")
+              .map((l) => esc(l))
+              .join("<br>")}</div>
+          </td>
+        </tr>
+      </table>`;
+}
+
+/**
+ * Buitenkant van elke mail: logo op wit, oranje streep, inhoud, merkbalk.
+ * Tabellen en inline stijlen — dat is wat mailprogramma's betrouwbaar aankunnen.
+ */
+function shell(opts: { title: string; inner: string; footerNote?: string }): string {
   return `<!DOCTYPE html>
 <html lang="nl">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-  <div style="max-width:600px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
-    <div style="background:#1e40af;padding:24px 32px;">
-      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">Distrixs</h1>
-    </div>
-    <div style="padding:32px;">
-${inner}
-    </div>
-    <div style="background:#f8fafc;padding:20px 32px;border-top:1px solid #e2e8f0;">
-      <p style="margin:0;font-size:12px;color:#94a3b8;">
-        Distrixs · Lorentzstraat 89, 2665 JG Bleiswijk · <a href="https://www.distrixs.nl" style="color:#94a3b8;">www.distrixs.nl</a>
-      </p>
-    </div>
-  </div>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light only">
+  <title>${esc(opts.title)}</title>
+</head>
+<body style="margin:0;padding:0;background:${C.tint};font-family:${FONT};-webkit-text-size-adjust:100%;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.tint};">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:${C.white};border:1px solid ${C.border};">
+
+          <!-- Kop: logo op wit met oranje streep, net als onze documenten -->
+          <tr>
+            <td style="padding:26px 32px 20px 32px;">
+              <img src="${CRM_BASE_URL}/logo.png" alt="Distrixs" width="150" style="display:block;width:150px;max-width:150px;height:auto;border:0;">
+            </td>
+          </tr>
+          <tr><td style="height:3px;background:${C.orange};line-height:3px;font-size:0;">&nbsp;</td></tr>
+
+          <!-- Inhoud -->
+          <tr>
+            <td style="padding:30px 32px 6px 32px;">
+              <h1 style="margin:0 0 20px 0;font-family:${FONT};font-size:20px;font-weight:bold;color:${C.blue};line-height:1.3;">${esc(opts.title)}</h1>
+${opts.inner}
+            </td>
+          </tr>
+
+          <!-- Merkbalk onderaan, gelijk aan de documentfooter -->
+          <tr>
+            <td style="padding:20px 32px 30px 32px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.dark};border-radius:4px;">
+                <tr>
+                  <td style="padding:14px 20px;">
+                    <p style="margin:0;font-family:${FONT};font-size:13px;font-weight:bold;color:${C.white};">Distrixs</p>
+                    <p style="margin:4px 0 0 0;font-family:${FONT};font-size:12px;color:${C.orangeSoft};line-height:1.5;">
+                      Lorentzstraat 89, 2665 JG Bleiswijk &nbsp;·&nbsp; +31 (0)10 223 01 87<br>
+                      <a href="mailto:info@distrixs.nl" style="color:${C.orangeSoft};text-decoration:none;">info@distrixs.nl</a>
+                      &nbsp;·&nbsp;
+                      <a href="https://www.distrixs.nl" style="color:${C.orangeSoft};text-decoration:none;">www.distrixs.nl</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+              ${
+                opts.footerNote
+                  ? `<p style="margin:14px 0 0 0;font-family:${FONT};font-size:11px;color:${C.light};line-height:1.6;">${opts.footerNote}</p>`
+                  : ""
+              }
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 }
 
 function productLabel(name: string, model: string | null): string {
   return model && model !== name ? `${name} (${model})` : name;
+}
+
+function p(content: string, extra = ""): string {
+  return `              <p style="margin:0 0 16px 0;font-family:${FONT};font-size:15px;color:${C.text};line-height:1.65;${extra}">${content}</p>`;
+}
+
+function dutchDate(d: Date | null | undefined): string | null {
+  return d ? d.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : null;
 }
 
 // ─── 1. Welkomstmail bij een nieuwe registratie ──────────────────────────────
@@ -68,58 +189,47 @@ export function buildRegisteredEmail(opts: {
   const product = productLabel(opts.productName, opts.productModel);
   const unsubUrl = `${CRM_BASE_URL}/firmware-updates/afmelden?token=${opts.token}`;
   const hasRelease = Boolean(opts.latestVersion && opts.latestDownloadUrl);
-  const dateLabel = opts.latestReleaseDate
-    ? opts.latestReleaseDate.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })
-    : null;
 
-  const notesHtml = opts.latestReleaseNotes
-    ? `<div style="background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
-        <p style="margin:0 0 10px 0;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Wat deze versie verandert (tekst van de fabrikant)</p>
-        <div style="margin:0;color:#334155;font-size:14px;line-height:1.6;">${opts.latestReleaseNotes
-          .split("\n")
-          .map((l) => esc(l))
-          .join("<br>")}</div>
-      </div>`
-    : "";
+  const inner = [
+    p(`Beste ${esc(opts.recipientName) || "klant"},`),
+    p(
+      `De fabrikant van je <strong>${esc(product)}</strong>${
+        opts.serialNumber ? ` (serienummer ${esc(opts.serialNumber)})` : ""
+      } brengt regelmatig nieuwe firmware uit, maar kondigt dat nergens aan. Wij houden dat vanaf nu voor je bij: zodra er een nieuwe versie klaarstaat, krijg je automatisch bericht van ons.`
+    ),
+    hasRelease
+      ? versionBlock({
+          label: "Nieuwste versie op dit moment",
+          version: opts.latestVersion!,
+          dateLabel: dutchDate(opts.latestReleaseDate),
+          downloadUrl: opts.latestDownloadUrl!,
+          buttonLabel: "Deze versie downloaden",
+        })
+      : p(
+          "Voor dit product staat op dit moment nog geen firmwarebestand bij de fabrikant. Zodra dat verandert, hoor je het van ons."
+        ),
+    opts.latestReleaseNotes
+      ? notesBlock(opts.latestReleaseNotes, "Wat deze versie verandert (tekst van de fabrikant)")
+      : "",
+    hasRelease
+      ? p(
+          `Draait je armatuur al op deze versie? Dan hoef je niets te doen. Weet je het niet zeker, of loop je vast bij het installeren? Mail ons op <a href="mailto:info@distrixs.nl" style="color:${C.blue};">info@distrixs.nl</a> — we helpen je graag.`,
+          `font-size:14px;color:${C.muted};`
+        )
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return {
     subject: hasRelease
       ? `Firmware voor je ${esc(opts.productName)} — huidige versie ${esc(opts.latestVersion!)}`
       : `Wij houden de firmware van je ${esc(opts.productName)} in de gaten`,
-    html: shell(`
-      <p style="margin:0 0 20px 0;color:#374151;">Beste ${esc(opts.recipientName) || "klant"},</p>
-      <p style="margin:0 0 16px 0;color:#374151;">
-        De fabrikant van je <strong>${esc(product)}</strong>${
-          opts.serialNumber ? ` (serienummer ${esc(opts.serialNumber)})` : ""
-        }
-        brengt regelmatig nieuwe firmware uit, maar kondigt dat nergens aan. Wij houden dat
-        vanaf nu voor je bij: zodra er een nieuwe versie klaarstaat, krijg je automatisch
-        bericht van ons.
-      </p>
-      ${
-        hasRelease
-          ? `<div style="background:#f1f5f9;border-radius:8px;padding:20px;margin:20px 0;">
-        <p style="margin:0 0 8px 0;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Nieuwste versie op dit moment</p>
-        <p style="margin:0 0 4px 0;font-size:26px;font-weight:700;color:#1e293b;">${esc(opts.latestVersion!)}</p>
-        ${dateLabel ? `<p style="margin:0 0 14px 0;font-size:13px;color:#64748b;">Gepubliceerd op ${dateLabel}</p>` : ""}
-        <a href="${opts.latestDownloadUrl}" style="display:inline-block;background:#1e40af;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:600;font-size:14px;">Deze versie downloaden</a>
-      </div>
-      ${notesHtml}
-      <p style="margin:0 0 16px 0;font-size:13px;color:#64748b;line-height:1.6;">
-        Draait je armatuur al op deze versie? Dan hoef je niets te doen. Weet je het niet zeker,
-        of loop je vast bij het installeren? Mail ons op
-        <a href="mailto:info@distrixs.nl" style="color:#1e40af;">info@distrixs.nl</a> — we helpen je graag.
-      </p>`
-          : `<p style="margin:0 0 16px 0;color:#374151;">
-        Voor dit product staat op dit moment nog geen firmwarebestand bij de fabrikant. Zodra dat
-        verandert, hoor je het van ons.
-      </p>`
-      }
-      <p style="margin:24px 0 0 0;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">
-        Je ontvangt deze mail omdat dit product bij ons voor je geregistreerd staat.
-        <a href="${unsubUrl}" style="color:#94a3b8;">Geen updates meer ontvangen</a>
-      </p>
-    `),
+    html: shell({
+      title: hasRelease ? `Firmware-updates voor je ${esc(opts.productName)}` : "Wij houden je firmware in de gaten",
+      inner,
+      footerNote: `Je ontvangt deze mail omdat dit product bij ons voor je geregistreerd staat. <a href="${unsubUrl}" style="color:${C.light};">Geen updates meer ontvangen</a>`,
+    }),
   };
 }
 
@@ -138,59 +248,39 @@ export function buildReleaseEmail(opts: {
 }): { subject: string; html: string } {
   const product = productLabel(opts.productName, opts.productModel);
   const unsubUrl = `${CRM_BASE_URL}/firmware-updates/afmelden?token=${opts.token}`;
-  const dateLabel = opts.releaseDate
-    ? opts.releaseDate.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })
-    : null;
 
-  // De fabrikant publiceert de release notes in het Engels; die nemen we
-  // onbewerkt over — vertalen zou betekenisverschil kunnen introduceren.
-  const notesHtml = opts.releaseNotes
-    ? `<div style="background:#f8fafc;border-left:3px solid #cbd5e1;border-radius:0 8px 8px 0;padding:16px 20px;margin:20px 0;">
-        <p style="margin:0 0 10px 0;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Wat is er veranderd (tekst van de fabrikant)</p>
-        <div style="margin:0;color:#334155;font-size:14px;line-height:1.6;">${opts.releaseNotes
-          .split("\n")
-          .map((l) => esc(l))
-          .join("<br>")}</div>
-      </div>`
-    : "";
+  const inner = [
+    p(`Beste ${esc(opts.recipientName) || "klant"},`),
+    p(
+      `Er is nieuwe firmware beschikbaar voor je <strong>${esc(product)}</strong>${
+        opts.serialNumber ? ` (serienummer ${esc(opts.serialNumber)})` : ""
+      }.`
+    ),
+    versionBlock({
+      label: "Nieuwe versie",
+      version: opts.version,
+      dateLabel: dutchDate(opts.releaseDate),
+      downloadUrl: opts.downloadUrl,
+      buttonLabel: "Firmware downloaden",
+    }),
+    // De fabrikant publiceert de release notes in het Engels; die nemen we
+    // onbewerkt over — vertalen zou betekenisverschil kunnen introduceren.
+    opts.releaseNotes ? notesBlock(opts.releaseNotes, "Wat is er veranderd (tekst van de fabrikant)") : "",
+    p(
+      `Twijfel je of deze update voor jouw uitvoering geschikt is, of loop je vast bij het installeren? Mail ons gerust op <a href="mailto:info@distrixs.nl" style="color:${C.blue};">info@distrixs.nl</a> — we helpen je er graag doorheen.`,
+      `font-size:14px;color:${C.muted};`
+    ),
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return {
     subject: `Nieuwe firmware voor je ${esc(opts.productName)} — versie ${esc(opts.version)}`,
-    html: shell(`
-      <p style="margin:0 0 20px 0;color:#374151;">Beste ${esc(opts.recipientName) || "klant"},</p>
-      <p style="margin:0 0 16px 0;color:#374151;">
-        Er is nieuwe firmware beschikbaar voor de <strong>${esc(product)}</strong>${
-          opts.serialNumber ? ` (serienummer ${esc(opts.serialNumber)})` : ""
-        }.
-      </p>
-
-      <div style="background:#f1f5f9;border-radius:8px;padding:20px;margin:20px 0;">
-        <p style="margin:0 0 8px 0;font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Nieuwe versie</p>
-        <p style="margin:0;font-size:26px;font-weight:700;color:#1e293b;">${esc(opts.version)}</p>
-        ${dateLabel ? `<p style="margin:6px 0 0 0;font-size:13px;color:#64748b;">Gepubliceerd op ${dateLabel}</p>` : ""}
-      </div>
-
-      ${notesHtml}
-
-      <p style="margin:24px 0;">
-        <a href="${opts.downloadUrl}" style="display:inline-block;background:#1e40af;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;">
-          Firmware downloaden
-        </a>
-      </p>
-
-      <p style="margin:0 0 16px 0;font-size:13px;color:#64748b;line-height:1.6;">
-        Twijfel je of deze update voor jouw uitvoering geschikt is, of loop je vast bij het
-        installeren? Mail ons gerust op
-        <a href="mailto:info@distrixs.nl" style="color:#1e40af;">info@distrixs.nl</a> —
-        we helpen je er graag doorheen.
-      </p>
-
-      <p style="margin:24px 0 0 0;padding-top:16px;border-top:1px solid #e2e8f0;font-size:12px;color:#94a3b8;">
-        Je ontvangt deze mail omdat dit product bij ons voor je geregistreerd staat en wij
-        firmware-updates van de fabrikant voor je in de gaten houden.
-        <a href="${unsubUrl}" style="color:#94a3b8;">Geen updates meer ontvangen</a>
-      </p>
-    `),
+    html: shell({
+      title: `Nieuwe firmware voor je ${esc(opts.productName)}`,
+      inner,
+      footerNote: `Je ontvangt deze mail omdat dit product bij ons voor je geregistreerd staat en wij firmware-updates van de fabrikant voor je in de gaten houden. <a href="${unsubUrl}" style="color:${C.light};">Geen updates meer ontvangen</a>`,
+    }),
   };
 }
 
@@ -200,34 +290,41 @@ export function buildInternalAlertEmail(opts: {
   releases: Array<{ productName: string; productModel: string | null; version: string; recipients: number }>;
 }): { subject: string; html: string } {
   const total = opts.releases.length;
+
+  const th = (align: string) =>
+    `padding:8px 0;border-bottom:2px solid ${C.orange};font-family:${FONT};font-size:11px;color:${C.muted};text-transform:uppercase;letter-spacing:0.08em;text-align:${align};`;
+
   const rows = opts.releases
     .map(
-      (r) => `<tr style="border-bottom:1px solid #e2e8f0;">
-        <td style="padding:10px 0;color:#1e293b;font-weight:500;">${esc(productLabel(r.productName, r.productModel))}</td>
-        <td style="padding:10px 0;color:#1e293b;">${esc(r.version)}</td>
-        <td style="padding:10px 0;color:#64748b;text-align:right;">${r.recipients} ${r.recipients === 1 ? "klant" : "klanten"}</td>
-      </tr>`
+      (r) => `<tr>
+            <td style="padding:10px 0;border-bottom:1px solid ${C.border};font-family:${FONT};font-size:14px;color:${C.text};font-weight:bold;">${esc(
+              productLabel(r.productName, r.productModel)
+            )}</td>
+            <td style="padding:10px 0;border-bottom:1px solid ${C.border};font-family:${FONT};font-size:14px;color:${C.text};">${esc(r.version)}</td>
+            <td style="padding:10px 0;border-bottom:1px solid ${C.border};font-family:${FONT};font-size:14px;color:${C.muted};text-align:right;">${r.recipients} ${
+              r.recipients === 1 ? "klant" : "klanten"
+            }</td>
+          </tr>`
     )
-    .join("");
+    .join("\n");
+
+  const inner = [
+    p(
+      `De firmware-monitor vond ${total} nieuwe release${total === 1 ? "" : "s"}. Aangemelde klanten hebben automatisch bericht gekregen.`
+    ),
+    `              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px 0;">
+          <tr>
+            <td style="${th("left")}">Product</td>
+            <td style="${th("left")}">Versie</td>
+            <td style="${th("right")}">Verstuurd</td>
+          </tr>
+${rows}
+        </table>`,
+    button(`${CRM_BASE_URL}/firmware`, "Naar het firmware-overzicht"),
+  ].join("\n");
 
   return {
     subject: `${total} nieuwe firmware-release${total === 1 ? "" : "s"} bij ACME`,
-    html: shell(`
-      <p style="margin:0 0 16px 0;color:#374151;">
-        De firmware-monitor vond ${total} nieuwe release${total === 1 ? "" : "s"}.
-        Aangemelde klanten hebben automatisch bericht gekregen.
-      </p>
-      <table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;">
-        <tr style="border-bottom:2px solid #e2e8f0;">
-          <th style="padding:8px 0;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;">Product</th>
-          <th style="padding:8px 0;text-align:left;font-size:12px;color:#64748b;text-transform:uppercase;">Versie</th>
-          <th style="padding:8px 0;text-align:right;font-size:12px;color:#64748b;text-transform:uppercase;">Verstuurd</th>
-        </tr>
-        ${rows}
-      </table>
-      <p style="margin:20px 0 0 0;">
-        <a href="${CRM_BASE_URL}/firmware" style="display:inline-block;background:#1e40af;color:#fff;text-decoration:none;padding:10px 20px;border-radius:8px;font-weight:600;font-size:14px;">Naar het firmware-overzicht</a>
-      </p>
-    `),
+    html: shell({ title: "Nieuwe firmware bij ACME", inner }),
   };
 }
