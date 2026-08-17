@@ -134,7 +134,7 @@ export function RegistrationsClient({ registrations }: { registrations: Registra
                           <button
                             onClick={() => setStatus(r.id, "ACTIVE")}
                             disabled={busyId === r.id}
-                            title="Aanzetten — klant krijgt voortaan automatisch bericht"
+                            title="Aanzetten — klant krijgt meteen de huidige versie en daarna automatisch nieuwe releases"
                             className="p-1.5 rounded-md text-green-600 hover:bg-green-50"
                           >
                             <Check className="w-4 h-4" />

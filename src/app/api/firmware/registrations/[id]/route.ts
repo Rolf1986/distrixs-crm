@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
-import { buildConfirmedEmail } from "@/lib/firmwareEmail";
+import { sendCurrentFirmware } from "@/lib/firmwareSync";
 
 export const dynamic = "force-dynamic";
 
@@ -40,27 +39,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     },
   });
 
-  // Zelfaanmelding goedgekeurd? Dan hoort de klant een bevestiging te krijgen,
-  // want hij heeft er zelf om gevraagd.
-  const isApprovedSelfSignup = current.source === "SELF" && current.status === "PENDING" && nextStatus === "ACTIVE";
-  if (isApprovedSelfSignup) {
-    const latest = await prisma.firmwareRelease.findFirst({
-      where: { firmwareProductId: current.firmwareProductId },
-      orderBy: [{ releaseDate: "desc" }, { firstSeenAt: "desc" }],
-      select: { version: true, downloadUrl: true },
-    });
-    const { subject, html } = buildConfirmedEmail({
-      recipientName: updated.name,
-      productName: current.firmwareProduct.name,
-      productModel: current.firmwareProduct.model,
-      token: updated.token,
-      latestVersion: latest?.version ?? null,
-      latestDownloadUrl: latest?.downloadUrl ?? null,
-    });
-    await sendEmail({ to: updated.email, subject, html });
+  // Net op ACTIVE gezet? Dan gaat de nieuwste bekende versie eenmalig naar de klant —
+  // net als bij het aanvinken op de klantkaart. sendCurrentFirmware slaat zichzelf over
+  // als er over die release al eens is gemaild.
+  let mailed = false;
+  if (nextStatus === "ACTIVE" && current.status !== "ACTIVE") {
+    mailed = await sendCurrentFirmware(updated.id);
   }
 
-  return NextResponse.json(updated);
+  return NextResponse.json({ ...updated, mailed });
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
