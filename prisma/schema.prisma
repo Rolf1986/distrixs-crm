@@ -252,6 +252,7 @@ model Customer {
   convertedLeads     Lead[]
   shipments          Shipment[]
   webshopAccounts    WebshopAccount[]
+  firmwareRegistrations FirmwareRegistration[]
 
   @@map("customers")
 }
@@ -295,6 +296,7 @@ model CustomerContact {
   activities        Activity[]
   recurringInvoices RecurringInvoice[]
   webshopAccounts   WebshopAccount[]
+  firmwareRegistrations FirmwareRegistration[]
 
   @@map("customer_contacts")
 }
@@ -379,6 +381,7 @@ model Product {
   quoteLines         QuoteLine[]
   purchaseOrderLines PurchaseOrderLine[]
   customerPricelists CustomerPricelist[]
+  firmwareLinks      ProductFirmwareLink[]
 
   @@map("products")
 }
@@ -1412,4 +1415,162 @@ model AnalyticsEvent {
   @@index([type])
   @@index([occurredAt])
   @@map("analytics_events")
+}
+
+// ─── Firmware-notificaties ────────────────────────────────────────────────────
+// De leverancier (ACME) publiceert firmware op een supportpagina zonder API of
+// notificatie. `src/lib/acmeFirmware.ts` scrapet die pagina; wat hier binnenkomt
+// wordt vergeleken met de vorige stand. Nieuwe versies gaan automatisch als
+// e-mail naar klanten die zich op dat product hebben geregistreerd.
+
+enum FirmwareRegistrationSource {
+  MANUAL // handmatig aangezet op de klantkaart
+  INVOICE // afgeleid uit factuurhistorie en bevestigd
+  SELF // klant heeft zich zelf aangemeld via de publieke pagina
+}
+
+enum FirmwareRegistrationStatus {
+  /// Alleen voor zelfaanmeldingen via de publieke pagina: wacht op akkoord in het CRM.
+  PENDING
+  /// Aangevinkt in het CRM → krijgt nieuwe firmware automatisch.
+  ACTIVE
+  /// Klant heeft zich via de afmeldlink in de mail afgemeld.
+  UNSUBSCRIBED
+}
+
+enum FirmwareNotificationStatus {
+  SENT
+  FAILED
+}
+
+/// Een product zoals ACME het op de supportpagina noemt (naam + modelaanduiding).
+model FirmwareProduct {
+  id        String   @id @default(cuid())
+  source    String   @default("acme")
+  slug      String   @unique // genormaliseerd: "zeus--xp-500-bsw-ip"
+  name      String // "ZEUS"
+  model     String? // "XP 500 BSW IP"
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  releases      FirmwareRelease[]
+  links         ProductFirmwareLink[]
+  registrations FirmwareRegistration[]
+
+  @@index([name])
+  @@map("firmware_products")
+}
+
+/// Eén gepubliceerd firmwarebestand.
+model FirmwareRelease {
+  id                String    @id @default(cuid())
+  firmwareProductId String    @map("firmware_product_id")
+  version           String
+  fileTitle         String    @map("file_title")
+  build             String?
+  releaseDate       DateTime? @map("release_date")
+  downloadUrl       String    @map("download_url")
+  releaseNotes      String?   @map("release_notes")
+  /// Zet op true bij de eerste (backfill-)sync: dan gaat er géén mail uit over
+  /// bestaande releases. Alles wat daarna verschijnt is echt nieuw.
+  isBaseline        Boolean   @default(false) @map("is_baseline")
+  notifiedAt        DateTime? @map("notified_at")
+  firstSeenAt       DateTime  @default(now()) @map("first_seen_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  firmwareProduct FirmwareProduct        @relation(fields: [firmwareProductId], references: [id], onDelete: Cascade)
+  notifications   FirmwareNotification[]
+
+  @@unique([downloadUrl])
+  @@index([firmwareProductId])
+  @@index([releaseDate])
+  @@index([notifiedAt])
+  @@map("firmware_releases")
+}
+
+/// Koppeling tussen een CRM-artikel (SKU) en het ACME-firmwareproduct.
+model ProductFirmwareLink {
+  id                String   @id @default(cuid())
+  productId         String   @map("product_id")
+  firmwareProductId String   @map("firmware_product_id")
+  /// true = automatisch voorgesteld op naamgelijkenis, nog niet bevestigd
+  isSuggested       Boolean  @default(false) @map("is_suggested")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  product         Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  firmwareProduct FirmwareProduct @relation(fields: [firmwareProductId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, firmwareProductId])
+  @@index([firmwareProductId])
+  @@map("product_firmware_links")
+}
+
+/// Wie krijgt bericht bij een nieuwe versie van dit product.
+model FirmwareRegistration {
+  id                String                     @id @default(cuid())
+  firmwareProductId String                     @map("firmware_product_id")
+  customerId        String?                    @map("customer_id")
+  contactId         String?                    @map("contact_id")
+  email             String
+  name              String?
+  companyName       String?                    @map("company_name")
+  serialNumber      String?                    @map("serial_number")
+  source            FirmwareRegistrationSource @default(MANUAL)
+  status            FirmwareRegistrationStatus @default(ACTIVE)
+  /// Sleutel in bevestigings- en afmeldlinks (niet raadbaar).
+  token             String                     @unique
+  confirmedAt       DateTime?                  @map("confirmed_at")
+  unsubscribedAt    DateTime?                  @map("unsubscribed_at")
+  lastNotifiedAt    DateTime?                  @map("last_notified_at")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+
+  firmwareProduct FirmwareProduct        @relation(fields: [firmwareProductId], references: [id], onDelete: Cascade)
+  customer        Customer?              @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  contact         CustomerContact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  notifications   FirmwareNotification[]
+
+  @@unique([firmwareProductId, email])
+  @@index([customerId])
+  @@index([status])
+  @@map("firmware_registrations")
+}
+
+/// Verzendlog — voorkomt dat dezelfde release twee keer naar dezelfde klant gaat.
+model FirmwareNotification {
+  id             String                     @id @default(cuid())
+  releaseId      String                     @map("release_id")
+  registrationId String                     @map("registration_id")
+  email          String
+  status         FirmwareNotificationStatus @default(SENT)
+  error          String?
+  openedAt       DateTime?                  @map("opened_at")
+  downloadedAt   DateTime?                  @map("downloaded_at")
+  sentAt         DateTime                   @default(now()) @map("sent_at")
+
+  release      FirmwareRelease      @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  registration FirmwareRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@unique([releaseId, registrationId])
+  @@index([registrationId])
+  @@map("firmware_notifications")
+}
+
+/// Logregel per synchronisatie, zodat zichtbaar is of de scraper nog werkt.
+model FirmwareSyncRun {
+  id                String    @id @default(cuid())
+  trigger           String // cron | handmatig | backfill
+  startedAt         DateTime  @default(now()) @map("started_at")
+  finishedAt        DateTime? @map("finished_at")
+  pagesFetched      Int       @default(0) @map("pages_fetched")
+  releasesSeen      Int       @default(0) @map("releases_seen")
+  newReleases       Int       @default(0) @map("new_releases")
+  notificationsSent Int       @default(0) @map("notifications_sent")
+  ok                Boolean   @default(true)
+  error             String?
+
+  @@index([startedAt])
+  @@map("firmware_sync_runs")
 }
