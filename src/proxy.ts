@@ -26,6 +26,7 @@ export default async function proxy(req: NextRequest) {
     /^\/icon-[\w-]+\.png$/.test(pathname) || // PWA-iconen
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/retour") ||
+    pathname.startsWith("/firmware-updates") || // publieke aanmeld-/afmeldpagina firmware-updates
     pathname === "/api/rma" ||
     pathname.startsWith("/api/rma/") ||
     pathname.startsWith("/api/")
