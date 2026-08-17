@@ -284,7 +284,62 @@ export function buildReleaseEmail(opts: {
   };
 }
 
-// ─── 3. Interne signalering ───────────────────────────────────────────────────
+// ─── 3. Alarm: de controle werkt niet meer ───────────────────────────────────
+
+/**
+ * Interne waarschuwing. Rood accent in plaats van oranje, want dit is geen
+ * mededeling maar iets dat aandacht nodig heeft.
+ */
+export function buildFailureEmail(opts: {
+  reason: string;
+  detail?: string | null;
+  lastOkAt?: Date | null;
+}): { subject: string; html: string } {
+  const red = "#c62828";
+  const lastOk = opts.lastOkAt
+    ? opts.lastOkAt.toLocaleString("nl-NL", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "onbekend — er is nog geen geslaagde controle geregistreerd";
+
+  const inner = [
+    `              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px 0;">
+        <tr>
+          <td style="background:#fdecea;border-left:4px solid ${red};padding:18px 22px;">
+            <p style="margin:0;font-family:${FONT};font-size:16px;font-weight:bold;color:${red};">${esc(opts.reason)}</p>
+            <p style="margin:8px 0 0 0;font-family:${FONT};font-size:14px;color:${C.text};line-height:1.6;">
+              Zolang dit speelt, ziet het CRM geen nieuwe firmware — en krijgen aangemelde klanten dus ook
+              geen bericht, zonder dat dat ergens opvalt.
+            </p>
+          </td>
+        </tr>
+      </table>`,
+    p(`<strong>Laatste geslaagde controle:</strong> ${esc(lastOk)}`),
+    opts.detail
+      ? notesBlock(opts.detail, "Foutmelding")
+      : "",
+    p(
+      "Wat te doen: kijk op het firmware-overzicht in het CRM naar de laatste controles, en probeer daar de knop " +
+        "&bdquo;Nu controleren&rdquo;. Blijft het misgaan, dan heeft ACME waarschijnlijk de opbouw van de " +
+        "supportpagina gewijzigd en moet de scraper worden aangepast.",
+      `font-size:14px;color:${C.muted};`
+    ),
+    button(`${CRM_BASE_URL}/firmware`, "Naar het firmware-overzicht"),
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    subject: `Let op: firmware-controle werkt niet — ${opts.reason.toLowerCase()}`,
+    html: shell({ title: "Firmware-controle vraagt aandacht", inner }),
+  };
+}
+
+// ─── 4. Interne signalering ───────────────────────────────────────────────────
 
 export function buildInternalAlertEmail(opts: {
   releases: Array<{ productName: string; productModel: string | null; version: string; recipients: number }>;
