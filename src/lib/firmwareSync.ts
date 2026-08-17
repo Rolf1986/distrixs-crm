@@ -432,11 +432,16 @@ export async function runWatchdog(maxAgeHours = 30): Promise<WatchdogResult> {
 
   const hoursSinceLastOk = lastOk ? (Date.now() - lastOk.startedAt.getTime()) / 3_600_000 : null;
 
+  // Onder de twee uur in minuten schrijven; anders leest een testmelding als
+  // "0 uur oud", en die tekst staat ook in de mailtitel.
+  const ageLabel = (hours: number): string =>
+    hours < 2 ? `${Math.max(1, Math.round(hours * 60))} minuten` : `${Math.round(hours)} uur`;
+
   let reason: string | undefined;
   if (!lastOk) {
     reason = "Er is nog nooit een geslaagde firmware-controle geweest";
   } else if (hoursSinceLastOk !== null && hoursSinceLastOk > maxAgeHours) {
-    reason = `De laatste geslaagde firmware-controle is ${Math.round(hoursSinceLastOk)} uur oud`;
+    reason = `De laatste geslaagde firmware-controle is ${ageLabel(hoursSinceLastOk)} oud`;
   } else if (lastRun && !lastRun.ok) {
     reason = "De laatste firmware-controle is mislukt";
   } else if (lastRun && !lastRun.finishedAt) {
