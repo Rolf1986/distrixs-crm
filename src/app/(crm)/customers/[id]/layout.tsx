@@ -77,6 +77,7 @@ export default async function CustomerLayout({
             { label: "Activiteiten", href: `/customers/${id}/activities` },
             { label: "E-mails",      href: `/customers/${id}/emails` },
             { label: "Prijslijst",   href: `/customers/${id}/pricelists` },
+            { label: "Firmware",     href: `/customers/${id}/firmware` },
           ]}
         />
       </div>
