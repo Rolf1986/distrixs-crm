@@ -14,6 +14,16 @@ versies en mailt de klanten die daarvoor zijn aangevinkt.
    (`src/lib/firmwareEmail.ts`) met versienummer, de release notes van de fabrikant en
    de downloadlink.
 
+Daarnaast gaat er bij het **aanvinken** eenmalig een mail uit met de nieuwste versie die
+op dat moment bekend is (`sendCurrentFirmware`), zodat de klant meteen iets aan de
+registratie heeft. Die verzending wordt als notificatie gelogd, dus de dagelijkse sync
+mailt diezelfde versie later niet nog eens. De leeftijdsgrens van 90 dagen geldt hier
+bewust niet: dit is geen "er is nieuws"-melding maar "dit is de versie die nu klaarstaat".
+
+Alle klantmails volgen de huisstijl uit `src/components/pdf/PdfLayout.tsx` — logo op wit,
+oranje accent `#ff6600`, blauwe kop `#0170B9`, donkere merkbalk. Opbouw met tabellen en
+inline stijlen, want Outlook negeert padding op een gewone link.
+
 ## Wie krijgt mail
 
 Registraties worden in het CRM aangevinkt — de klant hoeft niets te bevestigen.
@@ -73,11 +83,39 @@ NEXT_PUBLIC_BASE_URL="https://crm.distrixs.nl"  # basis voor de afmeldlinks
 3. Op `/firmware/producten` koppelingen laten voorstellen en bevestigen.
 4. Per klant aanvinken wie meldingen krijgt.
 
-## Dagelijkse cron (droplet)
+## Bewaking
+
+Een scraper die stilletjes niets meer vindt is het gevaarlijkste scenario: het lijkt dan
+alsof er geen nieuwe firmware is. Twee signalen, beide **uitsluitend** naar
+`FIRMWARE_ALERT_EMAIL` — nooit naar klanten:
+
+- **Direct alarm**: loopt `syncFirmware` vast, dan gaat er meteen een mail uit met de
+  foutmelding en het tijdstip van de laatste geslaagde controle.
+- **Waakhond**: `POST /api/firmware/watchdog` kijkt hoe oud de laatste geslaagde controle
+  is (grens standaard 30 uur, aanpasbaar met `?hours=`) en meldt ook een mislukte of nooit
+  afgeronde run. Als tweede cron een paar uur ná de sync vangt dit ook een cron die
+  helemaal niet meer draait.
+
+Wat dit niet vangt: een server die volledig plat ligt — dan draait de bewaking zelf ook
+niet. Zodra de server terug is, meldt hij het alsnog. Een klantmail die Resend weigert
+komt als `FAILED` met foutmelding in `firmware_notifications` te staan, maar levert
+(nog) geen alarmmail op.
+
+Bewust laten afgaan om te controleren dat de mail aankomt:
 
 ```
-15 7 * * * curl -fsS -X POST -H "x-cron-secret: $FIRMWARE_CRON_SECRET" \
-  https://crm.distrixs.nl/api/firmware/sync >> /var/log/firmware-sync.log 2>&1
+curl -X POST -H "x-cron-secret: $FIRMWARE_CRON_SECRET" \
+  "https://crm.distrixs.nl/api/firmware/watchdog?hours=0"
+```
+
+## Dagelijkse cron
+
+Op de CRM-server (Hetzner, `root@46.225.76.147`, `/opt/distrixs-crm`) staat in de crontab
+van root. Het geheim wordt uit `.env.production` gelezen, zodat het maar op één plek staat:
+
+```
+15 7 * * * SECRET=$(grep -m1 "^FIRMWARE_CRON_SECRET=" /opt/distrixs-crm/.env.production | cut -d\" -f2); curl -fsS -X POST -H "x-cron-secret: $SECRET" https://crm.distrixs.nl/api/firmware/sync >> /var/log/firmware-sync.log 2>&1
+0 10 * * * SECRET=$(grep -m1 "^FIRMWARE_CRON_SECRET=" /opt/distrixs-crm/.env.production | cut -d\" -f2); curl -fsS -X POST -H "x-cron-secret: $SECRET" https://crm.distrixs.nl/api/firmware/watchdog >> /var/log/firmware-sync.log 2>&1
 ```
 
 Handmatig vanaf de commandline kan ook:
@@ -94,3 +132,10 @@ TS_NODE_PROJECT=scripts/tsconfig.script.json npx ts-node -r tsconfig-paths/regis
   er rechtstreeks naartoe; verdwijnt zo'n bestand ooit, dan is een eigen kopie de volgende stap.
 - ACME heeft nog twee andere secties (`?id=174` en `?id=175`, Library / Document Guide) met
   dezelfde HTML-structuur. Die kunnen later met dezelfde parser worden meegenomen.
+
+## Stand per 17 augustus 2026
+
+Live op de CRM-server. Nulmeting gedraaid: 102 pagina's, **1.011 releases**, **238
+producten**, nul mails verstuurd. Sync via de cron getest (`ok:true`), publieke pagina
+bereikbaar, sync-endpoint zonder geheim geeft 401. Nog te doen: artikelen koppelen op
+`/firmware/producten` en de eerste klanten aanvinken.
