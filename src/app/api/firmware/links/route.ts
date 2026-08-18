@@ -23,12 +23,21 @@ export async function GET(req: NextRequest) {
 /**
  * Body { productId, firmwareProductId } koppelt handmatig.
  * Body { autoSuggest: true } laat het systeem voorstellen doen op naamgelijkenis.
+ * Body { confirmAll: true } bevestigt alle openstaande voorstellen in één keer.
  */
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const body = await req.json();
+
+  if (body.confirmAll) {
+    const { count } = await prisma.productFirmwareLink.updateMany({
+      where: { isSuggested: true },
+      data: { isSuggested: false },
+    });
+    return NextResponse.json({ confirmed: count });
+  }
 
   if (body.autoSuggest) {
     const created = await suggestProductLinks();

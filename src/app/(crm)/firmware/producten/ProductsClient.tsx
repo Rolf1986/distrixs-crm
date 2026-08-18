@@ -50,6 +50,11 @@ export function ProductsClient({
       .slice(0, 200);
   }, [firmwareProducts, query, onlyLinked]);
 
+  const suggestedCount = useMemo(
+    () => firmwareProducts.reduce((n, p) => n + p.links.filter((l) => l.isSuggested).length, 0),
+    [firmwareProducts]
+  );
+
   const productMatches = useMemo(() => {
     const q = productQuery.trim().toLowerCase();
     if (!q) return crmProducts.slice(0, 20);
@@ -73,6 +78,25 @@ export function ProductsClient({
         ? "Geen nieuwe koppelingen gevonden op naamgelijkenis."
         : `${data.suggested} voorstel${data.suggested === 1 ? "" : "len"} toegevoegd — controleer ze hieronder.`
     );
+    router.refresh();
+  }
+
+  async function confirmAll() {
+    if (
+      !confirm(
+        `Alle ${suggestedCount} openstaande voorstellen bevestigen? Je kunt losse koppelingen daarna nog verwijderen.`
+      )
+    )
+      return;
+    setBusy("confirmAll");
+    const res = await fetch("/api/firmware/links", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmAll: true }),
+    });
+    const data = await res.json();
+    setBusy(null);
+    setMessage(`${data.confirmed} koppeling${data.confirmed === 1 ? "" : "en"} bevestigd.`);
     router.refresh();
   }
 
@@ -122,6 +146,16 @@ export function ProductsClient({
           {busy === "auto" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           Koppelingen voorstellen
         </button>
+        {suggestedCount > 0 && (
+          <button
+            onClick={confirmAll}
+            disabled={busy === "confirmAll"}
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg bg-blue-700 text-white hover:bg-blue-800 disabled:bg-slate-300"
+          >
+            {busy === "confirmAll" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            Alle {suggestedCount} voorstellen bevestigen
+          </button>
+        )}
       </div>
 
       {message && <p className="text-sm text-slate-600 bg-slate-100 rounded-lg px-3 py-2">{message}</p>}
