@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { CreateCreditNoteButton } from "@/components/CreateCreditNoteButton";
 import { SettleCreditNoteButton } from "@/components/SettleCreditNoteButton";
+import { RefundCreditNoteButton } from "@/components/CreditNoteStatusButtons";
 import { FileX, ExternalLink, Download } from "lucide-react";
 import { RowLink } from "@/components/RowLink";
 
@@ -120,11 +121,20 @@ export default async function InvoiceCreditNotesPage({
                     {formatCurrency(Number(cn.total))}
                   </td>
                   <td className="px-4 py-3">
-                    <SettleCreditNoteButton
-                      creditNoteId={cn.id}
-                      settled={settledRefs.has(`Verrekening ${cn.creditNoteNumber}`)}
-                      compact
-                    />
+                    {cn.refundedAt ? (
+                      <RefundCreditNoteButton creditNoteId={cn.id} refunded compact />
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <SettleCreditNoteButton
+                          creditNoteId={cn.id}
+                          settled={settledRefs.has(`Verrekening ${cn.creditNoteNumber}`)}
+                          compact
+                        />
+                        {!settledRefs.has(`Verrekening ${cn.creditNoteNumber}`) && (
+                          <RefundCreditNoteButton creditNoteId={cn.id} refunded={false} compact />
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <RowLink href={`/credit-notes/${cn.id}`} />

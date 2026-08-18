@@ -6,6 +6,7 @@ import { CreditNotePdf } from "@/components/pdf/CreditNotePdf";
 import { buildCreditNotePdfData } from "@/lib/pdf-data";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
 import { logSentEmail } from "@/lib/sent-email";
+import { syncCreditNoteToTwinfield, isTwinfieldAutoSyncEnabled } from "@/lib/twinfield";
 
 export async function POST(
   req: NextRequest,
@@ -71,6 +72,17 @@ export async function POST(
     customerName: data.customer.companyName ?? null,
     createdBy: session.user.id,
   });
+
+  // Automatisch naar Twinfield boeken, net als bij facturen (fail-soft;
+  // al geboekte creditnota's worden overgeslagen).
+  if (await isTwinfieldAutoSyncEnabled()) {
+    try {
+      const tf = await syncCreditNoteToTwinfield(id);
+      if (!tf.success) console.warn(`[credit note send] Twinfield-boeking mislukt voor ${data.creditNoteNumber}: ${tf.error}`);
+    } catch (e) {
+      console.warn(`[credit note send] Twinfield-boeking fout voor ${data.creditNoteNumber}:`, e);
+    }
+  }
 
   return NextResponse.json({ ok: true, simulated: result.simulated ?? false });
 }

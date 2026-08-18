@@ -701,6 +701,180 @@ ${detailLines}
   }
 }
 
+// Creditnota naar Twinfield: zelfde verkoopdagboek (VRK) als facturen, maar
+// met omgekeerde debet/credit-richting en positieve bedragen. Debiteur- en
+// btw-logica (VH/ICL/VN per regel) identiek aan de factuurboeking.
+export async function syncCreditNoteToTwinfield(
+  creditNoteId: string
+): Promise<TwinfieldSyncResult> {
+  try {
+    const cn = await prisma.creditNote.findUnique({
+      where: { id: creditNoteId },
+      include: {
+        customer: {
+          include: {
+            addresses: {
+              where: { type: "BILLING" },
+              orderBy: { isDefault: "desc" },
+              take: 1,
+            },
+          },
+        },
+        lines: { orderBy: { createdAt: "asc" } },
+      },
+    });
+
+    if (!cn) {
+      return { success: false, error: "Creditnota niet gevonden" };
+    }
+    if (cn.twinfieldSyncStatus === "SYNCED") {
+      return { success: true, reference: cn.twinfieldReference ?? undefined };
+    }
+    if (cn.lines.length === 0) {
+      return { success: false, error: "Creditnota heeft geen regels" };
+    }
+
+    const token = await getValidToken();
+
+    const settingsRows = await prisma.$queryRaw<
+      Array<{
+        twinfield_office_code: string | null;
+        twinfield_transaction_type: string | null;
+        twinfield_debtor_account: string | null;
+        twinfield_revenue_account: string | null;
+        twinfield_vat_code: string | null;
+        twinfield_cluster: string | null;
+      }>
+    >`SELECT
+        twinfield_office_code,
+        twinfield_transaction_type,
+        twinfield_debtor_account,
+        twinfield_revenue_account,
+        twinfield_vat_code,
+        twinfield_cluster
+      FROM company_settings WHERE id = 'singleton' LIMIT 1`;
+
+    const row = settingsRows[0];
+    if (!row?.twinfield_office_code) {
+      throw new Error("Twinfield office code niet ingesteld. Ga naar Instellingen → Twinfield.");
+    }
+
+    const cluster =
+      row.twinfield_cluster ?? process.env.TWINFIELD_CLUSTER ?? "accounting.twinfield.com";
+
+    const tfSettings: TwinfieldSettings = {
+      officeCode: row.twinfield_office_code,
+      transactionType: row.twinfield_transaction_type ?? "VRK",
+      debtorAccount: row.twinfield_debtor_account ?? "1300",
+      revenueAccount: row.twinfield_revenue_account ?? "8000",
+      vatCode: row.twinfield_vat_code ?? "VH",
+      cluster,
+    };
+
+    const custAddr = cn.customer.addresses[0] ?? null;
+    const billingCountry = normalizeCountry(custAddr?.country);
+
+    const customerCode = await findOrCreateDebtor(token, tfSettings, {
+      id: cn.customer.id,
+      companyName: cn.customer.companyName,
+      vatNumber: cn.customer.vatNumber,
+      address: custAddr
+        ? {
+            country: billingCountry,
+            city: custAddr.city,
+            postalCode: custAddr.postalCode,
+            street: custAddr.street,
+            houseNumber: custAddr.houseNumber,
+          }
+        : null,
+    });
+
+    const cnDate = formatTwinfieldDate(cn.creditNoteDate);
+    const period = formatTwinfieldPeriod(cn.creditNoteDate);
+    const total = Math.abs(Number(cn.total)).toFixed(2);
+
+    const isEu = EU_COUNTRIES.has(billingCountry);
+    const hasIclLines = cn.lines.some((l) => Number(l.vatRate) === 0) && isEu;
+    const custVat = cn.customer.vatNumber?.trim().replace(/\s/g, "") ?? "";
+    if (hasIclLines && !custVat) {
+      return {
+        success: false,
+        error: "Voor een intracommunautaire boeking is het btw-nummer van de klant verplicht — vul dit in op de klantkaart.",
+      };
+    }
+
+    const detailLines = cn.lines
+      .map((line, i) => {
+        const rate = Number(line.vatRate);
+        const hasVat = rate > 0;
+        const lineVatCode = hasVat ? "VH" : (isEu ? "ICL" : "VN");
+        const lineAccount = hasVat ? "8100" : (isEu ? "8600" : "8500");
+        const perf = !hasVat && isEu
+          ? `\n        <performancetype>goods</performancetype>\n        <performancecountry>${escapeXml(billingCountry)}</performancecountry>\n        <performancevatnumber>${escapeXml(custVat)}</performancevatnumber>`
+          : "";
+        const netValue = Math.abs(Number(line.lineTotal)).toFixed(2);
+        const desc = (line.titleSnapshot ?? "").slice(0, 40);
+        return `      <line type="detail" id="${2 + i}">
+        <dim1>${escapeXml(lineAccount)}</dim1>
+        <debitcredit>debit</debitcredit>
+        <value>${netValue}</value>
+        <vatcode>${escapeXml(lineVatCode)}</vatcode>
+        <description>${escapeXml(desc)}</description>${perf}
+      </line>`;
+      })
+      .join("\n");
+
+    const transactionXml = `<transactions>
+  <transaction destiny="concept" autobalancevat="true" raisewarning="true">
+    <header>
+      <office>${escapeXml(tfSettings.officeCode)}</office>
+      <code>${escapeXml(tfSettings.transactionType)}</code>
+      <currency>EUR</currency>
+      <date>${cnDate}</date>
+      <period>${period}</period>
+      <invoicenumber>${escapeXml(cn.creditNoteNumber)}</invoicenumber>
+      <description>${escapeXml(cn.creditNoteNumber)}</description>
+    </header>
+    <lines>
+      <line type="total" id="1">
+        <dim1>${escapeXml(tfSettings.debtorAccount)}</dim1>
+        <dim2>${escapeXml(customerCode)}</dim2>
+        <debitcredit>credit</debitcredit>
+        <value>${total}</value>
+        <description>${escapeXml(cn.creditNoteNumber)}</description>
+      </line>
+${detailLines}
+    </lines>
+  </transaction>
+</transactions>`;
+
+    const response = await callXml(token, tfSettings.officeCode, transactionXml, cluster);
+
+    const reference =
+      response.match(/<number>(.*?)<\/number>/i)?.[1] ??
+      response.match(/<transaction[^>]*\s+number="([^"]+)"/i)?.[1] ??
+      cn.creditNoteNumber;
+
+    await prisma.$executeRaw`
+      UPDATE credit_notes SET
+        twinfield_sync_status = 'SYNCED',
+        twinfield_reference = ${reference}
+      WHERE id = ${creditNoteId}
+    `;
+
+    return { success: true, reference };
+  } catch (err) {
+    const error = err instanceof Error ? err.message : String(err);
+    console.error("[twinfield] syncCreditNoteToTwinfield error:", error);
+
+    await prisma.$executeRaw`
+      UPDATE credit_notes SET twinfield_sync_status = 'ERROR' WHERE id = ${creditNoteId}
+    `.catch((e) => console.error("[twinfield] Failed to update sync status:", e));
+
+    return { success: false, error };
+  }
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function escapeXml(str: string): string {

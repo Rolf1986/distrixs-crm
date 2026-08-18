@@ -6,6 +6,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { ChevronRight, Download } from "lucide-react";
 import { SendCreditNoteButton } from "@/components/SendCreditNoteButton";
 import { SettleCreditNoteButton } from "@/components/SettleCreditNoteButton";
+import { RefundCreditNoteButton, CreditNoteTwinfieldButton } from "@/components/CreditNoteStatusButtons";
 
 async function getCreditNote(id: string) {
   return prisma.creditNote.findUnique({
@@ -99,8 +100,14 @@ export default async function CreditNoteDetailPage({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <SettleCreditNoteButton creditNoteId={cn.id} settled={!!settlement} />
+          <div className="flex flex-wrap items-center gap-2">
+            <CreditNoteTwinfieldButton
+              creditNoteId={cn.id}
+              syncStatus={cn.twinfieldSyncStatus as "NOT_SYNCED" | "PENDING" | "SYNCED" | "ERROR"}
+              reference={cn.twinfieldReference ?? null}
+            />
+            {!settlement && <RefundCreditNoteButton creditNoteId={cn.id} refunded={!!cn.refundedAt} />}
+            {!cn.refundedAt && <SettleCreditNoteButton creditNoteId={cn.id} settled={!!settlement} />}
             <a
               href={`/api/credit-notes/${cn.id}/pdf`}
               className="flex items-center gap-1.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 text-sm font-medium px-3 py-2 rounded-lg transition-colors"

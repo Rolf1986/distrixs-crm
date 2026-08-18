@@ -5,13 +5,23 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 async function getCreditNotes() {
-  return prisma.creditNote.findMany({
+  const creditNotes = await prisma.creditNote.findMany({
     include: {
       customer: { select: { id: true, companyName: true } },
       invoice: { select: { id: true, invoiceNumber: true } },
     },
     orderBy: { creditNoteDate: "desc" },
   });
+  // Verrekend? (betaling met vast referentieformaat op de gekoppelde factuur)
+  const settlements = await prisma.payment.findMany({
+    where: { reference: { startsWith: "Verrekening " } },
+    select: { reference: true },
+  });
+  const settledRefs = new Set(settlements.map((s) => s.reference));
+  return creditNotes.map((cn) => ({
+    ...cn,
+    settled: settledRefs.has(`Verrekening ${cn.creditNoteNumber}`),
+  }));
 }
 
 export default async function CreditNotesPage() {
@@ -43,12 +53,15 @@ export default async function CreditNotesPage() {
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
                   Totaal
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Status
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {creditNotes.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                     Nog geen creditnota&apos;s
                   </td>
                 </tr>
@@ -81,6 +94,31 @@ export default async function CreditNotesPage() {
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-slate-900">
                     {formatCurrency(Number(cn.total))}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {cn.settled ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                          Verrekend
+                        </span>
+                      ) : cn.refundedAt ? (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                          Terugbetaald
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+                          Open
+                        </span>
+                      )}
+                      {cn.twinfieldSyncStatus === "SYNCED" && (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600"
+                          title={cn.twinfieldReference ? `Twinfield-boeking ${cn.twinfieldReference}` : "Geboekt in Twinfield"}
+                        >
+                          TF
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
