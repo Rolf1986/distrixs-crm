@@ -487,6 +487,27 @@ function normalizeForMatch(s: string): string {
 }
 
 /**
+ * Herkent reserveonderdelen en toebehoren. Die horen geen firmwarekoppeling te
+ * krijgen: wie een O-ring of een montagebeugel koopt, heeft geen armatuur waarvoor
+ * firmware uitkomt.
+ *
+ * Twee signalen uit de praktijk van het assortiment:
+ *  - onderdeelnummers beginnen met "P-" (P-TB 5 IP-BL, P-Tornado-504507…)
+ *  - de titel bevat een onderdeelwoord (cover, gasket, sync belt, sensor board …)
+ *
+ * Tekst tussen haakjes telt niet mee: "Blinder Set (2x controller, 8x2 cable)" is
+ * een armatuurset, geen kabel. En "washer" staat er bewust NIET in — dat zou
+ * "LED WASHER 18X10W" ten onrechte uitsluiten.
+ */
+const SPARE_PART_WORDS =
+  /\b(cover|o[- ]?ring|screw|bolt|gasket|bracket|belt|pcb|yoke|silica|sealing|fixation|bearing|sensor board|side plate|extension cable|adapter cable|spare|onderdeel|reserve)\b/i;
+
+function isSparePart(sku: string, title: string): boolean {
+  if (/^p-/i.test(sku.trim())) return true;
+  return SPARE_PART_WORDS.test(title.replace(/\([^)]*\)/g, " "));
+}
+
+/**
  * Zoekt bij elk CRM-artikel het waarschijnlijke ACME-firmwareproduct.
  * Levert alleen voorstellen op — bevestigen gebeurt in het CRM.
  */
@@ -513,6 +534,7 @@ export async function suggestProductLinks(): Promise<number> {
   let created = 0;
   for (const product of products) {
     if (linkedProducts.has(product.id)) continue;
+    if (isSparePart(product.sku, product.title)) continue;
     const haystack = normalizeForMatch(`${product.title} ${product.sku}`);
     if (haystack.length < 3) continue;
 
