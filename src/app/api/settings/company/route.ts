@@ -15,6 +15,7 @@ const PUBLIC_SETTING_FIELDS = {
   quoteEmailSubject: true, quoteEmailBody: true, quoteEmailSubjectEn: true, quoteEmailBodyEn: true,
   invoiceEmailSubject: true, invoiceEmailBody: true, invoiceEmailSubjectEn: true, invoiceEmailBodyEn: true,
   reminderEmailSubject: true, reminderEmailBody: true,
+  reminderEmailSubjectEn: true, reminderEmailBodyEn: true,
 } as const;
 
 export async function GET(req: NextRequest) {
@@ -47,6 +48,7 @@ export async function PATCH(req: NextRequest) {
     "quoteEmailSubject", "quoteEmailBody",
     "invoiceEmailSubject", "invoiceEmailBody",
     "reminderEmailSubject", "reminderEmailBody",
+    "reminderEmailSubjectEn", "reminderEmailBodyEn",
   ];
 
   const data: Record<string, string | null> = {};
