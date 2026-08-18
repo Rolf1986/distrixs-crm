@@ -591,9 +591,21 @@ export async function suggestRegistrationsFromInvoices(customerId?: string): Pro
   const byProductId = new Map(links.map((l) => [l.productId, l]));
   const bySku = new Map(links.map((l) => [l.product.sku.toLowerCase(), l]));
 
+  // Zoeksleutels voor regels zonder productkoppeling. 94% van de factuurregels uit
+  // de Teamleader-import heeft geen product_id en soms zelfs geen SKU; alleen de
+  // regeltekst is gevuld ("TB-5 2/FC: TORNADO IP 2 in a double Flight Case").
+  // We matchen daarom óók op die tekst, maar uitsluitend op sleutels uit artikelen
+  // die al aan een firmwareproduct gekoppeld zijn.
+  const textKeys: Array<{ key: string; link: (typeof links)[number] }> = [];
+  for (const link of links) {
+    for (const raw of [link.product.sku, link.firmwareProduct.name]) {
+      const key = normalizeForMatch(raw);
+      if (key.length >= 4 && !/^[0-9 ]+$/.test(key)) textKeys.push({ key, link });
+    }
+  }
+
   const lines = await prisma.invoiceLine.findMany({
     where: {
-      OR: [{ productId: { in: [...byProductId.keys()] } }, { skuSnapshot: { in: links.map((l) => l.product.sku) } }],
       invoice: {
         status: { not: "DRAFT" },
         ...(customerId ? { customerId } : {}),
@@ -602,6 +614,7 @@ export async function suggestRegistrationsFromInvoices(customerId?: string): Pro
     select: {
       productId: true,
       skuSnapshot: true,
+      titleSnapshot: true,
       invoice: {
         select: {
           invoiceNumber: true,
@@ -645,7 +658,17 @@ export async function suggestRegistrationsFromInvoices(customerId?: string): Pro
   const out: RegistrationSuggestion[] = [];
 
   for (const line of lines) {
-    const link = (line.productId && byProductId.get(line.productId)) || bySku.get(line.skuSnapshot.toLowerCase());
+    // Eerst de harde koppeling (product-id of exacte SKU), anders de regeltekst.
+    let link = (line.productId && byProductId.get(line.productId)) || bySku.get(line.skuSnapshot.toLowerCase());
+    if (!link) {
+      const haystack = normalizeForMatch(`${line.skuSnapshot} ${line.titleSnapshot}`);
+      let best: { len: number; link: (typeof links)[number] } | null = null;
+      for (const cand of textKeys) {
+        if (!haystack.includes(cand.key)) continue;
+        if (!best || cand.key.length > best.len) best = { len: cand.key.length, link: cand.link };
+      }
+      link = best?.link;
+    }
     if (!link) continue;
 
     const inv = line.invoice;
