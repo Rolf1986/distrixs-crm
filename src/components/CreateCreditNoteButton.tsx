@@ -21,7 +21,7 @@ interface CreateCreditNoteButtonProps {
   lines: InvoiceLine[];
 }
 
-const CREDITABLE_STATUSES = ["SENT", "PARTIALLY_PAID", "OVERDUE"];
+const CREDITABLE_STATUSES = ["SENT", "PARTIALLY_PAID", "OVERDUE", "PAID"];
 
 function fmt(n: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(n);

@@ -23,7 +23,7 @@ export async function POST(
     return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
   }
 
-  const CREDITABLE = ["SENT", "PARTIALLY_PAID", "OVERDUE"] as const;
+  const CREDITABLE = ["SENT", "PARTIALLY_PAID", "OVERDUE", "PAID"] as const;
   if (!CREDITABLE.includes(invoice.status as (typeof CREDITABLE)[number])) {
     return NextResponse.json(
       { error: `Factuur met status ${invoice.status} kan niet gecrediteerd worden` },
