@@ -11,21 +11,74 @@ interface Props {
   defaultTo?: string;
   daysOverdue?: number;
   emailOptions?: Array<{ label: string; email: string }>;
+  documentLanguage?: string;
+  customerName?: string;
+  dueDate?: string;
+  openAmount?: string;
+  total?: string;
 }
 
-export function SendReminderButton({ invoiceId, invoiceNumber, currentStatus, defaultTo = "", daysOverdue = 0, emailOptions = [] }: Props) {
+function applyVars(text: string, vars: Record<string, string>): string {
+  return Object.entries(vars).reduce(
+    (t, [k, v]) => t.replace(new RegExp(`\\{${k}\\}`, "g"), v),
+    text
+  );
+}
+
+export function SendReminderButton({
+  invoiceId,
+  invoiceNumber,
+  currentStatus,
+  defaultTo = "",
+  daysOverdue = 0,
+  emailOptions = [],
+  documentLanguage = "NL",
+  customerName = "",
+  dueDate = "",
+  openAmount = "",
+  total = "",
+}: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [to, setTo] = useState(defaultTo);
   const [cc, setCc] = useState("");
   const [subject, setSubject] = useState(`Betalingsherinnering ${invoiceNumber}`);
-  const [message, setMessage] = useState(
-    daysOverdue > 0
-      ? `Wij verzoeken u vriendelijk de openstaande factuur ${invoiceNumber} zo spoedig mogelijk te voldoen.\n\nDeze factuur is inmiddels ${daysOverdue} dagen na vervaldatum nog niet voldaan. Mocht u al betaald hebben, dan verzoeken wij u dit bericht te negeren.\n\nVoor vragen kunt u contact met ons opnemen.`
-      : `Wij verzoeken u vriendelijk de openstaande factuur ${invoiceNumber} tijdig te voldoen.\n\nVoor vragen kunt u contact met ons opnemen.`
-  );
+  const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; simulated?: boolean; error?: string } | null>(null);
+
+  const fallbackMessage =
+    daysOverdue > 0
+      ? `Wij verzoeken u vriendelijk de openstaande factuur ${invoiceNumber} zo spoedig mogelijk te voldoen.\n\nDeze factuur is inmiddels ${daysOverdue} dagen na vervaldatum nog niet voldaan. Mocht u al betaald hebben, dan verzoeken wij u dit bericht te negeren.\n\nVoor vragen kunt u contact met ons opnemen.`
+      : `Wij verzoeken u vriendelijk de openstaande factuur ${invoiceNumber} tijdig te voldoen.\n\nVoor vragen kunt u contact met ons opnemen.`;
+
+  // Template uit de instellingen (E-mailtemplates → Betalingsherinnering);
+  // valt terug op de ingebouwde tekst als er geen template is opgeslagen.
+  async function loadTemplate() {
+    const vars: Record<string, string> = {
+      documentNumber: invoiceNumber,
+      invoiceNumber,
+      customerName,
+      dueDate,
+      openAmount,
+      total,
+      daysOverdue: String(daysOverdue),
+    };
+    try {
+      const res = await fetch("/api/settings/company");
+      if (!res.ok) throw new Error();
+      const data = await res.json() as Record<string, string | null>;
+      const suffix = documentLanguage === "EN" ? "En" : "";
+      const rawSubject = data[`reminderEmailSubject${suffix}`] || `Betalingsherinnering {documentNumber}`;
+      const rawBody = data[`reminderEmailBody${suffix}`] || fallbackMessage;
+      if (data.companyName) vars.companyName = data.companyName;
+      setSubject(applyVars(rawSubject, vars));
+      setMessage(applyVars(rawBody, vars));
+    } catch {
+      setSubject(`Betalingsherinnering ${invoiceNumber}`);
+      setMessage(fallbackMessage);
+    }
+  }
 
   // Toon alleen voor niet-betaalde facturen
   if (currentStatus === "PAID" || currentStatus === "CREDITED" || currentStatus === "DRAFT") return null;
@@ -57,7 +110,7 @@ export function SendReminderButton({ invoiceId, invoiceNumber, currentStatus, de
   return (
     <>
       <button
-        onClick={() => { setResult(null); setOpen(true); }}
+        onClick={() => { setResult(null); setOpen(true); loadTemplate(); }}
         className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors ${
           isOverdue
             ? "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"

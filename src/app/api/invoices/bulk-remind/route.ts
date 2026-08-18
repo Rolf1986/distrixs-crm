@@ -65,12 +65,22 @@ export async function POST(req: NextRequest) {
         ? `${primaryContact.firstName} ${primaryContact.lastName}`
         : undefined;
 
-      const subject =
-        company.reminderEmailSubject?.replace("{invoiceNumber}", invoice.invoiceNumber) ??
-        `Herinnering: factuur ${invoice.invoiceNumber}`;
-      const messageTemplate =
-        company.reminderEmailBody?.replace("{invoiceNumber}", invoice.invoiceNumber).replace("{dueDate}", dueDate).replace("{openAmount}", openAmount) ??
-        `Geachte relatie,\n\nWij willen u vriendelijk herinneren aan de openstaande factuur ${invoice.invoiceNumber} met een openstaand bedrag van ${openAmount}.\n\nMet vriendelijke groet,\n${company.companyName}`;
+      // Zelfde placeholders als op de instellingenpagina gedocumenteerd
+      const applyVars = (t: string) =>
+        t
+          .replaceAll("{documentNumber}", invoice.invoiceNumber)
+          .replaceAll("{invoiceNumber}", invoice.invoiceNumber)
+          .replaceAll("{customerName}", invoice.customer.companyName)
+          .replaceAll("{dueDate}", dueDate)
+          .replaceAll("{openAmount}", openAmount)
+          .replaceAll("{total}", formatCurrency(Number(invoice.total)))
+          .replaceAll("{companyName}", company.companyName);
+      const subject = company.reminderEmailSubject
+        ? applyVars(company.reminderEmailSubject)
+        : `Herinnering: factuur ${invoice.invoiceNumber}`;
+      const messageTemplate = company.reminderEmailBody
+        ? applyVars(company.reminderEmailBody)
+        : `Geachte relatie,\n\nWij willen u vriendelijk herinneren aan de openstaande factuur ${invoice.invoiceNumber} met een openstaand bedrag van ${openAmount}.\n\nMet vriendelijke groet,\n${company.companyName}`;
 
       const messageLines = messageTemplate.split("\n").filter(Boolean)
         .map((l) => l.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"));
