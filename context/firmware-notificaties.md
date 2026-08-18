@@ -56,6 +56,38 @@ Die koppeling is alleen nodig om uit de factuurhistorie te kunnen afleiden welke
 welk armatuur heeft. Op `/firmware/producten` staat een knop die koppelingen voorstelt
 op naamgelijkenis; voorstellen zijn oranje tot ze bevestigd zijn.
 
+## Hoe de koppeling en de voorstellen matchen
+
+`product_firmware_links` wordt gevuld door "Koppelingen voorstellen" op
+`/firmware/producten`. Genormaliseerde sleutels (naam en model van het ACME-product)
+worden gezocht in artikelnaam + SKU; de langste treffer wint. Drie regels, alle drie
+op productiedata afgestemd:
+
+- **Sleutels van alleen cijfers tellen niet mee.** "1000" komt ook voor in
+  "Extension 1000cm" en midden in artikelnummers, en koppelde 24 willekeurige
+  artikelen aan LP-F2000.
+- **Reserveonderdelen en toebehoren doen niet mee** (`isSparePart`): SKU begint met
+  "P-", of de titel bevat een onderdeelwoord. Tekst tussen haakjes telt niet mee,
+  anders sneuvelt "Blinder Set (2x controller, 8x2 cable)". "washer" staat er bewust
+  niet in — dat zou "LED WASHER 18X10W" uitsluiten. Aan TORNADO hingen hierdoor
+  eerst 20 artikelen, waarvan 17 O-ringen en covers; nu 3.
+- **Een woordgrens-regel is overwogen en verworpen**: die schrapte terechte treffers
+  als TS-300M (Theatre Spot 300) en TB-1060INT (Super Dotline).
+
+Stand: 647 koppelingen over 173 ACME-producten.
+
+De voorstellen op de klantkaart komen uit de factuurhistorie, met twee terugvallen
+die in deze datasets onmisbaar bleken:
+
+- **Contactpersoon**: facturen uit de Teamleader-import hebben er vrijwel nooit één
+  (3 van de 238 regels). Er wordt teruggevallen op een actieve contactpersoon van de
+  klant zelf. 79 van de 96 klanten hebben die; de rest heeft geen mailadres en blijft
+  terecht buiten beeld.
+- **Regeltekst**: 7.677 van de 8.140 factuurregels hebben geen `product_id` en 1.000
+  geen SKU. Regels zonder harde koppeling worden daarom op hun titel gematcht
+  ("TB-5 2/FC: TORNADO IP 2 in a double Flight Case"), alleen op sleutels uit reeds
+  gekoppelde artikelen. Dat brengt het aantal klanten met voorstellen van 95 naar 103.
+
 ## Pagina's
 
 | Pad | Wat |
