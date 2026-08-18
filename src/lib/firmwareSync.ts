@@ -500,9 +500,14 @@ export async function suggestProductLinks(): Promise<number> {
   const alreadyLinked = new Set(existing.map((l) => `${l.productId}:${l.firmwareProductId}`));
   const linkedProducts = new Set(existing.map((l) => l.productId));
 
+  // Sleutels die alleen uit cijfers bestaan zijn onbruikbaar: "1000" komt terug in
+  // "Extension 1000cm" en zelfs midden in artikelnummers, en koppelde in de praktijk
+  // tientallen willekeurige artikelen aan één firmwareproduct.
+  const isUsableKey = (k: string) => k.length >= 3 && !/^[0-9 ]+$/.test(k);
+
   const fwIndex = firmwareProducts.map((fp) => ({
     id: fp.id,
-    keys: [normalizeForMatch(fp.name), fp.model ? normalizeForMatch(fp.model) : ""].filter((k) => k.length >= 3),
+    keys: [normalizeForMatch(fp.name), fp.model ? normalizeForMatch(fp.model) : ""].filter(isUsableKey),
   }));
 
   let created = 0;
