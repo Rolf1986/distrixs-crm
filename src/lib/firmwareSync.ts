@@ -627,6 +627,20 @@ export async function suggestRegistrationsFromInvoices(customerId?: string): Pro
     ])
   );
 
+  // Facturen uit de Teamleader-import hebben vrijwel nooit een contactpersoon
+  // ingevuld (3 van de 238 regels). Val daarom terug op een actieve contactpersoon
+  // van de klant zelf, anders levert dit overzicht in de praktijk niets op.
+  const customerIds = [...new Set(lines.map((l) => l.invoice.customerId))];
+  const contactPool = await prisma.customerContact.findMany({
+    where: { customerId: { in: customerIds }, isActive: true, email: { not: null } },
+    select: { id: true, customerId: true, firstName: true, lastName: true, email: true },
+    orderBy: [{ isPrimary: "desc" }, { lastName: "asc" }],
+  });
+  const fallbackContact = new Map<string, (typeof contactPool)[number]>();
+  for (const c of contactPool) {
+    if (c.email?.trim() && !fallbackContact.has(c.customerId)) fallbackContact.set(c.customerId, c);
+  }
+
   const seen = new Set<string>();
   const out: RegistrationSuggestion[] = [];
 
@@ -635,7 +649,10 @@ export async function suggestRegistrationsFromInvoices(customerId?: string): Pro
     if (!link) continue;
 
     const inv = line.invoice;
-    const contact = inv.contact?.isActive ? inv.contact : null;
+    const contact =
+      (inv.contact?.isActive && inv.contact.email?.trim() ? inv.contact : null) ??
+      fallbackContact.get(inv.customerId) ??
+      null;
     const email = contact?.email?.trim();
     if (!contact || !email) continue; // zonder contactpersoon met e-mailadres valt er niets te sturen
 
