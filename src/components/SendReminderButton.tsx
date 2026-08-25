@@ -47,8 +47,15 @@ export function SendReminderButton({
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; simulated?: boolean; error?: string } | null>(null);
 
-  const fallbackMessage =
-    daysOverdue > 0
+  const isEn = documentLanguage === "EN";
+  const fallbackSubject = isEn
+    ? `Payment reminder ${invoiceNumber}`
+    : `Betalingsherinnering ${invoiceNumber}`;
+  const fallbackMessage = isEn
+    ? daysOverdue > 0
+      ? `We kindly request that you settle the outstanding invoice ${invoiceNumber} as soon as possible.\n\nThis invoice is now ${daysOverdue} days past its due date. If you have already made the payment, please disregard this message.\n\nShould you have any questions, please do not hesitate to contact us.`
+      : `We kindly request that you settle the outstanding invoice ${invoiceNumber} before the due date.\n\nShould you have any questions, please do not hesitate to contact us.`
+    : daysOverdue > 0
       ? `Wij verzoeken u vriendelijk de openstaande factuur ${invoiceNumber} zo spoedig mogelijk te voldoen.\n\nDeze factuur is inmiddels ${daysOverdue} dagen na vervaldatum nog niet voldaan. Mocht u al betaald hebben, dan verzoeken wij u dit bericht te negeren.\n\nVoor vragen kunt u contact met ons opnemen.`
       : `Wij verzoeken u vriendelijk de openstaande factuur ${invoiceNumber} tijdig te voldoen.\n\nVoor vragen kunt u contact met ons opnemen.`;
 
@@ -68,14 +75,14 @@ export function SendReminderButton({
       const res = await fetch("/api/settings/company");
       if (!res.ok) throw new Error();
       const data = await res.json() as Record<string, string | null>;
-      const suffix = documentLanguage === "EN" ? "En" : "";
-      const rawSubject = data[`reminderEmailSubject${suffix}`] || `Betalingsherinnering {documentNumber}`;
+      const suffix = isEn ? "En" : "";
+      const rawSubject = data[`reminderEmailSubject${suffix}`] || fallbackSubject;
       const rawBody = data[`reminderEmailBody${suffix}`] || fallbackMessage;
       if (data.companyName) vars.companyName = data.companyName;
       setSubject(applyVars(rawSubject, vars));
       setMessage(applyVars(rawBody, vars));
     } catch {
-      setSubject(`Betalingsherinnering ${invoiceNumber}`);
+      setSubject(fallbackSubject);
       setMessage(fallbackMessage);
     }
   }
