@@ -43,7 +43,7 @@ export async function GET(
   const defaultAddr = billingAddr ?? dn.customer.addresses[0];
 
   const data = {
-    language: "NL",
+    language: ("language" in dn ? (dn.language as string) : "NL"),
     noteNumber: dn.deliveryNumber,
     customerReference: dn.deal?.orderReference ?? null,
     deliveryDate: dn.deliveryDate ?? new Date(),

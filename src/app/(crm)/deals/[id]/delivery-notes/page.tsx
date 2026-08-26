@@ -5,6 +5,7 @@ import { formatDate } from "@/lib/utils";
 import { Truck } from "lucide-react";
 import { CreateDeliveryNoteButton } from "@/components/CreateDeliveryNoteButton";
 import { DnRowActions } from "@/components/DnRowActions";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { DeliveryNoteShipmentsSection } from "./DeliveryNoteShipmentsSection";
 
 async function getDealData(dealId: string) {
@@ -128,7 +129,14 @@ export default async function DealDeliveryNotesPage({
                     <StatusBadge status={dn.status} type="dn" />
                   </td>
                   <td className="px-4 py-3">
-                    <DnRowActions dnId={dn.id} deliveryNumber={dn.deliveryNumber} />
+                    <div className="flex items-center justify-end gap-2">
+                      <LanguageToggle
+                        documentType="deliveryNote"
+                        documentId={dn.id}
+                        currentLanguage={"language" in dn ? (dn.language as string) : "NL"}
+                      />
+                      <DnRowActions dnId={dn.id} deliveryNumber={dn.deliveryNumber} />
+                    </div>
                   </td>
                 </tr>
               ))}
