@@ -68,6 +68,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Taal overnemen van de bronofferte (bepaalt NL/EN op de PDF; naderhand
+  // aan te passen met de taalknop)
+  let language = "NL";
+  if (sourceQuoteId) {
+    const q = await prisma.quote.findUnique({
+      where: { id: sourceQuoteId },
+      select: { language: true },
+    });
+    if (q?.language === "EN") language = "EN";
+  }
+
   const year = new Date().getFullYear();
   const deliveryNumber = await nextDeliveryNoteNumber(year);
 
@@ -82,6 +93,7 @@ export async function POST(req: NextRequest) {
       carrier: carrier || null,
       trackingCode: trackingCode || null,
       notes: notes || null,
+      language,
       createdBy: session.user.id,
       lines: {
         create: lines.map((l) => ({

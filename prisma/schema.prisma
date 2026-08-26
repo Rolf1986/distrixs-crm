@@ -889,6 +889,7 @@ model DeliveryNote {
   trackingCode   String?            @map("tracking_code")
   carrier        String?
   notes          String?
+  language       String             @default("NL")
   createdBy      String             @map("created_by")
   createdAt      DateTime           @default(now()) @map("created_at")
   updatedAt      DateTime           @updatedAt @map("updated_at")
