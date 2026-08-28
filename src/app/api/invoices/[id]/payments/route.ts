@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 export async function POST(
   req: NextRequest,
@@ -82,6 +83,9 @@ export async function POST(
 
     return created;
   });
+
+  // Termijnen (indien aanwezig) bijwerken: vinkjes + vervaldatum
+  await syncInvoiceInstallments(invoiceId);
 
   await logAudit({
     userId: session.user.id,

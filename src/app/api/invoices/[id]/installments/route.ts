@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 // Termijnen horen bij lopende facturen; op betaalde/gecrediteerde of
 // Twinfield-gelockte facturen mag het schema niet meer wijzigen.
@@ -68,6 +69,8 @@ export async function POST(
       notes: body.notes ?? null,
     },
   });
+
+  await syncInvoiceInstallments(id);
 
   return NextResponse.json(installment);
 }

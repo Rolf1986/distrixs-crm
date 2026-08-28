@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 // Zelfde bescherming als de hoofdroute: geen wijzigingen op betaalde/
 // gecrediteerde of Twinfield-gelockte facturen.
@@ -110,6 +111,8 @@ export async function PATCH(
     }
   }
 
+  await syncInvoiceInstallments(id);
+
   return NextResponse.json(updated);
 }
 
@@ -125,5 +128,7 @@ export async function DELETE(
   if (guardError) return NextResponse.json({ error: guardError }, { status: 409 });
 
   await prisma.invoiceInstallment.delete({ where: { id: installmentId } });
+  await syncInvoiceInstallments(id);
+
   return NextResponse.json({ ok: true });
 }

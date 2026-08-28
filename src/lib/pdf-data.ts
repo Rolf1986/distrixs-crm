@@ -39,6 +39,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
       contact: true,
       lines: { orderBy: { createdAt: "asc" } },
       deal: { select: { orderReference: true } },
+      installments: { orderBy: [{ dueDate: "asc" }, { installmentNumber: "asc" }] },
     },
   });
   if (!invoice) return null;
@@ -59,6 +60,17 @@ export async function buildInvoicePdfData(invoiceId: string) {
     total: Number(invoice.total),
     openAmount: Number(invoice.openAmount),
     reverseCharge: isEuReverseCharge(addr?.country, invoice.customer.vatNumber),
+    // Betalingsschema (termijnen) — leidend als ingevuld, zichtbaar op de PDF
+    installments: invoice.installments.map((term) => ({
+      installmentNumber: term.installmentNumber,
+      dueDate: term.dueDate,
+      amount: term.amount != null
+        ? Number(term.amount)
+        : Math.round(Number(invoice.total) * (Number(term.percentage ?? 0) / 100) * 100) / 100,
+      percentage: term.percentage != null ? Number(term.percentage) : null,
+      isPaid: term.isPaid,
+      notes: term.notes,
+    })),
     company,
     customer: {
       companyName: invoice.customer.companyName,

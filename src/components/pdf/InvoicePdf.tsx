@@ -15,6 +15,14 @@ export interface InvoicePdfData {
   total: number;
   openAmount?: number;
   reverseCharge?: boolean;
+  installments?: Array<{
+    installmentNumber: number;
+    dueDate: string | Date;
+    amount: number;
+    percentage?: number | null;
+    isPaid: boolean;
+    notes?: string | null;
+  }>;
   company?: {
     companyName?: string | null;
     logoUrl?: string | null;
@@ -264,6 +272,43 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
             <Text style={shared.totalFinalValue}>{fmt(data.total, lang)}</Text>
           </View>
         </View>
+
+        {/* Betalingsschema: termijnen zijn leidend voor de betaling */}
+        {data.installments && data.installments.length > 0 && (
+          <View style={{
+            marginTop: 10,
+            backgroundColor: "#f8fafc",
+            borderWidth: 0.5,
+            borderColor: "#cbd5e1",
+            borderRadius: 3,
+            padding: 8,
+          }}>
+            <Text style={{ fontSize: 9, fontWeight: 700, marginBottom: 4 }}>
+              {lang === "EN" ? "Payment schedule" : "Betalingsschema"}
+            </Text>
+            {data.installments.map((term) => (
+              <View key={term.installmentNumber} style={{ flexDirection: "row", marginBottom: 2 }}>
+                <Text style={{ fontSize: 8.5, width: 180 }}>
+                  {lang === "EN" ? "Installment" : "Termijn"} {term.installmentNumber}
+                  {term.percentage != null ? ` (${term.percentage}%)` : ""}
+                  {term.notes ? ` — ${term.notes}` : ""}
+                </Text>
+                <Text style={{ fontSize: 8.5, width: 110 }}>
+                  {lang === "EN" ? "due " : "vervalt "}{fmtDate(term.dueDate, lang)}
+                </Text>
+                <Text style={{ fontSize: 8.5, fontWeight: 700 }}>
+                  {fmt(term.amount, lang)}
+                  {term.isPaid ? (lang === "EN" ? "  (paid)" : "  (voldaan)") : ""}
+                </Text>
+              </View>
+            ))}
+            <Text style={{ fontSize: 7.5, color: C.muted, marginTop: 3 }}>
+              {lang === "EN"
+                ? "Please pay each installment before its due date, stating the invoice number."
+                : "Gelieve elke termijn vóór de bijbehorende vervaldatum te voldoen onder vermelding van het factuurnummer."}
+            </Text>
+          </View>
+        )}
 
         {/* Btw verlegd (intracommunautaire levering) */}
         {data.reverseCharge && (

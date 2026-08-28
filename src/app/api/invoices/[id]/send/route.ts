@@ -11,6 +11,7 @@ import { createMolliePaymentLink } from "@/lib/mollie";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { logSentEmail } from "@/lib/sent-email";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled, type TwinfieldSyncResult } from "@/lib/twinfield";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 export async function POST(
   req: NextRequest,
@@ -50,6 +51,8 @@ export async function POST(
       where: { id },
       data: { invoiceNumber: definitiveNumber, invoiceDate: bookDate, dueDate: newDue },
     });
+    // Termijnen (indien ingevuld) zijn leidend voor de vervaldatum
+    await syncInvoiceInstallments(id);
     // Onderwerp/bericht zijn in het venster vaak vooraf ingevuld met het
     // DRAFT-nummer → vervang dat door het definitieve nummer.
     subject = (subject ?? "").split(current.invoiceNumber).join(definitiveNumber);

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled } from "@/lib/twinfield";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   DRAFT:          ["SENT"],
@@ -93,6 +94,9 @@ export async function PATCH(
     where: { id },
     data: { status: newStatus, ...extraData },
   });
+
+  // Termijnen (indien ingevuld) zijn leidend voor vinkjes + vervaldatum
+  await syncInvoiceInstallments(id);
 
   await logAudit({
     userId: session.user.id,
