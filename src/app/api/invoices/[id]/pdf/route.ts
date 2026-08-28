@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { InvoicePdf } from "@/components/pdf/InvoicePdf";
-import { getCompanyInfo } from "@/lib/companySettings";
-import { isEuReverseCharge } from "@/lib/vat";
-
-const PAYMENT_TERM_DAYS: Record<string, number> = {
-  DAYS_14: 14,
-  DAYS_30: 30,
-  PREPAYMENT: 0,
-};
+import { buildInvoicePdfData } from "@/lib/pdf-data";
 
 export async function GET(
   req: NextRequest,
@@ -24,74 +16,18 @@ export async function GET(
 
   const { id } = await params;
 
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: {
-      customer: {
-        include: {
-          addresses: {
-            orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-          },
-        },
-      },
-      contact: true,
-      lines: { orderBy: { createdAt: "asc" } },
-      deal: { select: { orderReference: true } },
-    },
-  });
-
-  if (!invoice) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-
-  const company = await getCompanyInfo();
-  // Voorkeur: default factuuradres, anders eerste beschikbare adres
-  const addr =
-    invoice.customer.addresses.find((a) => a.type === "BILLING" && a.isDefault) ??
-    invoice.customer.addresses[0];
-
-  const data = {
-    language: invoice.language ?? "NL",
-    isDraft: invoice.status === "DRAFT",
-    invoiceNumber: invoice.invoiceNumber,
-    invoiceDate: invoice.invoiceDate,
-    dueDate: invoice.dueDate,
-    paymentTermDays: PAYMENT_TERM_DAYS[invoice.paymentTermType] ?? 30,
-    ourReference: invoice.ourReference ?? invoice.deal?.orderReference ?? null,
-    subtotal: Number(invoice.subtotal),
-    vatAmount: Number(invoice.vatAmount),
-    total: Number(invoice.total),
-    openAmount: Number(invoice.openAmount),
-    reverseCharge: isEuReverseCharge(addr?.country, invoice.customer.vatNumber),
-    company,
-    customer: {
-      companyName: invoice.customer.companyName,
-      contactName: invoice.contact
-        ? `${invoice.contact.firstName} ${invoice.contact.lastName}`
-        : null,
-      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
-      postalCode: addr?.postalCode ?? null,
-      city: addr?.city ?? null,
-      country: addr?.country ?? null,
-      vatNumber: invoice.customer.vatNumber ?? null,
-      kvkNumber: invoice.customer.kvkNumber ?? null,
-    },
-    lines: invoice.lines.map((l) => ({
-      skuSnapshot: l.skuSnapshot,
-      titleSnapshot: l.titleSnapshot,
-      descriptionSnapshot: null,
-      qty: Number(l.qty),
-      grossUnitPrice: Number(l.grossUnitPrice),
-      discountPercent: Number(l.discountPercent),
-      netLineTotal: Number(l.netLineTotal),
-    })),
-  };
+  // Gedeelde databouwer — zelfde inhoud (incl. betalingsschema) als de
+  // PDF die per mail wordt verstuurd
+  const built = await buildInvoicePdfData(id);
+  if (!built) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
 
   try {
-    const element = createElement(InvoicePdf, { data });
+    const element = createElement(InvoicePdf, { data: built.data });
     const buffer = await renderToBuffer(element as never);
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${invoice.invoiceNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="${built.invoice.invoiceNumber}.pdf"`,
       },
     });
   } catch (err) {
