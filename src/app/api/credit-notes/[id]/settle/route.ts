@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 // Verreken een creditnota met het openstaande bedrag van de gekoppelde
 // factuur. Dit registreert een betaling (method OTHER) met een vast
@@ -80,6 +81,8 @@ export async function POST(
     where: { id: cn.invoiceId },
     data: { paidAmount, openAmount, status: newStatus },
   });
+
+  await syncInvoiceInstallments(cn.invoiceId);
 
   await logAudit({
     userId: session.user.id,

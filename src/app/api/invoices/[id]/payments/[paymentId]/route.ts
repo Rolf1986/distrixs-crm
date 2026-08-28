@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 export async function DELETE(
   req: NextRequest,
@@ -45,6 +46,8 @@ export async function DELETE(
     where: { id: invoiceId },
     data: { paidAmount, openAmount, status: newStatus },
   });
+
+  await syncInvoiceInstallments(invoiceId);
 
   await logAudit({
     userId: session.user.id,
