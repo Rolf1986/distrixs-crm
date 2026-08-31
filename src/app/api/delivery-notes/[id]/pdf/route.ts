@@ -31,6 +31,7 @@ export async function GET(
       },
       lines: { orderBy: { createdAt: "asc" } },
       deal: { select: { orderReference: true } },
+      contact: { select: { firstName: true, lastName: true } },
     },
   });
 
@@ -51,7 +52,7 @@ export async function GET(
     company,
     customer: {
       companyName: dn.customer.companyName,
-      contactName: null,
+      contactName: "contact" in dn && dn.contact ? `${dn.contact.firstName} ${dn.contact.lastName}` : null,
       address: defaultAddr ? `${defaultAddr.street} ${defaultAddr.houseNumber}` : null,
       postalCode: defaultAddr?.postalCode ?? null,
       city: defaultAddr?.city ?? null,

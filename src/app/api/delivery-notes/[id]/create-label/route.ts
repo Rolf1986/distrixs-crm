@@ -29,6 +29,7 @@ export async function POST(
           contacts: { where: { isActive: true }, orderBy: { isPrimary: "desc" }, take: 1 },
         },
       },
+      contact: { select: { firstName: true, lastName: true, email: true } },
     },
   });
   if (!dn) return NextResponse.json({ error: "Verzenddocument niet gevonden" }, { status: 404 });
@@ -42,9 +43,11 @@ export async function POST(
     return NextResponse.json({ error: "Geen adres bij de klant — voeg eerst een adres toe" }, { status: 400 });
   }
 
-  const contact = dn.customer.contacts[0];
+  // Contactpersoon van het verzenddocument is leidend; anders het primaire
+  // contact van de klant, anders de bedrijfsnaam
+  const contact = ("contact" in dn ? dn.contact : null) ?? dn.customer.contacts[0] ?? null;
   const person = contact ? `${contact.firstName} ${contact.lastName}`.trim() || dn.customer.companyName : dn.customer.companyName;
-  const email = dn.customer.email ?? contact?.email ?? null;
+  const email = contact?.email ?? dn.customer.email ?? null;
 
   const { ids, error } = await createMyParcelShipments({
     recipient: {

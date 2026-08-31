@@ -7,11 +7,11 @@ export async function POST(req: NextRequest) {
   const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
-  const { dealId, confirmationId, deliveryDate, carrier, trackingCode, notes } = await req.json();
+  const { dealId, contactId, confirmationId, deliveryDate, carrier, trackingCode, notes } = await req.json();
   if (!dealId) return NextResponse.json({ error: "Deal verplicht" }, { status: 400 });
 
   // Get customer from deal
-  const deal = await prisma.deal.findUnique({ where: { id: dealId }, select: { customerId: true } });
+  const deal = await prisma.deal.findUnique({ where: { id: dealId }, select: { customerId: true, primaryContactId: true } });
   if (!deal) return NextResponse.json({ error: "Deal niet gevonden" }, { status: 404 });
 
   // Artikelregels overnemen: uit de offerte van de gekoppelde orderbevestiging,
@@ -88,6 +88,8 @@ export async function POST(req: NextRequest) {
       dealId,
       confirmationId: confirmationId || null,
       customerId: deal.customerId,
+      // Contactpersoon: expliciet gekozen, anders de contactpersoon van de deal
+      contactId: contactId || deal.primaryContactId || null,
       status: "DRAFT",
       deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
       carrier: carrier || null,

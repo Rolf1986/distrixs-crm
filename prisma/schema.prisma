@@ -290,6 +290,7 @@ model CustomerContact {
 
   customer          Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
   deals             Deal[]            @relation("DealPrimaryContact")
+  deliveryNotes     DeliveryNote[]    @relation("DnContact")
   quotes            Quote[]
   invoices          Invoice[]
   activities        Activity[]
@@ -884,6 +885,7 @@ model DeliveryNote {
   dealId         String             @map("deal_id")
   confirmationId String?            @map("confirmation_id")
   customerId     String             @map("customer_id")
+  contactId      String?            @map("contact_id")
   status         DeliveryNoteStatus @default(DRAFT)
   deliveryDate   DateTime?          @map("delivery_date")
   trackingCode   String?            @map("tracking_code")
@@ -897,6 +899,7 @@ model DeliveryNote {
   deal          Deal               @relation(fields: [dealId], references: [id])
   confirmation  OrderConfirmation? @relation(fields: [confirmationId], references: [id])
   customer      Customer           @relation(fields: [customerId], references: [id])
+  contact       CustomerContact?   @relation("DnContact", fields: [contactId], references: [id])
   createdByUser User               @relation("DnCreatedBy", fields: [createdBy], references: [id])
   lines         DeliveryNoteLine[]
   shipments     Shipment[]

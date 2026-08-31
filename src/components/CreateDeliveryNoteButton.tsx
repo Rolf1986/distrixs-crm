@@ -8,14 +8,17 @@ import { CreateModal, FormField, inputClass } from "@/components/ui/CreateModal"
 interface Props {
   dealId: string;
   orderConfirmations: { id: string; confirmationNumber: string }[];
+  contacts?: { id: string; name: string; isPrimary: boolean }[];
+  defaultContactId?: string | null;
 }
 
-export function CreateDeliveryNoteButton({ dealId, orderConfirmations }: Props) {
+export function CreateDeliveryNoteButton({ dealId, orderConfirmations, contacts = [], defaultContactId = null }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [confirmationId, setConfirmationId] = useState("");
+  const [contactId, setContactId] = useState(defaultContactId ?? "");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [carrier, setCarrier] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
@@ -23,6 +26,7 @@ export function CreateDeliveryNoteButton({ dealId, orderConfirmations }: Props) 
 
   function reset() {
     setConfirmationId("");
+    setContactId(defaultContactId ?? "");
     setDeliveryDate("");
     setCarrier("");
     setTrackingCode("");
@@ -39,6 +43,7 @@ export function CreateDeliveryNoteButton({ dealId, orderConfirmations }: Props) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           dealId,
+          contactId: contactId || null,
           confirmationId: confirmationId || null,
           deliveryDate: deliveryDate || null,
           carrier: carrier || null,
@@ -74,6 +79,16 @@ export function CreateDeliveryNoteButton({ dealId, orderConfirmations }: Props) 
               ))}
             </select>
           </FormField>
+          {contacts.length > 0 && (
+            <FormField label="Contactpersoon (op document en verzendlabel)">
+              <select className={inputClass} value={contactId} onChange={(e) => setContactId(e.target.value)}>
+                <option value="">— Geen —</option>
+                {contacts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}{c.isPrimary ? " (primair)" : ""}</option>
+                ))}
+              </select>
+            </FormField>
+          )}
           <FormField label="Verzenddatum">
             <input
               type="date"
