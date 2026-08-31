@@ -150,6 +150,12 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
   const [notes, setNotesState] = useState(deal.notes);
   const [contactId, setContactId] = useState(deal.primaryContactId ?? "");
   const [savingContact, setSavingContact] = useState(false);
+  // Nieuw contactpersoon direct vanaf de deal toevoegen
+  const [addingContact, setAddingContact] = useState(false);
+  const [newFirst, setNewFirst] = useState("");
+  const [newLast, setNewLast] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newContactError, setNewContactError] = useState<string | null>(null);
 
   async function patchDeal(data: Record<string, unknown>) {
     await fetch(`/api/deals/${deal.id}`, {
@@ -190,6 +196,36 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
     setSavingContact(true);
     await patchDeal({ primaryContactId: id || null });
     setSavingContact(false);
+  }
+
+  async function createContact() {
+    if (!newFirst.trim() || !newLast.trim()) {
+      setNewContactError("Voor- en achternaam zijn verplicht");
+      return;
+    }
+    setSavingContact(true);
+    setNewContactError(null);
+    try {
+      const res = await fetch(`/api/customers/${deal.customerId}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: newFirst, lastName: newLast, email: newEmail || null }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNewContactError(data.error ?? "Toevoegen mislukt");
+        return;
+      }
+      // Nieuw contact meteen als dealcontact instellen
+      setContactId(data.id);
+      await patchDeal({ primaryContactId: data.id });
+      setAddingContact(false);
+      setNewFirst("");
+      setNewLast("");
+      setNewEmail("");
+    } finally {
+      setSavingContact(false);
+    }
   }
 
   return (
@@ -239,7 +275,13 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
                 </div>
                 <select
                   value={contactId}
-                  onChange={(e) => saveContact(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value === "__new__") {
+                      setAddingContact(true);
+                      return;
+                    }
+                    saveContact(e.target.value);
+                  }}
                   disabled={savingContact}
                   className="flex-1 text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-white disabled:opacity-60"
                 >
@@ -249,8 +291,51 @@ export function DealInfoClient({ deal }: { deal: DealInfo }) {
                       {c.name}{c.role ? ` · ${c.role}` : ""}
                     </option>
                   ))}
+                  <option value="__new__">＋ Nieuw contactpersoon…</option>
                 </select>
               </div>
+              {addingContact && (
+                <div className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={newFirst}
+                      onChange={(e) => setNewFirst(e.target.value)}
+                      placeholder="Voornaam *"
+                      autoFocus
+                      className="text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-white"
+                    />
+                    <input
+                      value={newLast}
+                      onChange={(e) => setNewLast(e.target.value)}
+                      placeholder="Achternaam *"
+                      className="text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-white"
+                    />
+                  </div>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="E-mail (optioneel)"
+                    className="w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-blue/30 bg-white"
+                  />
+                  {newContactError && <p className="text-xs text-red-600">{newContactError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={createContact}
+                      disabled={savingContact}
+                      className="text-xs font-medium bg-brand-blue hover:bg-brand-blue-dark text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+                    >
+                      Toevoegen & selecteren
+                    </button>
+                    <button
+                      onClick={() => { setAddingContact(false); setNewContactError(null); }}
+                      className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5"
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Aangemaakt door / datum */}
