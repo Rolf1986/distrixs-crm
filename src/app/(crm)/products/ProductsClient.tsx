@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, Pencil, Check, X, Search, ChevronDown, ChevronRight, Layers, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { Plus, Loader2, Pencil, Check, X, Search, ChevronDown, ChevronRight, Layers, Trash2, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 type PriceTier = {
@@ -481,6 +482,13 @@ export function ProductsClient({
                         <td className="px-4 py-3 text-center text-slate-500 text-xs">{p.dealLineCount}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
+                            <Link
+                              href={`/products/${p.id}/sales`}
+                              className="p-1.5 rounded text-slate-300 hover:text-brand-blue hover:bg-blue-50"
+                              title="Verkopen: aan wie is dit product verkocht?"
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                            </Link>
                             <button
                               onClick={() => { setEditingId(p.id); setEditForm({}); }}
                               className="p-1.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100"
