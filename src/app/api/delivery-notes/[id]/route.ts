@@ -10,7 +10,7 @@ export async function PATCH(
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id } = await params;
-  const { status, confirmationId, deliveryDate, carrier, trackingCode, notes, language } = await req.json();
+  const { status, confirmationId, deliveryDate, carrier, trackingCode, notes, language, contactId } = await req.json();
 
   const dn = await prisma.deliveryNote.update({
     where: { id },
@@ -22,6 +22,7 @@ export async function PATCH(
       ...(trackingCode !== undefined && { trackingCode }),
       ...(notes !== undefined && { notes }),
       ...(language === "NL" || language === "EN" ? { language } : {}),
+      ...(contactId !== undefined && { contactId: contactId || null }),
     },
   });
 

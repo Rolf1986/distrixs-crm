@@ -13,6 +13,16 @@ async function getDealData(dealId: string) {
     where: { id: dealId },
     select: {
       customerId: true,
+      primaryContactId: true,
+      customer: {
+        select: {
+          contacts: {
+            where: { isActive: true },
+            select: { id: true, firstName: true, lastName: true, isPrimary: true },
+            orderBy: { isPrimary: "desc" },
+          },
+        },
+      },
       deliveryNotes: {
         include: {
           confirmation: { select: { confirmationNumber: true } },
@@ -82,7 +92,16 @@ export default async function DealDeliveryNotesPage({
         <h2 className="text-xs font-semibold text-slate-500 uppercase tracking-widest">
           Verzenddocumenten ({notes.length})
         </h2>
-        <CreateDeliveryNoteButton dealId={id} orderConfirmations={deal.orderConfirmations} />
+        <CreateDeliveryNoteButton
+          dealId={id}
+          orderConfirmations={deal.orderConfirmations}
+          contacts={deal.customer.contacts.map((c) => ({
+            id: c.id,
+            name: `${c.firstName} ${c.lastName}`,
+            isPrimary: c.isPrimary,
+          }))}
+          defaultContactId={deal.primaryContactId}
+        />
       </div>
 
       {notes.length === 0 ? (
