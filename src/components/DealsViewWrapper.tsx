@@ -8,6 +8,7 @@ import { LayoutList, LayoutGrid, ArrowDown, ArrowUp, ChevronLeft, ChevronRight }
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatCurrency } from "@/lib/utils";
 import { DealKanbanView, type SerializedDeal } from "@/components/DealKanbanView";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 const PAGE_SIZES = [30, 60, 100];
 
@@ -48,7 +49,7 @@ type View = "list" | "kanban";
 export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
   const [view, setView] = useState<View>("list");
   const [sortDesc, setSortDesc] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistentState("deals.search", "");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
 
