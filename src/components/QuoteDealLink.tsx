@@ -20,11 +20,14 @@ export function DealLink({
   customerId,
   defaultTitle,
   deals,
+  currentDealId = null,
 }: {
   patchUrl: string;
   customerId: string;
   defaultTitle: string;
   deals: DealOption[];
+  /** Al gekoppeld aan deze deal → knop wordt "wijzig deal…" met huidige selectie */
+  currentDealId?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -69,10 +72,10 @@ export function DealLink({
       <button
         onClick={() => setOpen(true)}
         className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-brand-blue transition-colors"
-        title="Aan een deal koppelen"
+        title={currentDealId ? "Aan een andere deal koppelen" : "Aan een deal koppelen"}
       >
         <Link2 className="w-3.5 h-3.5" />
-        deal koppelen…
+        {currentDealId ? "wijzig deal…" : "deal koppelen…"}
       </button>
     );
   }
@@ -80,7 +83,7 @@ export function DealLink({
   return (
     <span className="inline-flex items-center gap-2 flex-wrap">
       <select
-        defaultValue=""
+        defaultValue={currentDealId ?? ""}
         onChange={(e) => linkDeal(e.target.value)}
         disabled={busy}
         className="border border-slate-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
