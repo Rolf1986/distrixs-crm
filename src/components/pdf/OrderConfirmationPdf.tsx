@@ -53,11 +53,14 @@ const S = StyleSheet.create({
   colPrice:    { width: "12%", textAlign: "right" },
   colTotal:    { width: "13%", textAlign: "right" },
   colDelivery: { width: "14%", textAlign: "right" },
+  // Kleiner dan bij factuur/offerte: "ORDERBEVESTIGING"/"ORDER CONFIRMATION"
+  // is lang en viel op 18pt buiten de metaregel
   docTypeLabel: {
     fontFamily: "Helvetica-Bold",
-    fontSize: 18,
+    fontSize: 12,
     color: C.orange,
     marginLeft: "auto",
+    textAlign: "right",
   },
   metaHeader: {
     flexDirection: "row",
