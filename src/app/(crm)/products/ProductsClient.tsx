@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Loader2, Pencil, Check, X, Search, ChevronDown, ChevronRight, Layers, Trash2, ShoppingCart } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 type PriceTier = {
   id: string;
@@ -204,7 +205,7 @@ export function ProductsClient({
 }) {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistentState("products.search", "");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);

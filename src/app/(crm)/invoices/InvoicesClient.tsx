@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowUpDown, ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Bell, Download } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 type Invoice = {
   id: string;
@@ -67,7 +68,7 @@ function invoiceSortKey(invoiceNumber: string): number {
 
 export function InvoicesClient({ invoices, creditNotes = [] }: { invoices: Invoice[]; creditNotes?: CreditNote[] }) {
   const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistentState("invoices.search", "");
   const [sortDesc, setSortDesc] = useState(true); // newest first by default
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);

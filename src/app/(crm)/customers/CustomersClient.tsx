@@ -5,6 +5,7 @@ import { RowLink } from "@/components/RowLink";
 import { useState } from "react";
 import Link from "next/link";
 import { Search } from "lucide-react";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 type Customer = {
   id: string;
@@ -41,7 +42,7 @@ const STATUS_FILTERS = [
 const PAGE_SIZES = [30, 60, 100];
 
 export function CustomersClient({ customers }: { customers: Customer[] }) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistentState("customers.search", "");
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);

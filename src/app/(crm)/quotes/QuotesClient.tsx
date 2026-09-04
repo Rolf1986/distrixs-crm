@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { usePersistentState } from "@/lib/usePersistentState";
 
 type Quote = {
   id: string;
@@ -46,7 +47,7 @@ const PAGE_SIZES = [30, 60, 100];
 
 export function QuotesClient({ quotes }: { quotes: Quote[] }) {
   const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = usePersistentState("quotes.search", "");
   const [sortDesc, setSortDesc] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
