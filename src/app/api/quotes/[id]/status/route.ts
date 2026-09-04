@@ -3,7 +3,9 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
-  DRAFT:    ["SENT"],
+  // Direct akkoord vanaf concept kan ook: offertes gaan niet altijd via het
+  // systeem de deur uit
+  DRAFT:    ["SENT", "ACCEPTED"],
   SENT:     ["ACCEPTED", "REJECTED"],
   ACCEPTED: [],
   REJECTED: ["DRAFT"], // allow re-draft

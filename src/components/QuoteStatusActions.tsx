@@ -11,10 +11,11 @@ interface Props {
 
 const transitions: Record<string, Array<{ status: string; label: string; icon: React.ReactNode; variant: string }>> = {
   DRAFT: [
-    { status: "SENT", label: "Markeer als verzonden", icon: <Send className="w-4 h-4" />, variant: "blue" },
+    { status: "SENT", label: "Offerte verzonden", icon: <Send className="w-4 h-4" />, variant: "blue" },
+    { status: "ACCEPTED", label: "Akkoord + factuur", icon: <CheckCircle className="w-4 h-4" />, variant: "green" },
   ],
   SENT: [
-    { status: "ACCEPTED", label: "Akkoord", icon: <CheckCircle className="w-4 h-4" />, variant: "green" },
+    { status: "ACCEPTED", label: "Akkoord + factuur", icon: <CheckCircle className="w-4 h-4" />, variant: "green" },
     { status: "REJECTED", label: "Afgewezen", icon: <XCircle className="w-4 h-4" />, variant: "red" },
   ],
   REJECTED: [
@@ -49,6 +50,16 @@ export function QuoteStatusActions({ quoteId, currentStatus }: Props) {
         const d = await res.json();
         setError(d.error ?? "Fout bij statuswijziging");
         return;
+      }
+      // Akkoord → meteen een conceptfactuur klaarzetten en die openen
+      if (status === "ACCEPTED") {
+        const inv = await fetch(`/api/quotes/${quoteId}/invoices`, { method: "POST" });
+        const invData = await inv.json().catch(() => ({}));
+        if (inv.ok && invData.id) {
+          router.push(`/invoices/${invData.id}/lines`);
+          return;
+        }
+        setError(invData.error ?? "Offerte staat op akkoord, maar de factuur aanmaken lukte niet");
       }
       router.refresh();
     } catch {
