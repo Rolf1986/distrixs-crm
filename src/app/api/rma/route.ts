@@ -4,6 +4,17 @@ import { nextRmaNumber } from "@/lib/sequences";
 import { sendEmail } from "@/lib/email";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 
+// HTML-escaping voor vrije invoer in de mail-templates: het retourformulier is
+// publiek, dus alles wat een indiener typt is potentieel HTML/phishing-content.
+function escHtml(v: unknown): string {
+  return String(v ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const REASON_LABELS: Record<string, Record<string, string>> = {
   nl: {
     DEFECTIVE: "Defect product",
@@ -32,7 +43,7 @@ function buildConfirmationEmail(opts: {
   orderReference?: string | null;
 }): { subject: string; html: string } {
   const isEn = opts.lang === "en";
-  const reasonLabel = REASON_LABELS[isEn ? "en" : "nl"][opts.reason] ?? opts.reason;
+  const reasonLabel = REASON_LABELS[isEn ? "en" : "nl"][opts.reason] ?? escHtml(opts.reason);
 
   if (isEn) {
     const subject = `Return Request Received — ${opts.rmaNumber}`;
@@ -184,16 +195,16 @@ export async function POST(req: Request) {
     // 1. Bevestigingsmail naar de klant
     const { subject: custSubject, html: custHtml } = buildConfirmationEmail({
       lang,
-      name: submittedName,
+      name: escHtml(submittedName),
       rmaNumber,
-      productDescription,
+      productDescription: escHtml(productDescription),
       reason,
-      orderReference: orderReference || null,
+      orderReference: orderReference ? escHtml(orderReference) : null,
     });
     await sendEmail({ to: submittedEmail, subject: custSubject, html: custHtml });
 
     // 2. Interne notificatie
-    const reasonNl = REASON_LABELS.nl[reason] ?? reason;
+    const reasonNl = REASON_LABELS.nl[reason] ?? escHtml(reason);
     const internalHtml = `<!DOCTYPE html>
 <html lang="nl">
 <head><meta charset="UTF-8"></head>
@@ -210,35 +221,35 @@ export async function POST(req: Request) {
         </tr>
         <tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;vertical-align:top;">Naam</td>
-          <td style="padding:10px 0;color:#1e293b;">${submittedName}</td>
+          <td style="padding:10px 0;color:#1e293b;">${escHtml(submittedName)}</td>
         </tr>
         ${submittedCompany ? `<tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;">Bedrijf</td>
-          <td style="padding:10px 0;color:#1e293b;">${submittedCompany}</td>
+          <td style="padding:10px 0;color:#1e293b;">${escHtml(submittedCompany)}</td>
         </tr>` : ""}
         <tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;">E-mail</td>
-          <td style="padding:10px 0;"><a href="mailto:${submittedEmail}" style="color:#2563eb;">${submittedEmail}</a></td>
+          <td style="padding:10px 0;"><a href="mailto:${escHtml(submittedEmail)}" style="color:#2563eb;">${escHtml(submittedEmail)}</a></td>
         </tr>
         ${submittedPhone ? `<tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;">Telefoon</td>
-          <td style="padding:10px 0;color:#1e293b;">${submittedPhone}</td>
+          <td style="padding:10px 0;color:#1e293b;">${escHtml(submittedPhone)}</td>
         </tr>` : ""}
         <tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;vertical-align:top;">Product</td>
-          <td style="padding:10px 0;color:#1e293b;font-weight:500;">${productDescription}</td>
+          <td style="padding:10px 0;color:#1e293b;font-weight:500;">${escHtml(productDescription)}</td>
         </tr>
         ${orderReference ? `<tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;">Ordernummer</td>
-          <td style="padding:10px 0;color:#1e293b;">${orderReference}</td>
+          <td style="padding:10px 0;color:#1e293b;">${escHtml(orderReference)}</td>
         </tr>` : ""}
         ${serialNumber ? `<tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;">Serienummer</td>
-          <td style="padding:10px 0;color:#1e293b;">${serialNumber}</td>
+          <td style="padding:10px 0;color:#1e293b;">${escHtml(serialNumber)}</td>
         </tr>` : ""}
         <tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;">Aantal</td>
-          <td style="padding:10px 0;color:#1e293b;">${quantity ?? 1}</td>
+          <td style="padding:10px 0;color:#1e293b;">${Number(quantity ?? 1) || 1}</td>
         </tr>
         <tr style="border-bottom:1px solid #e2e8f0;">
           <td style="padding:10px 0;color:#64748b;">Reden</td>
@@ -246,7 +257,7 @@ export async function POST(req: Request) {
         </tr>
         <tr>
           <td style="padding:10px 0;color:#64748b;vertical-align:top;">Toelichting</td>
-          <td style="padding:10px 0;color:#1e293b;white-space:pre-wrap;">${description}</td>
+          <td style="padding:10px 0;color:#1e293b;white-space:pre-wrap;">${escHtml(description)}</td>
         </tr>
       </table>
       <div style="margin-top:24px;">
@@ -263,7 +274,7 @@ export async function POST(req: Request) {
     const internalTo = process.env.RMA_NOTIFY_EMAIL ?? "info@distrixs.nl";
     await sendEmail({
       to: internalTo,
-      subject: `[RMA] Nieuw retourverzoek — ${rmaNumber} — ${submittedName}`,
+      subject: `[RMA] Nieuw retourverzoek — ${rmaNumber} — ${escHtml(submittedName)}`,
       html: internalHtml,
     });
 

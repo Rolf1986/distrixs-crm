@@ -12,6 +12,7 @@ import { nextInvoiceNumber } from "@/lib/sequences";
 import { logSentEmail } from "@/lib/sent-email";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled, type TwinfieldSyncResult } from "@/lib/twinfield";
 import { syncInvoiceInstallments } from "@/lib/installments";
+import { termDays } from "@/lib/payment-terms";
 
 export async function POST(
   req: NextRequest,
@@ -34,7 +35,6 @@ export async function POST(
   // Concept dat voor het eerst verzonden wordt krijgt nu zijn definitieve
   // nummer én de datum van vandaag als factuurdatum (boekdatum, niet de dag
   // waarop het concept werd aangemaakt); vervaldatum schuift mee.
-  const TERM_DAYS: Record<string, number> = { DAYS_14: 14, DAYS_30: 30, PREPAYMENT: 0, INSTALLMENTS: 30 };
   const current = await prisma.invoice.findUnique({
     where: { id },
     select: { invoiceNumber: true, paymentTermType: true },
@@ -46,7 +46,7 @@ export async function POST(
     const definitiveNumber = await nextInvoiceNumber(new Date().getFullYear());
     const bookDate = new Date();
     const newDue = new Date(bookDate);
-    newDue.setDate(newDue.getDate() + (TERM_DAYS[current.paymentTermType] ?? 14));
+    newDue.setDate(newDue.getDate() + termDays(current.paymentTermType));
     await prisma.invoice.update({
       where: { id },
       data: { invoiceNumber: definitiveNumber, invoiceDate: bookDate, dueDate: newDue },

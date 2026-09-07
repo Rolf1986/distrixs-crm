@@ -32,6 +32,6 @@ export async function GET(
     });
   } catch (err) {
     console.error("Invoice PDF fout:", err);
-    return NextResponse.json({ error: "PDF generatie mislukt", detail: String(err) }, { status: 500 });
+    return NextResponse.json({ error: "PDF generatie mislukt" }, { status: 500 });
   }
 }

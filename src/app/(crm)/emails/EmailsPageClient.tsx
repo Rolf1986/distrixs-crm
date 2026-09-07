@@ -311,9 +311,14 @@ export default function EmailsPageClient({ emails, accounts }: Props) {
                             Laden…
                           </div>
                         ) : body ? (
-                          <div
-                            className="prose prose-sm max-w-none pt-4 text-slate-700 overflow-auto"
-                            dangerouslySetInnerHTML={{ __html: body }}
+                          // Ontvangen mail-HTML is aanvallers-input: renderen in een
+                          // volledig gesandboxte iframe (geen scripts, geen zelfde
+                          // origin) i.p.v. dangerouslySetInnerHTML — stored-XSS-fix.
+                          <iframe
+                            sandbox=""
+                            srcDoc={body}
+                            title="E-mailinhoud"
+                            className="mt-4 w-full h-[60vh] rounded-lg border border-slate-100 bg-white"
                           />
                         ) : email.snippet ? (
                           <p className="pt-4 text-sm text-slate-600 whitespace-pre-wrap">

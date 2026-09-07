@@ -1,9 +1,13 @@
-version: "3.9"
 
 services:
   app:
     build: .
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     env_file: .env.production
     environment:
       DATABASE_URL: postgresql://distrixs:${POSTGRES_PASSWORD}@db:5432/distrixs_crm

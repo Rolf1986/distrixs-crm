@@ -1,5 +1,7 @@
 export const dynamic = "force-dynamic";
 
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/session";
 import { Sidebar } from "@/components/Sidebar";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { BackButton } from "@/components/BackButton";
@@ -16,6 +18,11 @@ async function getOverdueActivityCount() {
 }
 
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
+  // Tweede slot naast de proxy: ook als de middleware ooit omzeild wordt
+  // (Next-CVE's), rendert geen enkele CRM-pagina zonder geldige sessie.
+  const session = await getSession();
+  if (!session?.user?.id) redirect("/login");
+
   const overdueActivityCount = await getOverdueActivityCount();
   return (
     <div className="flex min-h-screen bg-slate-50">

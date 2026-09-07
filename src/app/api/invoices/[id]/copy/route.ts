@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { termDays } from "@/lib/payment-terms";
 
-const TERM_DAYS: Record<string, number> = {
-  DAYS_14: 14,
-  DAYS_30: 30,
-  PREPAYMENT: 0,
-  INSTALLMENTS: 30,
-};
 
 // Kopieer een factuur naar een nieuw concept (met alle regels).
 export async function POST(
@@ -26,7 +21,7 @@ export async function POST(
 
   const invoiceDate = new Date();
   const dueDate = new Date(invoiceDate);
-  dueDate.setDate(dueDate.getDate() + (TERM_DAYS[src.paymentTermType] ?? 14));
+  dueDate.setDate(dueDate.getDate() + (termDays(src.paymentTermType)));
 
   const copy = await prisma.invoice.create({
     data: {
