@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { termDays } from "@/lib/payment-terms";
 
 export async function POST(
   req: NextRequest,
@@ -41,10 +42,7 @@ export async function POST(
   const invoiceDate = new Date();
   const paymentTerm = quote.customer?.defaultPaymentTerm ?? "DAYS_30";
   const dueDate = new Date(invoiceDate);
-  if      (paymentTerm === "DAYS_14")      dueDate.setDate(dueDate.getDate() + 14);
-  else if (paymentTerm === "PREPAYMENT")   { /* dueDate = vandaag */ }
-  else if (paymentTerm === "INSTALLMENTS") dueDate.setDate(dueDate.getDate() + 30);
-  else                                     dueDate.setDate(dueDate.getDate() + 30);
+  dueDate.setDate(dueDate.getDate() + termDays(paymentTerm));
 
   const invoice = await prisma.invoice.create({
     data: {

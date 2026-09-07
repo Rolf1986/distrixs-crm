@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled } from "@/lib/twinfield";
 import { syncInvoiceInstallments } from "@/lib/installments";
+import { termDays } from "@/lib/payment-terms";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   DRAFT:          ["SENT"],
@@ -82,10 +83,9 @@ export async function PATCH(
     extraData.invoiceNumber = await nextInvoiceNumber(new Date().getFullYear());
     // Factuurdatum = boekdatum (vandaag), niet de dag waarop het concept
     // werd aangemaakt; vervaldatum schuift mee met de betaaltermijn.
-    const TERM_DAYS: Record<string, number> = { DAYS_14: 14, DAYS_30: 30, PREPAYMENT: 0, INSTALLMENTS: 30 };
     const bookDate = new Date();
     const newDue = new Date(bookDate);
-    newDue.setDate(newDue.getDate() + (TERM_DAYS[invoice.paymentTermType] ?? 14));
+    newDue.setDate(newDue.getDate() + termDays(invoice.paymentTermType));
     extraData.invoiceDate = bookDate;
     extraData.dueDate = newDue;
   }

@@ -354,7 +354,6 @@ export async function POST(req: NextRequest): Promise<Response> {
     let dealsSkipTypeCompany = 0, dealsSkipTypeContact = 0, dealsSkipTypeNone = 0;
     console.log(`[import] Teamleader deals opgehaald: ${tlDeals.length}, in DB: ${dealIdToLocalId.size}`);
     // Log eerste deal volledig om structuur te zien
-    if (tlDeals[0]) console.log(`[import] deal[0] volledig:`, JSON.stringify(tlDeals[0]));
 
     for (const d of tlDeals) {
       const externalId = `tl-deal-${d.id}`;
@@ -418,7 +417,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       if (quotationIdToLocalId.has(q.id)) { quotesSkippedExisting++; continue; }
 
       if (!quoteSampleLogged) {
-        console.log(`[import] eerste nieuwe offerte volledig:`, JSON.stringify(q));
         quoteSampleLogged = true;
       }
 
@@ -648,7 +646,6 @@ export async function POST(req: NextRequest): Promise<Response> {
       if (existingCnIds.has(cnExternalId)) continue;
 
       if (!cnSampleLogged) {
-        console.log(`[import] eerste nieuwe creditnota volledig:`, JSON.stringify(cn));
         cnSampleLogged = true;
       }
 

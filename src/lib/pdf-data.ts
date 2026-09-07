@@ -1,17 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getCompanyInfo } from "@/lib/companySettings";
 import { isEuReverseCharge } from "@/lib/vat";
+import { termDays } from "@/lib/payment-terms";
 
 /**
  * Gedeelde PDF-databouwers: zorgen dat de download-route en de e-mailbijlage
  * exact dezelfde (moderne) PDF-layout gebruiken, incl. logo en klantgegevens.
  */
 
-const PAYMENT_TERM_DAYS: Record<string, number> = {
-  DAYS_14: 14,
-  DAYS_30: 30,
-  PREPAYMENT: 0,
-};
 
 type AddressRow = {
   type: string;
@@ -53,7 +49,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
     invoiceNumber: invoice.invoiceNumber,
     invoiceDate: invoice.invoiceDate,
     dueDate: invoice.dueDate,
-    paymentTermDays: PAYMENT_TERM_DAYS[invoice.paymentTermType] ?? 30,
+    paymentTermDays: termDays(invoice.paymentTermType),
     ourReference: invoice.ourReference ?? invoice.deal?.orderReference ?? null,
     subtotal: Number(invoice.subtotal),
     vatAmount: Number(invoice.vatAmount),
