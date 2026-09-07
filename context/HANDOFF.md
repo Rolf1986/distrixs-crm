@@ -6,6 +6,12 @@ Startpunt voor een nieuwe Claude-sessie. Lees dit vóór je iets wijzigt.
 - **LIVE in productie sinds medio juli 2026** — https://crm.distrixs.nl. Wijzigingen raken echte facturen/klanten. Voorzichtig met datamigraties; altijd eerst lezen, dan schrijven.
 - Fase 1 t/m 4 gebouwd en in gebruik (shell, deal hub, documentflow, factuuradministratie incl. Twinfield + MyParcel). Fase 5 (nacalculatie) is gebouwd maar nog nauwelijks gevuld.
 
+## Security-ronde (sept 2026)
+- Volledige review in `REVIEW.md` (repo-root). Week-1-fixes uitgevoerd: SSH keys-only + fail2ban + ufw, Next 16.3.4, mail-XSS (sandbox-iframe), RMA-escaping, XFF-fix, versleutelde offsite backups.
+- **Backups**: `/usr/local/bin/crm-backup.sh` (02:00): pg_dump → gzip → gpg (passphrase `/root/.crm-backup-passphrase`, kopie in Rolfs wachtwoordmanager) → rsync naar buzz-droplet `178.62.228.57:/root/crm-backups/` (restricted key). Retentie: 30d lokaal, 60d offsite. Restore: `gpg -d --passphrase-file /root/.crm-backup-passphrase bestand.gpg | gunzip | psql`. Restore-test gedaan 2026-09-07 (identieke rijaantallen).
+- **Build-valkuil (opgelost)**: er stond een stale `node_modules` op de server die via `COPY . .` de verse `npm ci` overschreef — daardoor draaide maandenlang de oude dependency-tree. Nu is er een `.dockerignore`; verwijder nooit dat bestand. `jose` is een directe dependency (kwam eerder transitief via het verwijderde next-auth).
+- SSH naar de server: alleen keys; wachtwoord-login staat uit.
+
 ## Server & deploy
 - Hetzner VPS `root@46.225.76.147`, app in `/opt/distrixs-crm` (Docker Compose: app + db + nginx).
 - Deploy = commit lokaal op branch `claude/pensive-grothendieck-f4d8bd`, push, dan op de server **cherry-pick van de commit-hash** + `docker compose build app && docker compose up -d app`. Healthcheck: `curl http://127.0.0.1:3000/login` → 200.
