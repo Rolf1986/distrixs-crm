@@ -28,6 +28,7 @@ import {
   Menu,
   X,
   CircuitBoard,
+  PackageOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -55,6 +56,7 @@ const navGroups: Array<{ title: string | null; items: Array<{ label: string; hre
       { label: "Klanten",        href: "/customers",        icon: Users },
       { label: "Producten",      href: "/products",         icon: Package },
       { label: "Firmware",       href: "/firmware",         icon: CircuitBoard },
+      { label: "Demo-items",     href: "/demo-items",       icon: PackageOpen },
       { label: "Leveranciers",   href: "/suppliers",        icon: Truck },
     ],
   },
