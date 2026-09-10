@@ -52,9 +52,25 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
   const [editNotesId, setEditNotesId] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState("");
 
+  // Inline productnaam bewerken
+  const [editNameId, setEditNameId] = useState<string | null>(null);
+  const [nameDraft, setNameDraft] = useState("");
+
   const [reminderResult, setReminderResult] = useState<string | null>(null);
 
-  const filtered = items.filter((i) => {
+  const sorted = [...items].sort((a, b) => {
+    const ao = isOut(a.location) ? 0 : 1;
+    const bo = isOut(b.location) ? 0 : 1;
+    if (ao !== bo) return ao - bo;
+    if (ao === 0) {
+      const at = a.outSince ? new Date(a.outSince).getTime() : Infinity;
+      const bt = b.outSince ? new Date(b.outSince).getTime() : Infinity;
+      if (at !== bt) return at - bt;
+    }
+    return a.product.localeCompare(b.product, "nl");
+  });
+
+  const filtered = sorted.filter((i) => {
     if (filter === "out" && !isOut(i.location)) return false;
     if (filter === "in" && isOut(i.location)) return false;
     const q = search.toLowerCase();
@@ -95,8 +111,8 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
         body: JSON.stringify({ product: newProduct, qty: Number(newQty) || 1 }),
       });
       if (!res.ok) return;
-      const item = await res.json();
-      setItems((prev) => [...prev, item]);
+      const created = await res.json();
+      setItems((prev) => [...prev, ...(Array.isArray(created) ? created : [created])]);
       setNewProduct("");
       setNewQty("1");
       setAdding(false);
@@ -202,7 +218,7 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
             <input className={`${inputClass} w-72`} autoFocus value={newProduct} onChange={(e) => setNewProduct(e.target.value)} placeholder="bijv. Acme BL100 RGBW" />
           </div>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Aantal</label>
+            <label className="block text-xs text-slate-500 mb-1">Aantal (losse regels)</label>
             <input className={`${inputClass} w-20`} type="number" min="1" value={newQty} onChange={(e) => setNewQty(e.target.value)} />
           </div>
           <button onClick={addItem} disabled={busy === "new" || !newProduct.trim()} className="p-2 rounded bg-green-100 text-green-700 hover:bg-green-200 disabled:opacity-40">
@@ -220,7 +236,6 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50">
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Product</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Aantal</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Locatie</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Contact</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Uit sinds</th>
@@ -231,7 +246,7 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
           <tbody className="divide-y divide-slate-50">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
                   Geen demo-items{search ? " gevonden" : ""}
                 </td>
               </tr>
@@ -241,8 +256,36 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
               const dagen = daysOut(item.outSince);
               return (
                 <tr key={item.id} className={`transition-colors ${out ? "bg-orange-50/40" : ""} hover:bg-slate-50`}>
-                  <td className="px-4 py-3 font-medium text-slate-900">{item.product}</td>
-                  <td className="px-4 py-3 text-right text-slate-600">{item.qty}</td>
+                  <td className="px-4 py-3 font-medium text-slate-900">
+                    {editNameId === item.id ? (
+                      <span className="flex items-center gap-1">
+                        <input
+                          className={`${inputClass} w-full`}
+                          value={nameDraft}
+                          autoFocus
+                          onChange={(e) => setNameDraft(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && nameDraft.trim()) { patch(item.id, { product: nameDraft }); setEditNameId(null); }
+                            if (e.key === "Escape") setEditNameId(null);
+                          }}
+                        />
+                        <button
+                          onClick={() => { if (nameDraft.trim()) { patch(item.id, { product: nameDraft }); } setEditNameId(null); }}
+                          className="text-green-600"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => { setEditNameId(item.id); setNameDraft(item.product); }}
+                        className="text-left hover:text-brand-blue w-full"
+                        title="Klik om de naam te bewerken"
+                      >
+                        {item.product}{item.qty > 1 ? ` (${item.qty}×)` : ""}
+                      </button>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {out ? (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">

@@ -15,18 +15,21 @@ export async function POST(req: NextRequest) {
   const loc = (location ?? "Kantoor").trim() || "Kantoor";
   const isOut = loc.toLowerCase() !== "kantoor";
 
-  const item = await prisma.demoItem.create({
-    data: {
-      product: product.trim(),
-      qty: Math.max(1, Number(qty) || 1),
-      location: loc,
-      contactName: contactName?.trim() || null,
-      phone: phone?.trim() || null,
-      email: email?.trim() || null,
-      notes: notes?.trim() || null,
-      outSince: isOut ? new Date() : null,
-    },
-  });
+  // Aantal N → N losse regels, zodat elk exemplaar apart uitgeleend kan worden
+  const count = Math.min(50, Math.max(1, Number(qty) || 1));
+  const data = {
+    product: product.trim(),
+    qty: 1,
+    location: loc,
+    contactName: contactName?.trim() || null,
+    phone: phone?.trim() || null,
+    email: email?.trim() || null,
+    notes: notes?.trim() || null,
+    outSince: isOut ? new Date() : null,
+  };
+  const items = await prisma.$transaction(
+    Array.from({ length: count }, () => prisma.demoItem.create({ data }))
+  );
 
-  return NextResponse.json(item, { status: 201 });
+  return NextResponse.json(items, { status: 201 });
 }
