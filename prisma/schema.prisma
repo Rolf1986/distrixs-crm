@@ -1420,3 +1420,22 @@ model AnalyticsEvent {
   @@index([occurredAt])
   @@map("analytics_events")
 }
+
+// Demo-voorraad: geen verkoopvoorraad, maar bijhouden welke demo-items er
+// zijn en wie ze (tijdelijk) heeft. "Kantoor" = binnen; elke andere locatie
+// telt als uitstaand en komt in de wekelijkse reminder-mail.
+model DemoItem {
+  id          String    @id @default(cuid())
+  product     String
+  qty         Int       @default(1)
+  location    String    @default("Kantoor")
+  contactName String?   @map("contact_name")
+  phone       String?
+  email       String?
+  notes       String?
+  outSince    DateTime? @map("out_since")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("demo_items")
+}
