@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Navigation, Plus, RefreshCw, ExternalLink } from "lucide-react";
+import { Navigation, Plus, RefreshCw, ExternalLink, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
 type ShipmentRow = {
@@ -55,6 +55,23 @@ export function DeliveryNoteShipmentsSection({
   const [deliveryNoteId, setDeliveryNoteId] = useState("");
   const [saving, setSaving] = useState(false);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function deleteShipment(id: string) {
+    if (!window.confirm("Zending uit het CRM verwijderen? (Het label bij MyParcel wordt hiermee niet geannuleerd.)")) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/shipments/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error ?? "Verwijderen mislukt");
+        return;
+      }
+      setShipments((prev) => prev.filter((s) => s.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   // MyParcel label aanmaken
   const CARRIERS = [
@@ -373,6 +390,14 @@ export function DeliveryNoteShipmentsSection({
                         <RefreshCw
                           className={`w-3.5 h-3.5 ${refreshingId === s.id ? "animate-spin" : ""}`}
                         />
+                      </button>
+                      <button
+                        onClick={() => deleteShipment(s.id)}
+                        disabled={deletingId === s.id}
+                        className="ml-1 p-1.5 rounded text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                        title="Zending verwijderen uit het CRM"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </tr>
