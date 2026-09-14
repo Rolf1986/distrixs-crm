@@ -49,7 +49,6 @@ export function CreateDeliveryNoteButton({ dealId, orderConfirmations, contacts 
   }, [open, confirmationId, dealId]);
   const [deliveryDate, setDeliveryDate] = useState("");
   const [carrier, setCarrier] = useState("");
-  const [trackingCode, setTrackingCode] = useState("");
   const [notes, setNotes] = useState("");
 
   function reset() {
@@ -57,7 +56,6 @@ export function CreateDeliveryNoteButton({ dealId, orderConfirmations, contacts 
     setContactId(defaultContactId ?? "");
     setDeliveryDate("");
     setCarrier("");
-    setTrackingCode("");
     setNotes("");
     setError("");
   }
@@ -79,7 +77,6 @@ export function CreateDeliveryNoteButton({ dealId, orderConfirmations, contacts 
             .map(({ skuSnapshot, titleSnapshot, qty }) => ({ skuSnapshot, titleSnapshot, qty })),
           deliveryDate: deliveryDate || null,
           carrier: carrier || null,
-          trackingCode: trackingCode || null,
           notes: notes || null,
         }),
       });
@@ -169,15 +166,6 @@ export function CreateDeliveryNoteButton({ dealId, orderConfirmations, contacts 
               value={carrier}
               onChange={(e) => setCarrier(e.target.value)}
               placeholder="bijv. DHL, PostNL, DPD"
-            />
-          </FormField>
-          <FormField label="Track & trace code">
-            <input
-              type="text"
-              className={inputClass}
-              value={trackingCode}
-              onChange={(e) => setTrackingCode(e.target.value)}
-              placeholder="Trackingnummer"
             />
           </FormField>
           <FormField label="Opmerkingen">
