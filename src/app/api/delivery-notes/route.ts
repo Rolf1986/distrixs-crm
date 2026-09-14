@@ -2,81 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { nextDeliveryNoteNumber } from "@/lib/sequences";
+import { resolveDeliveryLines } from "@/lib/delivery-lines";
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
-  const { dealId, contactId, confirmationId, deliveryDate, carrier, trackingCode, notes } = await req.json();
+  const { dealId, contactId, confirmationId, deliveryDate, carrier, trackingCode, notes, lines: selectedLines } = await req.json();
   if (!dealId) return NextResponse.json({ error: "Deal verplicht" }, { status: 400 });
 
   // Get customer from deal
   const deal = await prisma.deal.findUnique({ where: { id: dealId }, select: { customerId: true, primaryContactId: true } });
   if (!deal) return NextResponse.json({ error: "Deal niet gevonden" }, { status: 404 });
 
-  // Artikelregels overnemen: uit de offerte van de gekoppelde orderbevestiging,
-  // anders uit de recentste geaccepteerde/verzonden offerte van de deal
-  let sourceQuoteId: string | null = null;
-  if (confirmationId) {
-    const oc = await prisma.orderConfirmation.findUnique({
-      where: { id: confirmationId },
-      select: { quoteId: true },
-    });
-    sourceQuoteId = oc?.quoteId ?? null;
-  }
-  if (!sourceQuoteId) {
-    const quote =
-      (await prisma.quote.findFirst({
-        where: { dealId, status: "ACCEPTED" },
-        orderBy: { createdAt: "desc" },
-        select: { id: true },
-      })) ??
-      (await prisma.quote.findFirst({
-        where: { dealId, status: "SENT" },
-        orderBy: { createdAt: "desc" },
-        select: { id: true },
-      })) ??
-      // Ook een concept-offerte is beter dan een leeg verzenddocument
-      (await prisma.quote.findFirst({
-        where: { dealId },
-        orderBy: { createdAt: "desc" },
-        select: { id: true },
-      }));
-    sourceQuoteId = quote?.id ?? null;
-  }
-  let lines: Array<{ skuSnapshot: string; titleSnapshot: string; qty: unknown }> = sourceQuoteId
-    ? await prisma.quoteLine.findMany({
-        where: { quoteId: sourceQuoteId },
-        select: { skuSnapshot: true, titleSnapshot: true, qty: true },
-        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-      })
-    : [];
+  const resolved = await resolveDeliveryLines(dealId, confirmationId);
+  const language = resolved.language;
 
-  // Laatste redmiddel: regels van de recentste factuur van de deal
-  if (lines.length === 0) {
-    const invoice = await prisma.invoice.findFirst({
-      where: { dealId },
-      orderBy: { createdAt: "desc" },
-      select: { id: true },
-    });
-    if (invoice) {
-      lines = await prisma.invoiceLine.findMany({
-        where: { invoiceId: invoice.id },
-        select: { skuSnapshot: true, titleSnapshot: true, qty: true },
-        orderBy: { createdAt: "asc" },
-      });
+  // Regelselectie uit het aanmaakvenster (deelzending): alleen de aangevinkte
+  // regels met het opgegeven aantal. Zonder selectie → alle regels van de bron.
+  let lines = resolved.lines;
+  if (Array.isArray(selectedLines)) {
+    lines = selectedLines
+      .map((l: { skuSnapshot?: unknown; titleSnapshot?: unknown; qty?: unknown }) => ({
+        skuSnapshot: String(l.skuSnapshot ?? ""),
+        titleSnapshot: String(l.titleSnapshot ?? "").trim(),
+        qty: Math.max(0, Number(l.qty) || 0),
+      }))
+      .filter((l) => l.titleSnapshot && l.qty > 0);
+    if (lines.length === 0) {
+      return NextResponse.json({ error: "Selecteer minstens één regel met een aantal" }, { status: 400 });
     }
-  }
-
-  // Taal overnemen van de bronofferte (bepaalt NL/EN op de PDF; naderhand
-  // aan te passen met de taalknop)
-  let language = "NL";
-  if (sourceQuoteId) {
-    const q = await prisma.quote.findUnique({
-      where: { id: sourceQuoteId },
-      select: { language: true },
-    });
-    if (q?.language === "EN") language = "EN";
   }
 
   const year = new Date().getFullYear();
@@ -101,11 +56,25 @@ export async function POST(req: NextRequest) {
         create: lines.map((l) => ({
           skuSnapshot: l.skuSnapshot,
           titleSnapshot: l.titleSnapshot,
-          qty: l.qty as never,
+          qty: l.qty,
         })),
       },
     },
   });
 
   return NextResponse.json({ id: dn.id, deliveryNumber: dn.deliveryNumber });
+}
+
+// Kandidaat-regels voor het aanmaakvenster: wat zou er op het verzenddocument
+// komen voor deze deal/orderbevestiging? (voor de regelselectie bij deelzendingen)
+export async function GET(req: NextRequest) {
+  const session = await getSession(req);
+  if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
+  const dealId = req.nextUrl.searchParams.get("dealId");
+  const confirmationId = req.nextUrl.searchParams.get("confirmationId");
+  if (!dealId) return NextResponse.json({ error: "dealId verplicht" }, { status: 400 });
+
+  const resolved = await resolveDeliveryLines(dealId, confirmationId || null);
+  return NextResponse.json(resolved.lines);
 }
