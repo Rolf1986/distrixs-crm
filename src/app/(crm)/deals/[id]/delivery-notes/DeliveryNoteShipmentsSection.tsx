@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Navigation, Plus, RefreshCw, ExternalLink, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -47,6 +48,7 @@ export function DeliveryNoteShipmentsSection({
   initialShipments,
   deliveryNoteOptions,
 }: Props) {
+  const router = useRouter();
   const [shipments, setShipments] = useState<ShipmentRow[]>(initialShipments);
   const [showForm, setShowForm] = useState(false);
   const [trackingCode, setTrackingCode] = useState("");
@@ -120,6 +122,7 @@ export function DeliveryNoteShipmentsSection({
         })),
         ...prev,
       ]);
+      router.refresh();
       setMpLabelDn(dnId);
     } catch {
       setMpError("Netwerkfout");
