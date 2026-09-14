@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigation, Plus, RefreshCw, ExternalLink, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 
@@ -82,6 +82,16 @@ export function DeliveryNoteShipmentsSection({
     { id: 12, label: "UPS Standard" },
   ];
   const [mpDnId, setMpDnId] = useState(deliveryNoteOptions[0]?.id ?? "");
+
+  // Houd de selectie geldig: na verwijderen/aanmaken van een verzenddocument
+  // kan de state naar een document wijzen dat niet meer bestaat, terwijl de
+  // dropdown optisch het eerste document toont ("niet gevonden"-fout).
+  useEffect(() => {
+    if (!deliveryNoteOptions.some((d) => d.id === mpDnId)) {
+      setMpDnId(deliveryNoteOptions[0]?.id ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryNoteOptions]);
   const [mpCarrier, setMpCarrier] = useState(11);
   const [mpPackages, setMpPackages] = useState("1");
   const [mpBusy, setMpBusy] = useState(false);
