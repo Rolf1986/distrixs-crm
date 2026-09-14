@@ -53,3 +53,14 @@ export async function PATCH(req: NextRequest, { params }: RouteContext) {
 
   return NextResponse.json(updated);
 }
+
+// Zending verwijderen uit het CRM (bijv. als het label bij MyParcel al is
+// geannuleerd). Verwijdert alleen de registratie hier — niets bij MyParcel.
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
+  const session = await getSession(req);
+  if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+
+  const { id } = await params;
+  await prisma.shipment.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}
