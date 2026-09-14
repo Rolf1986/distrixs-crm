@@ -91,6 +91,15 @@ export async function POST(
   }
 
   // Eerste tracking + carrier ook op het verzenddocument zetten
+  // Label = verzonden: status mee laten lopen en verzenddatum invullen als leeg
+  await prisma.deliveryNote.updateMany({
+    where: { id, status: "DRAFT" },
+    data: { status: "SENT" },
+  });
+  await prisma.deliveryNote.updateMany({
+    where: { id, deliveryDate: null },
+    data: { deliveryDate: new Date() },
+  });
   await prisma.deliveryNote.update({
     where: { id },
     data: { trackingCode: created[0]?.trackingCode ?? null, carrier: carrierLabel },

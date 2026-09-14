@@ -44,6 +44,13 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
   });
 
   // Tracking die nu pas bekend is ook op het verzenddocument zetten
+  if (updated.status === "DELIVERED" && updated.deliveryNoteId) {
+    await prisma.deliveryNote.updateMany({
+      where: { id: updated.deliveryNoteId, status: { in: ["DRAFT", "SENT"] } },
+      data: { status: "DELIVERED" },
+    }).catch(() => {});
+  }
+
   if (updated.trackingCode && updated.deliveryNoteId && !shipment.trackingCode) {
     await prisma.deliveryNote.updateMany({
       where: { id: updated.deliveryNoteId, trackingCode: null },
