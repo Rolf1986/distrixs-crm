@@ -47,11 +47,11 @@ function ActivityDot({ hasOverdue, hasOpen }: { hasOverdue: boolean; hasOpen: bo
 type View = "list" | "kanban";
 
 export function DealsViewWrapper({ deals }: { deals: SerializedDeal[] }) {
-  const [view, setView] = useState<View>("list");
-  const [sortDesc, setSortDesc] = useState(true);
+  const [view, setView] = usePersistentState<View>("deals.view", "list");
+  const [sortDesc, setSortDesc] = usePersistentState("deals.sortDesc", true);
   const [search, setSearch] = usePersistentState("deals.search", "");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
+  const [page, setPage] = usePersistentState("deals.page", 1);
+  const [pageSize, setPageSize] = usePersistentState("deals.pageSize", 30);
 
   // Persist view choice
   useEffect(() => {

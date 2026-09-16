@@ -67,11 +67,11 @@ function invoiceSortKey(invoiceNumber: string): number {
 }
 
 export function InvoicesClient({ invoices, creditNotes = [] }: { invoices: Invoice[]; creditNotes?: CreditNote[] }) {
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = usePersistentState("invoices.filter", "all");
   const [search, setSearch] = usePersistentState("invoices.search", "");
-  const [sortDesc, setSortDesc] = useState(true); // newest first by default
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
+  const [sortDesc, setSortDesc] = usePersistentState("invoices.sortDesc", true); // newest first by default
+  const [page, setPage] = usePersistentState("invoices.page", 1);
+  const [pageSize, setPageSize] = usePersistentState("invoices.pageSize", 30);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
