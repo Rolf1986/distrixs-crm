@@ -46,11 +46,11 @@ const STATUS_FILTERS = [
 const PAGE_SIZES = [30, 60, 100];
 
 export function QuotesClient({ quotes }: { quotes: Quote[] }) {
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = usePersistentState("quotes.filter", "all");
   const [search, setSearch] = usePersistentState("quotes.search", "");
-  const [sortDesc, setSortDesc] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
+  const [sortDesc, setSortDesc] = usePersistentState("quotes.sortDesc", true);
+  const [page, setPage] = usePersistentState("quotes.page", 1);
+  const [pageSize, setPageSize] = usePersistentState("quotes.pageSize", 30);
 
   const today = new Date();
 

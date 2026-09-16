@@ -44,9 +44,9 @@ const PAGE_SIZES = [30, 60, 100];
 
 export function CustomersClient({ customers }: { customers: Customer[] }) {
   const [search, setSearch] = usePersistentState("customers.search", "");
-  const [filter, setFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
+  const [filter, setFilter] = usePersistentState("customers.filter", "all");
+  const [page, setPage] = usePersistentState("customers.page", 1);
+  const [pageSize, setPageSize] = usePersistentState("customers.pageSize", 30);
 
   const filtered = customers.filter((c) => {
     const matchesFilter = filter === "all" || c.status === filter;
