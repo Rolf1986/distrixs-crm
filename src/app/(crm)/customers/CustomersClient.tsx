@@ -16,6 +16,7 @@ type Customer = {
   status: string;
   dealCount: number;
   contactCount: number;
+  contactSearch: string;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -54,7 +55,8 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
       !search ||
       c.companyName.toLowerCase().includes(q) ||
       c.customerNumber.toLowerCase().includes(q) ||
-      (c.kvkNumber ?? "").toLowerCase().includes(q);
+      (c.kvkNumber ?? "").toLowerCase().includes(q) ||
+      c.contactSearch.toLowerCase().includes(q);
     return matchesFilter && matchesSearch;
   });
 
@@ -89,7 +91,7 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Zoeken op naam, nummer, KvK…"
+            placeholder="Zoeken op naam, contactpersoon, nummer, KvK…"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="rounded-lg border border-slate-200 pl-9 pr-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30 w-64"

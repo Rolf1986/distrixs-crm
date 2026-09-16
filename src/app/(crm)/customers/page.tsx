@@ -7,6 +7,10 @@ async function getCustomers() {
   return prisma.customer.findMany({
     include: {
       _count: { select: { deals: true, contacts: true } },
+      contacts: {
+        where: { isActive: true },
+        select: { firstName: true, lastName: true, email: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -34,6 +38,10 @@ export default async function CustomersPage() {
             status: c.status,
             dealCount: c._count.deals,
             contactCount: c._count.contacts,
+            // Doorzoekbare tekst: namen + e-mails van de contactpersonen
+            contactSearch: c.contacts
+              .map((p) => `${p.firstName} ${p.lastName} ${p.email ?? ""}`)
+              .join(" "),
           }))}
         />
       </div>
