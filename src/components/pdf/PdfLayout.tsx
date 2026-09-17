@@ -383,11 +383,32 @@ Customer: companies in possession of a chamber of commerce registration or non-p
 Dutch law applies to our terms. Disputes shall be submitted to a competent court in the Netherlands.`;
 
 // Lange SKU's (zonder spaties) breken niet af in react-pdf en lopen dan de
-// omschrijvingskolom in. Voeg zero-width spaces toe na scheidingstekens en om
-// de 8 tekens, zodat de code binnen zijn eigen kolom over meerdere regels wrapt.
-export function breakSku(sku: string | null | undefined): string {
+// omschrijvingskolom in. Splits ze zelf in regels van max ~10 tekens (bij
+// voorkeur na - / _ .), met echte newlines — die blijven gegarandeerd binnen
+// de kolom. (Zero-width spaces werken niet: Helvetica tekent ze als spatie.)
+export function breakSku(sku: string | null | undefined, maxLen = 10): string {
   if (!sku) return "";
-  return sku
-    .replace(/([\/\-_.])/g, "$1\u200b")
-    .replace(/([^\u200b\s]{8})(?=[^\u200b\s])/g, "$1\u200b");
+  const words = sku.split(" ");
+  const brokenWords = words.map((word) => {
+    if (word.length <= maxLen) return word;
+    // deel op scheidingstekens, plak greedy terug tot maxLen per regel
+    const parts = word.split(/(?<=[\/\-_.])/);
+    const lines: string[] = [];
+    let cur = "";
+    for (const p of parts) {
+      // een los deel dat zelf te lang is: hard knippen
+      const chunks = p.length > maxLen ? (p.match(new RegExp(`.{1,${maxLen}}`, "g")) ?? [p]) : [p];
+      for (const c of chunks) {
+        if (cur && (cur + c).length > maxLen) {
+          lines.push(cur);
+          cur = c;
+        } else {
+          cur += c;
+        }
+      }
+    }
+    if (cur) lines.push(cur);
+    return lines.join("\n");
+  });
+  return brokenWords.join(" ");
 }
