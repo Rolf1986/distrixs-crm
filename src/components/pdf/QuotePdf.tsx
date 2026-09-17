@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, Image, Link, StyleSheet } from "@react-pdf/renderer";
-import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN } from "./PdfLayout";
+import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN, breakSku } from "./PdfLayout";
 
 export interface QuotePdfData {
   language?: string;
@@ -57,7 +57,7 @@ export interface QuotePdfData {
 }
 
 const S = StyleSheet.create({
-  colSku:     { width: "11%", fontSize: 8, color: C.muted },
+  colSku:     { width: "11%", fontSize: 8, color: C.muted, paddingRight: 4 },
   colDesc:    { flex: 1 },
   colQty:     { width: "8%", textAlign: "right" },
   colPrice:   { width: "11%", textAlign: "right" },
@@ -174,7 +174,7 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
 
             const rows = [
               <View key={`line-${i}`} style={rowStyle}>
-                <Text style={S.colSku}>{line.skuSnapshot}</Text>
+                <Text style={S.colSku}>{breakSku(line.skuSnapshot)}</Text>
                 <View style={S.colDesc}>
                   <Text>{line.titleSnapshot}</Text>
                   {line.descriptionSnapshot ? (

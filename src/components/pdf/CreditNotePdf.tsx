@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, Image, Link, StyleSheet } from "@react-pdf/renderer";
-import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN } from "./PdfLayout";
+import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN, breakSku } from "./PdfLayout";
 
 export interface CreditNotePdfData {
   language?: string;
@@ -47,7 +47,7 @@ export interface CreditNotePdfData {
 }
 
 const S = StyleSheet.create({
-  colSku:   { width: "13%", fontSize: 8, color: C.muted },
+  colSku:   { width: "13%", fontSize: 8, color: C.muted, paddingRight: 4 },
   colDesc:  { flex: 1 },
   colQty:   { width: "9%", textAlign: "right" },
   colPrice: { width: "15%", textAlign: "right" },
@@ -169,7 +169,7 @@ export function CreditNotePdf({ data }: { data: CreditNotePdfData }) {
           </View>
           {displayLines.map((line, i) => (
             <View key={`line-${i}`} style={i % 2 === 0 ? shared.tableRow : shared.tableRowAlt}>
-              <Text style={S.colSku}>{line.skuSnapshot}</Text>
+              <Text style={S.colSku}>{breakSku(line.skuSnapshot)}</Text>
               <View style={S.colDesc}>
                 <Text>{line.titleSnapshot}</Text>
               </View>

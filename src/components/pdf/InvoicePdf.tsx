@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, Image, Link, StyleSheet } from "@react-pdf/renderer";
-import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN } from "./PdfLayout";
+import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN, breakSku } from "./PdfLayout";
 
 export interface InvoicePdfData {
   language?: string;
@@ -64,7 +64,7 @@ export interface InvoicePdfData {
 }
 
 const S = StyleSheet.create({
-  colSku:     { width: "13%", fontSize: 8, color: C.muted },
+  colSku:     { width: "13%", fontSize: 8, color: C.muted, paddingRight: 4 },
   colDesc:    { flex: 1 },
   colQty:     { width: "9%", textAlign: "right" },
   colPrice:   { width: "13%", textAlign: "right" },
@@ -205,7 +205,7 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
 
             const rows = [
               <View key={`line-${i}`} style={rowStyle}>
-                <Text style={S.colSku}>{line.skuSnapshot}</Text>
+                <Text style={S.colSku}>{breakSku(line.skuSnapshot)}</Text>
                 <View style={S.colDesc}>
                   <Text>{line.titleSnapshot}</Text>
                   {line.descriptionSnapshot ? (
