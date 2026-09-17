@@ -7,7 +7,9 @@ const VALID_TRANSITIONS: Record<string, string[]> = {
   // systeem de deur uit
   DRAFT:    ["SENT", "ACCEPTED"],
   SENT:     ["ACCEPTED", "REJECTED"],
-  ACCEPTED: [],
+  // Akkoord terugdraaien kan (bijv. klant komt er toch op terug); een al
+  // aangemaakte factuur blijft gewoon bestaan (losse snapshot).
+  ACCEPTED: ["SENT", "REJECTED"],
   REJECTED: ["DRAFT"], // allow re-draft
 };
 

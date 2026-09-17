@@ -18,6 +18,10 @@ const transitions: Record<string, Array<{ status: string; label: string; icon: R
     { status: "ACCEPTED", label: "Akkoord + factuur", icon: <CheckCircle className="w-4 h-4" />, variant: "green" },
     { status: "REJECTED", label: "Afgewezen", icon: <XCircle className="w-4 h-4" />, variant: "red" },
   ],
+  ACCEPTED: [
+    { status: "SENT", label: "Toch niet akkoord", icon: <RotateCcw className="w-4 h-4" />, variant: "gray" },
+    { status: "REJECTED", label: "Afgewezen", icon: <XCircle className="w-4 h-4" />, variant: "red" },
+  ],
   REJECTED: [
     { status: "DRAFT", label: "Terugzetten naar concept", icon: <RotateCcw className="w-4 h-4" />, variant: "gray" },
   ],
