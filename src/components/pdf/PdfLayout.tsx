@@ -381,3 +381,13 @@ Customer: companies in possession of a chamber of commerce registration or non-p
 
 13 Applicable law
 Dutch law applies to our terms. Disputes shall be submitted to a competent court in the Netherlands.`;
+
+// Lange SKU's (zonder spaties) breken niet af in react-pdf en lopen dan de
+// omschrijvingskolom in. Voeg zero-width spaces toe na scheidingstekens en om
+// de 8 tekens, zodat de code binnen zijn eigen kolom over meerdere regels wrapt.
+export function breakSku(sku: string | null | undefined): string {
+  if (!sku) return "";
+  return sku
+    .replace(/([\/\-_.])/g, "$1\u200b")
+    .replace(/([^\u200b\s]{8})(?=[^\u200b\s])/g, "$1\u200b");
+}

@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
-import { shared, C, fmt, fmtDate, t } from "./PdfLayout";
+import { shared, C, fmt, fmtDate, t, breakSku } from "./PdfLayout";
 
 export interface OrderConfirmationPdfData {
   language?: string;
@@ -47,7 +47,7 @@ export interface OrderConfirmationPdfData {
 }
 
 const S = StyleSheet.create({
-  colSku:      { width: "12%", fontSize: 8, color: C.muted },
+  colSku:      { width: "12%", fontSize: 8, color: C.muted, paddingRight: 4 },
   colDesc:     { flex: 1 },
   colQty:      { width: "7%", textAlign: "right" },
   colPrice:    { width: "12%", textAlign: "right" },
@@ -165,7 +165,7 @@ export function OrderConfirmationPdf({ data }: { data: OrderConfirmationPdfData 
           </View>
           {data.lines.map((line, i) => (
             <View key={i} style={i % 2 === 0 ? shared.tableRow : shared.tableRowAlt}>
-              <Text style={S.colSku}>{line.skuSnapshot}</Text>
+              <Text style={S.colSku}>{breakSku(line.skuSnapshot)}</Text>
               <Text style={S.colDesc}>{line.titleSnapshot}</Text>
               <Text style={S.colQty}>{line.qty}</Text>
               <Text style={S.colPrice}>{fmt(line.grossUnitPrice, lang)}</Text>
