@@ -33,11 +33,15 @@ export function DueDateEditor({ invoiceId, value, locked }: Props) {
     if (!next) { setEditing(false); return; }
     setSaving(true);
     try {
-      await fetch(`/api/invoices/${invoiceId}`, {
+      const res = await fetch(`/api/invoices/${invoiceId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dueDate: next }),
       });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        alert(d.error ?? "Vervaldatum opslaan mislukt");
+      }
       router.refresh();
     } finally {
       setSaving(false);

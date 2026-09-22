@@ -40,3 +40,21 @@ export async function POST(
 
   return NextResponse.json(contact, { status: 201 });
 }
+
+// Actieve contactpersonen van een klant (voor selectors, o.a. de deal-popup)
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession(req);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
+  }
+  const { id: customerId } = await params;
+  const contacts = await prisma.customerContact.findMany({
+    where: { customerId, isActive: true },
+    select: { id: true, firstName: true, lastName: true, isPrimary: true },
+    orderBy: [{ isPrimary: "desc" }, { firstName: "asc" }],
+  });
+  return NextResponse.json(contacts);
+}
