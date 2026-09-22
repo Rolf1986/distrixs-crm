@@ -813,10 +813,13 @@ export async function syncCreditNoteToTwinfield(
           ? `\n        <performancetype>goods</performancetype>\n        <performancecountry>${escapeXml(billingCountry)}</performancecountry>\n        <performancevatnumber>${escapeXml(custVat)}</performancevatnumber>`
           : "";
         const netValue = Math.abs(Number(line.lineTotal)).toFixed(2);
+        // Gewone creditregels (negatief) → debet; positieve regels (bijv. een
+        // gecrediteerde kortingsregel) → credit, anders balanceert de boeking niet
+        const side = Number(line.lineTotal) < 0 ? "debit" : "credit";
         const desc = (line.titleSnapshot ?? "").slice(0, 40);
         return `      <line type="detail" id="${2 + i}">
         <dim1>${escapeXml(lineAccount)}</dim1>
-        <debitcredit>debit</debitcredit>
+        <debitcredit>${side}</debitcredit>
         <value>${netValue}</value>
         <vatcode>${escapeXml(lineVatCode)}</vatcode>
         <description>${escapeXml(desc)}</description>${perf}
