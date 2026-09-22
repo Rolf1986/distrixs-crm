@@ -167,9 +167,9 @@ export function OrderConfirmationPdf({ data }: { data: OrderConfirmationPdfData 
             <View key={i} style={i % 2 === 0 ? shared.tableRow : shared.tableRowAlt}>
               <Text style={S.colSku}>{breakSku(line.skuSnapshot)}</Text>
               <Text style={S.colDesc}>{line.titleSnapshot}</Text>
-              <Text style={S.colQty}>{line.qty}</Text>
-              <Text style={S.colPrice}>{fmt(line.grossUnitPrice, lang)}</Text>
-              <Text style={S.colTotal}>{fmt(line.netLineTotal, lang)}</Text>
+              <Text style={S.colQty}>{line.qty === 0 && line.netLineTotal === 0 ? "" : line.qty}</Text>
+              <Text style={S.colPrice}>{line.qty === 0 && line.netLineTotal === 0 ? "" : fmt(line.grossUnitPrice, lang)}</Text>
+              <Text style={S.colTotal}>{line.qty === 0 && line.netLineTotal === 0 ? "" : fmt(line.netLineTotal, lang)}</Text>
               <Text style={S.colDelivery}>
                 {line.deliveryDate
                   ? fmtDate(line.deliveryDate, lang)

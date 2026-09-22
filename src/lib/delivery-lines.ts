@@ -52,11 +52,14 @@ export async function resolveDeliveryLines(
       select: { skuSnapshot: true, titleSnapshot: true, qty: true },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     });
-    lines = rows.map((l) => ({
-      skuSnapshot: l.skuSnapshot,
-      titleSnapshot: l.titleSnapshot,
-      qty: Number(l.qty),
-    }));
+    lines = rows
+      .map((l) => ({
+        skuSnapshot: l.skuSnapshot,
+        titleSnapshot: l.titleSnapshot,
+        qty: Number(l.qty),
+      }))
+      // tekst-/lege regels (aantal 0) horen niet op een verzenddocument
+      .filter((l) => l.qty > 0);
     const q = await prisma.quote.findUnique({
       where: { id: sourceQuoteId },
       select: { language: true },

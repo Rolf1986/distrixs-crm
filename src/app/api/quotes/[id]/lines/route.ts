@@ -29,7 +29,30 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const guardError = await assertQuoteEditable(quoteId);
   if (guardError) return NextResponse.json({ error: guardError }, { status: 409 });
 
-  const { productId, skuSnapshot, titleSnapshot, qty, grossUnitPrice, discountPercent, vatRate } = await req.json();
+  const { productId, skuSnapshot, titleSnapshot, qty, grossUnitPrice, discountPercent, vatRate, costSnapshot: bodyCost, isTextLine } = await req.json();
+
+  // Tekst-/lege regel: alleen een omschrijving (of niets), zonder bedragen.
+  // Komt op de PDF als vrije tekstregel; telt nergens in mee.
+  if (isTextLine === true) {
+    const maxPosText = await prisma.quoteLine.aggregate({ where: { quoteId }, _max: { position: true } });
+    const line = await prisma.quoteLine.create({
+      data: {
+        quoteId,
+        position: (maxPosText._max.position ?? 0) + 1,
+        skuSnapshot: "",
+        titleSnapshot: (titleSnapshot ?? "").trim() || " ",
+        qty: 0,
+        grossUnitPrice: 0,
+        discountPercent: 0,
+        netLineTotal: 0,
+        vatRate: 0,
+        vatAmount: 0,
+        costSnapshot: 0,
+        expectedMarginSnapshot: 0,
+      },
+    });
+    return NextResponse.json(line);
+  }
 
   // SKU is optioneel (bv. eenmalige regel die geen product is) → "—"
   const sku = (skuSnapshot ?? "").trim() || "—";
@@ -84,9 +107,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const netLineTotal = calcNetLineTotal(effectiveGrossPrice, Number(qty), Number(discount));
   const lineVatAmount = calcLineVat(netLineTotal, rate);
 
-  // Haal inkoopprijs op van product
+  // Inkoopprijs: expliciet meegegeven waarde wint; anders die van het product
   let costSnapshot = 0;
-  if (productId) {
+  if (bodyCost !== undefined && bodyCost !== null && Number(bodyCost) > 0) {
+    costSnapshot = Number(bodyCost);
+  } else if (productId) {
     const product = await prisma.product.findUnique({ where: { id: productId }, select: { baseCostPrice: true } });
     costSnapshot = Number(product?.baseCostPrice ?? 0);
   }
