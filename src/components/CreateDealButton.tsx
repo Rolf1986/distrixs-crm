@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { CreateModal, FormField, inputClass } from "@/components/ui/CreateModal";
@@ -17,6 +17,23 @@ export function CreateDealButton({ customers }: Props) {
   const [error, setError] = useState("");
   const [title, setTitle] = useState("");
   const [customerId, setCustomerId] = useState("");
+  const [contactId, setContactId] = useState("");
+  const [contacts, setContacts] = useState<Array<{ id: string; firstName: string; lastName: string; isPrimary: boolean }>>([]);
+
+  // Contactpersonen laden zodra er een klant gekozen is; primaire vooraf selecteren
+  useEffect(() => {
+    if (!customerId) { setContacts([]); setContactId(""); return; }
+    let cancelled = false;
+    fetch(`/api/customers/${customerId}/contacts`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => {
+        if (cancelled) return;
+        setContacts(list);
+        setContactId(list.find((c: { isPrimary: boolean }) => c.isPrimary)?.id ?? list[0]?.id ?? "");
+      })
+      .catch(() => { if (!cancelled) setContacts([]); });
+    return () => { cancelled = true; };
+  }, [customerId]);
   const [expectedCloseDate, setExpectedCloseDate] = useState("");
 
   function reset() { setTitle(""); setCustomerId(""); setExpectedCloseDate(""); setError(""); }
@@ -30,7 +47,7 @@ export function CreateDealButton({ customers }: Props) {
       const res = await fetch("/api/deals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim(), customerId, expectedCloseDate: expectedCloseDate || undefined }),
+        body: JSON.stringify({ title: title.trim(), customerId, primaryContactId: contactId || undefined, expectedCloseDate: expectedCloseDate || undefined }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Fout bij aanmaken"); return; }
@@ -61,6 +78,18 @@ export function CreateDealButton({ customers }: Props) {
               placeholder="Zoek en selecteer klant…"
             />
           </FormField>
+          {customerId && (
+            <FormField label="Contactpersoon">
+              <select className={inputClass} value={contactId} onChange={(e) => setContactId(e.target.value)}>
+                <option value="">— Geen contactpersoon —</option>
+                {contacts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.firstName} {c.lastName}{c.isPrimary ? " (primair)" : ""}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          )}
           <FormField label="Titel" required>
             <input
               className={inputClass}

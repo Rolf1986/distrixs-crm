@@ -174,7 +174,7 @@ export default async function InvoiceLayout({
               <DueDateEditor
                 invoiceId={id}
                 value={invoice.dueDate.toISOString()}
-                locked={invoice.twinfieldLocked}
+                locked={false}
               />
               <OurReferenceEditor invoiceId={id} value={invoice.ourReference ?? null} />
               <DealLink

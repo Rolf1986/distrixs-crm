@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const session = await getSession(req);
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
-  const { title, customerId, notes, expectedCloseDate } = await req.json();
+  const { title, customerId, notes, expectedCloseDate, primaryContactId } = await req.json();
   if (!title || !customerId) {
     return NextResponse.json({ error: "Titel en klant zijn verplicht" }, { status: 400 });
   }
@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       dealNumber,
       title,
       customerId,
+      primaryContactId: primaryContactId || null,
       status: "NEW",
       notes: notes || null,
       expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate) : null,

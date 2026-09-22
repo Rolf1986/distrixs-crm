@@ -39,15 +39,11 @@ export async function PATCH(
     }
   }
 
-  // Vervaldatum aanpasbaar (bv. betaalafspraak verlengen). Niet op een
-  // via Twinfield vergrendelde factuur.
+  // Vervaldatum/betaaltermijn aanpasbaar, óók op een Twinfield-vergrendelde
+  // factuur: de lock beschermt de inhoud (regels/bedragen), niet de
+  // betaalafspraken.
   const wantsDueDate = "dueDate" in body && body.dueDate;
   if (wantsDueDate || "paymentTermType" in body) {
-    const inv = await prisma.invoice.findUnique({ where: { id }, select: { twinfieldLocked: true } });
-    if (!inv) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-    if (inv.twinfieldLocked) {
-      return NextResponse.json({ error: "Factuur is vergrendeld via Twinfield" }, { status: 403 });
-    }
     if (wantsDueDate) {
       const d = new Date(body.dueDate);
       if (!isNaN(d.getTime())) data.dueDate = d;
