@@ -79,21 +79,26 @@ export function CreateCreditNoteButton({
   }
 
   function setQty(id: string, qty: number, max: number) {
-    const clamped = Math.max(0, Math.min(qty, max));
+    // Negatieve regels (bijv. korting): clampen tussen max (negatief) en 0
+    const clamped = max < 0 ? Math.min(0, Math.max(qty, max)) : Math.max(0, Math.min(qty, max));
     setCreditQty((p) => ({ ...p, [id]: clamped }));
+  }
+
+  // Creditbedrag per regel, mét teken: gewone regels positief, korting negatief
+  function lineCreditAmount(line: InvoiceLine, qty: number): number {
+    return Number(line.netLineTotal) * (qty / (line.qty || 1));
   }
 
   const selected = lines
     .map((l) => ({ line: l, qty: creditQty[l.id] ?? 0 }))
-    .filter((s) => s.qty > 0);
+    .filter((s) => s.qty !== 0);
 
   const creditSubtotal = selected.reduce(
-    (s, { line, qty }) => s + Math.abs(Number(line.netLineTotal)) * (qty / (line.qty || 1)),
+    (s, { line, qty }) => s + lineCreditAmount(line, qty),
     0
   );
   const creditVat = selected.reduce(
-    (s, { line, qty }) =>
-      s + Math.abs(Number(line.netLineTotal)) * (qty / (line.qty || 1)) * (Number(line.vatRate) / 100),
+    (s, { line, qty }) => s + lineCreditAmount(line, qty) * (Number(line.vatRate) / 100),
     0
   );
   const validCustom = customLines.filter((c) => c.description.trim() && Number(c.amount) > 0);
@@ -178,9 +183,9 @@ export function CreateCreditNoteButton({
                 <tbody className="divide-y divide-slate-50">
                   {lines.map((l) => {
                     const qty = creditQty[l.id] ?? 0;
-                    const lineCredit = Math.abs(Number(l.netLineTotal)) * (qty / (l.qty || 1));
+                    const lineCredit = lineCreditAmount(l, qty);
                     return (
-                      <tr key={l.id} className={qty > 0 ? "" : "opacity-50"}>
+                      <tr key={l.id} className={qty !== 0 ? "" : "opacity-50"}>
                         <td className="py-2 pr-2">
                           <div className="font-medium text-slate-800">{l.titleSnapshot}</div>
                           <div className="text-xs text-slate-400 font-mono">{l.skuSnapshot}</div>
@@ -191,16 +196,16 @@ export function CreateCreditNoteButton({
                         <td className="py-2 text-right">
                           <input
                             type="number"
-                            min={0}
-                            max={l.qty}
+                            min={l.qty < 0 ? l.qty : 0}
+                            max={l.qty < 0 ? 0 : l.qty}
                             step="any"
                             value={qty}
                             onChange={(e) => setQty(l.id, Number(e.target.value), l.qty)}
                             className="w-20 border border-slate-200 rounded px-2 py-1 text-right text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
                           />
                         </td>
-                        <td className="py-2 text-right font-medium text-red-600">
-                          −{fmt(lineCredit)}
+                        <td className={`py-2 text-right font-medium ${lineCredit >= 0 ? "text-red-600" : "text-green-700"}`}>
+                          {lineCredit >= 0 ? `−${fmt(lineCredit)}` : `+${fmt(-lineCredit)}`}
                         </td>
                       </tr>
                     );

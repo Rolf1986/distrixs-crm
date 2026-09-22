@@ -56,11 +56,15 @@ export async function POST(
       let creditQty = fullQty;
       if (selection) {
         const sel = selection.find((s) => s.lineId === l.id);
-        creditQty = sel ? Math.max(0, Math.min(Number(sel.qty), fullQty)) : 0;
+        const wanted = sel ? Number(sel.qty) : 0;
+        // Negatieve regels (korting): clampen tussen fullQty (negatief) en 0
+        creditQty = fullQty < 0
+          ? Math.min(0, Math.max(wanted, fullQty))
+          : Math.max(0, Math.min(wanted, fullQty));
       }
       return { line: l, creditQty, fullQty };
     })
-    .filter((x) => x.creditQty > 0);
+    .filter((x) => x.creditQty !== 0);
 
   if (toCredit.length === 0 && customLines.length === 0) {
     return NextResponse.json({ error: "Geen regels geselecteerd om te crediteren" }, { status: 400 });
@@ -71,9 +75,11 @@ export async function POST(
 
   // Regels: negatief; bij deel-aantal proportioneel op basis van het regeltotaal.
   const creditLines = toCredit.map(({ line, creditQty, fullQty }) => {
-    const ratio = fullQty > 0 ? creditQty / fullQty : 1;
-    const netLineTotal = -Math.abs(Number(line.netLineTotal)) * ratio;
-    const vatAmount = -Math.abs(Number(line.netLineTotal)) * ratio * (Number(line.vatRate) / 100);
+    const ratio = fullQty !== 0 ? creditQty / fullQty : 1;
+    // Teken respecteren: gewone regels worden negatief (crediet), een
+    // kortingsregel wordt positief en verlaagt zo het creditbedrag
+    const netLineTotal = -(Number(line.netLineTotal) * ratio);
+    const vatAmount = -(Number(line.netLineTotal) * ratio) * (Number(line.vatRate) / 100);
     return {
       skuSnapshot: line.skuSnapshot,
       titleSnapshot: line.titleSnapshot,
