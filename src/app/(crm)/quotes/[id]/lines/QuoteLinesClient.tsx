@@ -226,6 +226,7 @@ export function QuoteLinesClient({
           grossUnitPrice: Number(addPrice),
           discountPercent: Number(addDiscount),
           vatRate: addVatRate,
+          costSnapshot: addCostPrice || 0,
         }),
       });
       if (!res.ok) {
@@ -261,6 +262,38 @@ export function QuoteLinesClient({
       router.refresh();
     } finally {
       setAdding(false);
+    }
+  }
+
+  const [textLine, setTextLine] = useState("");
+  const [addingText, setAddingText] = useState(false);
+
+  // Vrije tekstregel of lege (witruimte)regel toevoegen
+  async function addTextLine(text: string) {
+    setAddingText(true);
+    try {
+      const res = await fetch(`/api/quotes/${quoteId}/lines`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isTextLine: true, titleSnapshot: text }),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); alert(err.error ?? "Fout bij toevoegen"); return; }
+      const line = await res.json();
+      setLines((prev) => [...prev, {
+        id: line.id,
+        skuSnapshot: line.skuSnapshot,
+        titleSnapshot: line.titleSnapshot,
+        qty: 0,
+        grossUnitPrice: 0,
+        discountPercent: 0,
+        netLineTotal: 0,
+        vatRate: 0,
+        vatAmount: 0,
+      }]);
+      setTextLine("");
+      router.refresh();
+    } finally {
+      setAddingText(false);
     }
   }
 
@@ -477,10 +510,10 @@ export function QuoteLinesClient({
                       )}
                     </td>
                     <td className="px-4 py-3 text-right text-slate-500">
-                      {formatCurrency(previewVat)}
+                      {line.qty === 0 && line.grossUnitPrice === 0 ? "" : formatCurrency(previewVat)}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-slate-900">
-                      {formatCurrency(previewNet)}
+                      {line.qty === 0 && line.grossUnitPrice === 0 ? "" : formatCurrency(previewNet)}
                     </td>
                     <td className="px-2 py-3" onClick={(e) => e.stopPropagation()}>
                       {isEditing ? (
@@ -720,6 +753,38 @@ export function QuoteLinesClient({
               </button>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Vrije tekstregel of lege regel (zonder bedragen, alleen op de PDF) */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-3">
+          Tekstregel / lege regel
+        </h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className={`${inputClass} flex-1 min-w-[240px]`}
+            placeholder="bijv. 'Zaal 1' of een toelichting… (leeg laten = witregel)"
+            value={textLine}
+            onChange={(e) => setTextLine(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && textLine.trim()) addTextLine(textLine); }}
+          />
+          <button
+            onClick={() => addTextLine(textLine)}
+            disabled={addingText || !textLine.trim()}
+            className="flex items-center gap-1.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {addingText ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Tekstregel
+          </button>
+          <button
+            onClick={() => addTextLine("")}
+            disabled={addingText}
+            className="border border-slate-200 hover:border-slate-300 bg-white text-slate-500 text-sm font-medium px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
+            title="Voegt een witregel toe voor extra ruimte op de PDF"
+          >
+            Lege regel
+          </button>
         </div>
       </div>
     </div>

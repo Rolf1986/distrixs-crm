@@ -197,6 +197,7 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
           {data.lines.flatMap((line, i) => {
             const grossTotal   = line.qty * line.grossUnitPrice;
             const hasDiscount  = line.discountPercent > 0;
+            const isText = line.qty === 0 && line.grossUnitPrice === 0 && line.netLineTotal === 0;
             const netUnitPrice = hasDiscount
               ? line.grossUnitPrice * (1 - line.discountPercent / 100)
               : null;
@@ -214,13 +215,13 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
                     </Text>
                   ) : null}
                 </View>
-                <Text style={S.colQty}>{line.qty}</Text>
-                <Text style={S.colPrice}>{fmt(line.grossUnitPrice, lang)}</Text>
+                <Text style={S.colQty}>{isText ? "" : line.qty}</Text>
+                <Text style={S.colPrice}>{isText ? "" : fmt(line.grossUnitPrice, lang)}</Text>
                 <Text style={S.colDiscount}>
-                  {hasDiscount ? `−${line.discountPercent}%` : "—"}
+                  {isText ? "" : hasDiscount ? `−${line.discountPercent}%` : "—"}
                 </Text>
                 <Text style={[S.colTotal, { fontFamily: "Helvetica-Bold" }]}>
-                  {fmt(line.netLineTotal, lang)}
+                  {isText ? "" : fmt(line.netLineTotal, lang)}
                 </Text>
               </View>,
             ];

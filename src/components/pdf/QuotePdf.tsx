@@ -169,6 +169,7 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
           </View>
           {data.lines.flatMap((line, i) => {
             const hasDiscount = line.discountPercent > 0;
+            const isText = line.qty === 0 && line.grossUnitPrice === 0 && line.netLineTotal === 0;
             const netUnitPrice = line.grossUnitPrice * (1 - line.discountPercent / 100);
             const rowStyle = i % 2 === 0 ? shared.tableRow : shared.tableRowAlt;
 
@@ -183,16 +184,16 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
                     </Text>
                   ) : null}
                 </View>
-                <Text style={S.colQty}>{line.qty}</Text>
-                <Text style={S.colPrice}>{fmt(line.grossUnitPrice, lang)}</Text>
+                <Text style={S.colQty}>{isText ? "" : line.qty}</Text>
+                <Text style={S.colPrice}>{isText ? "" : fmt(line.grossUnitPrice, lang)}</Text>
                 <Text style={S.colDiscount}>
-                  {hasDiscount ? `−${line.discountPercent}%` : "—"}
+                  {isText ? "" : hasDiscount ? `−${line.discountPercent}%` : "—"}
                 </Text>
                 <Text style={S.colNet}>
-                  {hasDiscount ? fmt(netUnitPrice, lang) : "—"}
+                  {isText ? "" : hasDiscount ? fmt(netUnitPrice, lang) : "—"}
                 </Text>
                 <Text style={[S.colTotal, { fontFamily: "Helvetica-Bold" }]}>
-                  {fmt(line.netLineTotal, lang)}
+                  {isText ? "" : fmt(line.netLineTotal, lang)}
                 </Text>
               </View>,
             ];
