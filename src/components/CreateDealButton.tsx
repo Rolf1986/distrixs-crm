@@ -20,6 +20,38 @@ export function CreateDealButton({ customers }: Props) {
   const [contactId, setContactId] = useState("");
   const [contacts, setContacts] = useState<Array<{ id: string; firstName: string; lastName: string; isPrimary: boolean }>>([]);
 
+  // Nieuw contactpersoon direct vanuit deze popup toevoegen
+  const [addingContact, setAddingContact] = useState(false);
+  const [newFirst, setNewFirst] = useState("");
+  const [newLast, setNewLast] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newContactBusy, setNewContactBusy] = useState(false);
+  const [newContactError, setNewContactError] = useState<string | null>(null);
+
+  async function createContact() {
+    if (!newFirst.trim() || !newLast.trim()) {
+      setNewContactError("Voor- en achternaam zijn verplicht");
+      return;
+    }
+    setNewContactBusy(true);
+    setNewContactError(null);
+    try {
+      const res = await fetch(`/api/customers/${customerId}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: newFirst, lastName: newLast, email: newEmail || null }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { setNewContactError(d.error ?? "Toevoegen mislukt"); return; }
+      setContacts((prev) => [...prev, d]);
+      setContactId(d.id);
+      setAddingContact(false);
+      setNewFirst(""); setNewLast(""); setNewEmail("");
+    } finally {
+      setNewContactBusy(false);
+    }
+  }
+
   // Contactpersonen laden zodra er een klant gekozen is; primaire vooraf selecteren
   useEffect(() => {
     if (!customerId) { setContacts([]); setContactId(""); return; }
@@ -80,14 +112,66 @@ export function CreateDealButton({ customers }: Props) {
           </FormField>
           {customerId && (
             <FormField label="Contactpersoon">
-              <select className={inputClass} value={contactId} onChange={(e) => setContactId(e.target.value)}>
+              <select
+                className={inputClass}
+                value={contactId}
+                onChange={(e) => {
+                  if (e.target.value === "__new__") { setAddingContact(true); return; }
+                  setContactId(e.target.value);
+                }}
+              >
                 <option value="">— Geen contactpersoon —</option>
                 {contacts.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.firstName} {c.lastName}{c.isPrimary ? " (primair)" : ""}
                   </option>
                 ))}
+                <option value="__new__">＋ Nieuw contactpersoon…</option>
               </select>
+              {addingContact && (
+                <div className="mt-2 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={newFirst}
+                      onChange={(e) => setNewFirst(e.target.value)}
+                      placeholder="Voornaam *"
+                      autoFocus
+                      className={inputClass}
+                    />
+                    <input
+                      value={newLast}
+                      onChange={(e) => setNewLast(e.target.value)}
+                      placeholder="Achternaam *"
+                      className={inputClass}
+                    />
+                  </div>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="E-mail (optioneel)"
+                    className={`${inputClass} w-full`}
+                  />
+                  {newContactError && <p className="text-xs text-red-600">{newContactError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={createContact}
+                      disabled={newContactBusy}
+                      className="text-xs font-medium bg-brand-blue hover:bg-brand-blue-dark text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+                    >
+                      Toevoegen & selecteren
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAddingContact(false); setNewContactError(null); }}
+                      className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5"
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+                </div>
+              )}
             </FormField>
           )}
           <FormField label="Titel" required>
