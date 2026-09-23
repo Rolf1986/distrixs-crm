@@ -454,7 +454,15 @@ export function ProductsClient({
                           </button>
                         </td>
                         <td className="px-4 py-3 font-mono text-xs text-slate-400">{p.sku}</td>
-                        <td className="px-4 py-3 font-medium text-slate-900">{p.title}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">
+                          <Link
+                            href={`/products/${p.id}/sales`}
+                            className="hover:text-brand-blue transition-colors"
+                            title="Bekijk aan wie dit product verkocht is"
+                          >
+                            {p.title}
+                          </Link>
+                        </td>
                         <td className="px-4 py-3">
                           <span className={`text-xs font-medium px-2 py-0.5 rounded ${SUPPLIER_TYPE_COLOR[p.supplierType] ?? "bg-slate-100 text-slate-600"}`}>
                             {p.supplierType === "CHINA" ? "🇨🇳 " : p.supplierType === "EU" ? "🇪🇺 " : ""}{p.supplierName}
