@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { normalizeVatNumber } from "@/lib/vat";
 
 export async function POST(req: NextRequest) {
   const session = await getSession(req);
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
           customerNumber,
           companyName: companyName.trim(),
           kvkNumber: kvkNumber?.trim() || null,
-          vatNumber: vatNumber?.trim() || null,
+          vatNumber: normalizeVatNumber(vatNumber),
           email: email?.trim() || null,
           defaultPaymentTerm: (defaultPaymentTerm as never) || "DAYS_14",
           defaultLanguage: defaultLanguage === "EN" ? "EN" : "NL",
