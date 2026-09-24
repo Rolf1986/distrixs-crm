@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { normalizeVatNumber } from "@/lib/vat";
 
 export async function PATCH(
   req: NextRequest,
@@ -22,6 +23,8 @@ export async function PATCH(
   ];
   for (const f of allowed) {
     if (f in body) data[f] = body[f] === "" ? null : body[f];
+    // Btw-nummer altijd genormaliseerd opslaan (geen puntjes/spaties)
+    if (f === "vatNumber" && f in body) data[f] = normalizeVatNumber(body[f]);
   }
   // Taal moet NL of EN zijn
   if ("defaultLanguage" in data && data.defaultLanguage !== "EN") data.defaultLanguage = "NL";

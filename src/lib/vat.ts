@@ -38,3 +38,11 @@ export function defaultVatRateForCustomer(
 ): number {
   return isEuReverseCharge(country, vatNumber) ? 0 : 21;
 }
+
+// Btw-nummers komen vaak met puntjes/spaties binnen ("BE 0123.456.789");
+// Twinfield en VIES willen alleen letters+cijfers ("BE0123456789").
+export function normalizeVatNumber(v: string | null | undefined): string | null {
+  if (!v) return null;
+  const clean = v.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+  return clean || null;
+}

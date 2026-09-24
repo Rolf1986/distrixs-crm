@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { normalizeCountry } from "@/lib/vat";
+import { normalizeCountry , normalizeVatNumber } from "@/lib/vat";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -334,8 +334,9 @@ type DebtorAddress = {
  *  uitvoeringsland voor ICP af van het debiteuradres — zonder adres valt
  *  dat terug op NL en weigert Twinfield de intracommunautaire boeking. */
 function debtorDetailsXml(companyName: string, vatNumber: string | null | undefined, addr: DebtorAddress | null | undefined): string {
-  const vat = vatNumber?.trim()
-    ? `<vatnumber>${escapeXml(vatNumber.trim().replace(/\s/g, ""))}</vatnumber>`
+  const cleanVat = normalizeVatNumber(vatNumber);
+  const vat = cleanVat
+    ? `<vatnumber>${escapeXml(cleanVat)}</vatnumber>`
     : "";
   const address = addr
     ? `<addresses><address default="true" type="invoice"><name>${escapeXml(companyName)}</name><country>${escapeXml(addr.country)}</country><city>${escapeXml(addr.city)}</city><postcode>${escapeXml(addr.postalCode)}</postcode><field2>${escapeXml(`${addr.street} ${addr.houseNumber}`.trim())}</field2></address></addresses>`
@@ -619,7 +620,7 @@ export async function syncInvoiceToTwinfield(
     //                 anders VN/8500 (buiten EU of NL-0%)
     const isEu = EU_COUNTRIES.has(billingCountry);
     const hasIclLines = invoice.lines.some((l) => Number(l.vatRate) === 0) && isEu;
-    const custVat = invoice.customer.vatNumber?.trim().replace(/\s/g, "") ?? "";
+    const custVat = normalizeVatNumber(invoice.customer.vatNumber) ?? "";
     if (hasIclLines && !custVat) {
       return {
         success: false,
@@ -795,7 +796,7 @@ export async function syncCreditNoteToTwinfield(
 
     const isEu = EU_COUNTRIES.has(billingCountry);
     const hasIclLines = cn.lines.some((l) => Number(l.vatRate) === 0) && isEu;
-    const custVat = cn.customer.vatNumber?.trim().replace(/\s/g, "") ?? "";
+    const custVat = normalizeVatNumber(cn.customer.vatNumber) ?? "";
     if (hasIclLines && !custVat) {
       return {
         success: false,
