@@ -32,7 +32,11 @@ export function AddPaymentForm({ invoiceId, invoiceStatus, twinfieldLocked }: Pr
   const [method, setMethod] = useState("BANK_TRANSFER");
   const [reference, setReference] = useState("");
 
-  const locked = twinfieldLocked || invoiceStatus === "PAID" || invoiceStatus === "CREDITED";
+  // Twinfield-lock beschermt de inhoud van de factuur, niet de betalingen:
+  // op een geboekte factuur moeten betalingen gewoon geregistreerd kunnen
+  // worden. Alleen bij volledig betaald/gecrediteerd is het formulier weg.
+  void twinfieldLocked;
+  const locked = invoiceStatus === "PAID" || invoiceStatus === "CREDITED";
 
   if (locked) return null;
 
