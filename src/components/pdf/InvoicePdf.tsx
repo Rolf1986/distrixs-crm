@@ -64,12 +64,13 @@ export interface InvoicePdfData {
 }
 
 const S = StyleSheet.create({
-  colSku:     { width: "13%", fontSize: 8, color: C.muted, paddingRight: 4 },
+  colSku:     { width: "11%", fontSize: 8, color: C.muted, paddingRight: 4 },
   colDesc:    { flex: 1 },
-  colQty:     { width: "9%", textAlign: "right" },
-  colPrice:   { width: "13%", textAlign: "right" },
-  colDiscount:{ width: "10%", textAlign: "right", color: C.muted },
-  colTotal:   { width: "14%", textAlign: "right" },
+  colQty:     { width: "8%", textAlign: "right" },
+  colPrice:   { width: "11%", textAlign: "right" },
+  colDiscount:{ width: "9%", textAlign: "right", color: C.muted },
+  colNet:     { width: "11%", textAlign: "right" },
+  colTotal:   { width: "13%", textAlign: "right" },
   discountRow:{ color: "#d97706", fontSize: 8 },
   // Meta header row (Nummer / Datum / Betaaltermijn / Uw referentie / FACTUUR)
   metaHeader: {
@@ -192,19 +193,16 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
             <Text style={[S.colQty,      shared.thText]}>{t("qty", lang)}</Text>
             <Text style={[S.colPrice,    shared.thText]}>{t("unitPrice", lang)}</Text>
             <Text style={[S.colDiscount, shared.thText]}>{lang === "EN" ? "Discount" : "Korting"}</Text>
+            <Text style={[S.colNet,      shared.thText]}>{lang === "EN" ? "Net price" : "Netto prijs"}</Text>
             <Text style={[S.colTotal,    shared.thText]}>{t("total", lang)}</Text>
           </View>
-          {data.lines.flatMap((line, i) => {
-            const grossTotal   = line.qty * line.grossUnitPrice;
+          {data.lines.map((line, i) => {
             const hasDiscount  = line.discountPercent > 0;
             const isText = line.qty === 0 && line.grossUnitPrice === 0 && line.netLineTotal === 0;
-            const netUnitPrice = hasDiscount
-              ? line.grossUnitPrice * (1 - line.discountPercent / 100)
-              : null;
-            const discountAmount = hasDiscount ? line.netLineTotal - grossTotal : 0;
+            const netUnitPrice = line.grossUnitPrice * (1 - line.discountPercent / 100);
             const rowStyle = i % 2 === 0 ? shared.tableRow : shared.tableRowAlt;
 
-            const rows = [
+            return (
               <View key={`line-${i}`} style={rowStyle}>
                 <Text style={S.colSku}>{breakSku(line.skuSnapshot)}</Text>
                 <View style={S.colDesc}>
@@ -220,35 +218,14 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
                 <Text style={S.colDiscount}>
                   {isText ? "" : hasDiscount ? `−${line.discountPercent}%` : "—"}
                 </Text>
+                <Text style={S.colNet}>
+                  {isText ? "" : hasDiscount ? fmt(netUnitPrice, lang) : "—"}
+                </Text>
                 <Text style={[S.colTotal, { fontFamily: "Helvetica-Bold" }]}>
                   {isText ? "" : fmt(line.netLineTotal, lang)}
                 </Text>
-              </View>,
-            ];
-
-            if (hasDiscount) {
-              rows.push(
-                <View key={`discount-${i}`} style={{
-                  flexDirection: "row",
-                  paddingVertical: 3,
-                  paddingHorizontal: 6,
-                  backgroundColor: "#fffbf0",
-                }}>
-                  <Text style={[S.colSku, S.discountRow]} />
-                  <Text style={[S.colDesc, S.discountRow]}>
-                    {lang === "EN"
-                      ? `−${line.discountPercent}% Discount`
-                      : `−${line.discountPercent}% Korting`}
-                  </Text>
-                  <Text style={[S.colQty,      S.discountRow]}>1</Text>
-                  <Text style={[S.colPrice,    S.discountRow]}>{fmt(netUnitPrice!, lang)}</Text>
-                  <Text style={[S.colDiscount, S.discountRow]} />
-                  <Text style={[S.colTotal,    S.discountRow]}>{fmt(discountAmount, lang)}</Text>
-                </View>
-              );
-            }
-
-            return rows;
+              </View>
+            );
           })}
         </View>
 
