@@ -46,7 +46,11 @@ export async function PATCH(
   if (wantsDueDate || "paymentTermType" in body) {
     if (wantsDueDate) {
       const d = new Date(body.dueDate);
-      if (!isNaN(d.getTime())) data.dueDate = d;
+      if (!isNaN(d.getTime())) {
+        data.dueDate = d;
+        // Handmatig gekozen datum niet meer overschrijven bij verzenden
+        data.dueDateManual = true;
+      }
     }
     if ("paymentTermType" in body && ["DAYS_14", "DAYS_30", "PREPAYMENT", "INSTALLMENTS"].includes(body.paymentTermType)) {
       data.paymentTermType = body.paymentTermType;

@@ -37,7 +37,7 @@ export async function POST(
   // waarop het concept werd aangemaakt); vervaldatum schuift mee.
   const current = await prisma.invoice.findUnique({
     where: { id },
-    select: { invoiceNumber: true, paymentTermType: true },
+    select: { invoiceNumber: true, paymentTermType: true, dueDateManual: true, dueDate: true },
   });
   if (!current) {
     return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
@@ -45,11 +45,16 @@ export async function POST(
   if (current.invoiceNumber.startsWith("DRAFT-")) {
     const definitiveNumber = await nextInvoiceNumber(new Date().getFullYear());
     const bookDate = new Date();
+    // Vervaldatum: handmatig gekozen datum blijft staan; anders boekdatum + termijn
     const newDue = new Date(bookDate);
     newDue.setDate(newDue.getDate() + termDays(current.paymentTermType));
     await prisma.invoice.update({
       where: { id },
-      data: { invoiceNumber: definitiveNumber, invoiceDate: bookDate, dueDate: newDue },
+      data: {
+        invoiceNumber: definitiveNumber,
+        invoiceDate: bookDate,
+        dueDate: current.dueDateManual ? current.dueDate : newDue,
+      },
     });
     // Termijnen (indien ingevuld) zijn leidend voor de vervaldatum
     await syncInvoiceInstallments(id);

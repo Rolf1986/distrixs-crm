@@ -87,7 +87,8 @@ export async function PATCH(
     const newDue = new Date(bookDate);
     newDue.setDate(newDue.getDate() + termDays(invoice.paymentTermType));
     extraData.invoiceDate = bookDate;
-    extraData.dueDate = newDue;
+    // Handmatig gekozen vervaldatum blijft staan
+    if (!invoice.dueDateManual) extraData.dueDate = newDue;
   }
 
   const updated = await prisma.invoice.update({
