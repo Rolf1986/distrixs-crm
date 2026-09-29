@@ -120,9 +120,9 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
     data.customer.kvkNumber ? `${lang === "EN" ? "CoC" : "KvK"}: ${data.customer.kvkNumber}` : null,
   ].filter(Boolean).join("\n");
 
-  const paymentTermLabel = data.paymentTermDays
+  const paymentTermLabel = data.paymentTermDays && data.paymentTermDays > 0
     ? (lang === "EN" ? `${data.paymentTermDays} days after invoice date` : `${data.paymentTermDays} dagen na facturatiedatum`)
-    : (lang === "EN" ? "30 days" : "30 dagen");
+    : (lang === "EN" ? "Prepayment" : "Vooruitbetaling");
 
   const footerIds = [
     co?.kvkNumber ? `KVK: ${co.kvkNumber}` : null,
