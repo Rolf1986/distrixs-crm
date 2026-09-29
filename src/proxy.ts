@@ -27,6 +27,7 @@ export default async function proxy(req: NextRequest) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/retour") ||
     pathname === "/betaald" || // bedankpagina na Mollie-betaling (klant heeft geen login)
+    pathname.startsWith("/pay/") || // duurzame betaallink: maakt verse Mollie-checkout bij klik
     pathname === "/api/rma" ||
     pathname.startsWith("/api/rma/") ||
     pathname.startsWith("/api/")

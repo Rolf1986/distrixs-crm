@@ -7,7 +7,6 @@ import { InvoicePdf } from "@/components/pdf/InvoicePdf";
 import { buildInvoicePdfData } from "@/lib/pdf-data";
 import { sendEmail, buildEmailHtml } from "@/lib/email";
 import { formatCurrency } from "@/lib/utils";
-import { createMolliePaymentLink } from "@/lib/mollie";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { logSentEmail } from "@/lib/sent-email";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled, type TwinfieldSyncResult } from "@/lib/twinfield";
@@ -92,16 +91,13 @@ export async function POST(
     ? `<p style="margin:16px 0 0 0;padding:12px 16px;background:#f0fdf4;border-radius:8px;font-size:13px;color:#166534;"><strong>Betaalkenmerk:</strong> ${invoice.invoiceNumber}<br><strong>IBAN:</strong> ${company.iban}${company.ibanAccountHolder ? `<br><strong>T.n.v.:</strong> ${company.ibanAccountHolder}` : ""}${company.bic ? `<br><strong>BIC:</strong> ${company.bic}` : ""}<br><strong>Bedrag:</strong> ${totalStr}<br><strong>Vervaldatum:</strong> ${dueDate}</p>`
     : "";
 
-  // Online-betaalknop (Mollie) voor het openstaande bedrag — fail-soft:
-  // lukt het aanmaken niet, dan gaat de mail zonder knop de deur uit
+  // Online-betaalknop: duurzame /pay/-link die pas bij de klik een verse
+  // Mollie-checkout aanmaakt. (Directe checkout-links verlopen na ±15 min
+  // en dumpten de klant daarna op het inlogscherm.)
   let paymentCtaUrl: string | undefined;
   if (Number(invoice.openAmount) > 0 && invoice.status !== "PAID" && invoice.status !== "CREDITED") {
-    const link = await createMolliePaymentLink(id);
-    if (link.ok) {
-      paymentCtaUrl = link.checkoutUrl;
-    } else if (link.error !== "MOLLIE_API_KEY niet ingesteld") {
-      console.warn(`[invoice send] betaallink niet aangemaakt voor ${invoice.invoiceNumber}: ${link.error}`);
-    }
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://crm.distrixs.nl";
+    paymentCtaUrl = `${appUrl}/pay/${id}`;
   }
 
   const html = buildEmailHtml({

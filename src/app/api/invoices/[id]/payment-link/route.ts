@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { createMolliePaymentLink } from "@/lib/mollie";
 
 /**
  * Mollie betaallink genereren voor een factuur.
@@ -18,18 +17,9 @@ export async function POST(
   }
 
   const { id } = await params;
-  const result = await createMolliePaymentLink(id);
-
-  if (!result.ok) {
-    const status = result.error === "Factuur niet gevonden" ? 404
-      : result.error === "MOLLIE_API_KEY niet ingesteld" ? 503
-      : result.error === "Mollie betaling aanmaken mislukt" ? 502
-      : 400;
-    return NextResponse.json({ error: result.error }, { status });
-  }
-
-  return NextResponse.json({
-    paymentId: result.paymentId,
-    checkoutUrl: result.checkoutUrl,
-  });
+  // Geef de duurzame /pay/-link terug (maakt pas bij de klik een verse
+  // Mollie-checkout aan). Directe checkout-links verlopen na ±15 minuten —
+  // een gekopieerde link was daardoor vrijwel altijd dood bij de klant.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://crm.distrixs.nl";
+  return NextResponse.json({ checkoutUrl: `${appUrl}/pay/${id}` });
 }
