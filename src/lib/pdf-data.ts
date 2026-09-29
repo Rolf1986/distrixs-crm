@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCompanyInfo } from "@/lib/companySettings";
 import { isEuReverseCharge } from "@/lib/vat";
-import { termDays } from "@/lib/payment-terms";
 
 /**
  * Gedeelde PDF-databouwers: zorgen dat de download-route en de e-mailbijlage
@@ -49,7 +48,10 @@ export async function buildInvoicePdfData(invoiceId: string) {
     invoiceNumber: invoice.invoiceNumber,
     invoiceDate: invoice.invoiceDate,
     dueDate: invoice.dueDate,
-    paymentTermDays: termDays(invoice.paymentTermType),
+    // Uit de werkelijke datums, zodat de tekst altijd klopt met de vervaldatum
+    paymentTermDays: Math.max(0, Math.round(
+      (new Date(invoice.dueDate).getTime() - new Date(invoice.invoiceDate).getTime()) / 86400000
+    )),
     ourReference: invoice.ourReference ?? invoice.deal?.orderReference ?? null,
     subtotal: Number(invoice.subtotal),
     vatAmount: Number(invoice.vatAmount),
