@@ -28,6 +28,7 @@ export default async function proxy(req: NextRequest) {
     pathname.startsWith("/retour") ||
     pathname.startsWith("/firmware-updates") || // publieke aanmeld-/afmeldpagina firmware-updates
     pathname === "/betaald" || // bedankpagina na Mollie-betaling (klant heeft geen login)
+    pathname.startsWith("/pay/") || // duurzame betaallink: maakt verse Mollie-checkout bij klik
     pathname === "/api/rma" ||
     pathname.startsWith("/api/rma/") ||
     pathname.startsWith("/api/")
