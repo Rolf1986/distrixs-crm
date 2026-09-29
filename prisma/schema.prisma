@@ -588,6 +588,7 @@ model Invoice {
   earlyPaymentDiscountPct  Decimal?            @map("early_payment_discount_pct") @db.Decimal(5, 2)
   earlyPaymentDays         Int?                @map("early_payment_days")
   recurringInvoiceId       String?             @map("recurring_invoice_id")
+  dueDateManual         Boolean             @default(false) @map("due_date_manual")
   twinfieldSyncStatus   TwinfieldSyncStatus @default(NOT_SYNCED) @map("twinfield_sync_status")
   twinfieldLocked       Boolean             @default(false) @map("twinfield_locked")
   twinfieldReference    String?             @map("twinfield_reference")
