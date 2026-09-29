@@ -27,6 +27,7 @@ export default async function proxy(req: NextRequest) {
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/retour") ||
     pathname.startsWith("/firmware-updates") || // publieke aanmeld-/afmeldpagina firmware-updates
+    pathname === "/betaald" || // bedankpagina na Mollie-betaling (klant heeft geen login)
     pathname === "/api/rma" ||
     pathname.startsWith("/api/rma/") ||
     pathname.startsWith("/api/")
