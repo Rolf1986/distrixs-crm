@@ -51,7 +51,8 @@ export async function createMolliePaymentLink(invoiceId: string): Promise<Paymen
       value: openAmount.toFixed(2),
     },
     description: `${invoice.invoiceNumber} – ${invoice.customer.companyName}`,
-    redirectUrl: `${appUrl}/invoices/${invoiceId}/payments?mollie=success`,
+    // Klanten hebben geen CRM-login → publieke bedankpagina
+    redirectUrl: `${appUrl}/betaald`,
     webhookUrl: `${appUrl}/api/mollie/webhook`,
     metadata: {
       invoiceId,
