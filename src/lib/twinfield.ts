@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeCountry , normalizeVatNumber } from "@/lib/vat";
+import { decryptSecret, encryptSecret, needsEncryption } from "@/lib/crypto";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -180,19 +181,20 @@ export async function getValidToken(): Promise<string> {
   const isExpired = !expiresAt || expiresAt.getTime() - 60_000 < Date.now();
 
   if (isExpired) {
-    if (!row.twinfield_refresh_token) {
+    const storedRefresh = decryptSecret(row.twinfield_refresh_token);
+    if (!storedRefresh) {
       throw new Error(
         "Twinfield token verlopen en geen refresh token beschikbaar. Herverbinden vereist."
       );
     }
 
-    const tokens = await refreshToken(row.twinfield_refresh_token);
+    const tokens = await refreshToken(storedRefresh);
     const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
     await prisma.$executeRaw`
       UPDATE company_settings SET
-        twinfield_access_token = ${tokens.access_token},
-        twinfield_refresh_token = ${tokens.refresh_token},
+        twinfield_access_token = ${encryptSecret(tokens.access_token)},
+        twinfield_refresh_token = ${encryptSecret(tokens.refresh_token)},
         twinfield_token_expires_at = ${newExpiresAt}
       WHERE id = 'singleton'
     `;
@@ -200,7 +202,17 @@ export async function getValidToken(): Promise<string> {
     return tokens.access_token;
   }
 
-  return row.twinfield_access_token;
+  // Lazy migratie (PRIV-01): nog-plaintext tokens versleuteld terugschrijven
+  if (needsEncryption(row.twinfield_access_token)) {
+    await prisma.$executeRaw`
+      UPDATE company_settings SET
+        twinfield_access_token = ${encryptSecret(row.twinfield_access_token)},
+        twinfield_refresh_token = ${row.twinfield_refresh_token ? encryptSecret(row.twinfield_refresh_token) : null}
+      WHERE id = 'singleton'
+    `.catch(() => {});
+  }
+
+  return decryptSecret(row.twinfield_access_token)!;
 }
 
 // ─── XML webservice ───────────────────────────────────────────────────────────

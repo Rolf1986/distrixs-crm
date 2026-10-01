@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { syncInvoiceInstallments } from "@/lib/installments";
+import { recalcInvoicePaymentState } from "@/lib/payment-state";
 
 export async function POST(
   req: NextRequest,
@@ -56,30 +57,7 @@ export async function POST(
       },
     });
 
-    const allPayments = await tx.payment.findMany({
-      where: { invoiceId },
-      select: { amount: true },
-    });
-
-    const paidAmount = Math.round(allPayments.reduce((s, p) => s + Number(p.amount), 0) * 100) / 100;
-    const total = Number(invoice.total);
-    const openAmount = Math.max(0, Math.round((total - paidAmount) * 100) / 100);
-
-    let newStatus = invoice.status;
-    if (openAmount <= 0) {
-      newStatus = "PAID";
-    } else if (paidAmount > 0) {
-      newStatus = "PARTIALLY_PAID";
-    }
-
-    await tx.invoice.update({
-      where: { id: invoiceId },
-      data: {
-        paidAmount,
-        openAmount,
-        status: newStatus,
-      },
-    });
+    await recalcInvoicePaymentState(invoiceId, tx);
 
     return created;
   });

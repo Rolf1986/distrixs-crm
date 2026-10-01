@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { decryptSecret } from "@/lib/crypto";
 import { PaymentSettingsClient } from "./PaymentSettingsClient";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export default async function PaymentSettingsPage() {
     select: { mollieApiKey: true },
   });
 
-  const key = settings?.mollieApiKey?.trim() || process.env.MOLLIE_API_KEY?.trim() || null;
+  const key = decryptSecret(settings?.mollieApiKey?.trim() || null) || process.env.MOLLIE_API_KEY?.trim() || null;
   const keyConfigured = !!key;
   const keyMode: "live" | "test" | null = key
     ? key.startsWith("live_") ? "live" : "test"
@@ -21,7 +22,7 @@ export default async function PaymentSettingsPage() {
   const mpRows = await prisma.$queryRaw<Array<{ myparcel_api_key: string | null }>>`
     SELECT myparcel_api_key FROM company_settings WHERE id = 'singleton' LIMIT 1
   `;
-  const mpKey = mpRows[0]?.myparcel_api_key?.trim() || process.env.MYPARCEL_API_KEY?.trim() || null;
+  const mpKey = decryptSecret(mpRows[0]?.myparcel_api_key?.trim() || null) || process.env.MYPARCEL_API_KEY?.trim() || null;
   const myparcelConfigured = !!mpKey;
   const myparcelHint = mpKey ? `${mpKey.slice(0, 4)}…${mpKey.slice(-4)}` : null;
 

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { encryptSecret } from "@/lib/crypto";
 
-// Betalingsinstellingen (Mollie API-key)
+// Betalingsinstellingen (Mollie API-key). Keys gaan versleuteld de database
+// in (PRIV-01); validatie gebeurt vóór versleuteling.
 export async function PATCH(req: NextRequest) {
   const session = await getSession(req);
   if (!session?.user?.id) {
@@ -14,7 +16,7 @@ export async function PATCH(req: NextRequest) {
   // MyParcel-sleutel (los opslaan via raw SQL)
   if (typeof body.myparcelApiKey === "string") {
     const mp = body.myparcelApiKey.trim();
-    await prisma.$executeRaw`UPDATE company_settings SET myparcel_api_key = ${mp || null} WHERE id = 'singleton'`;
+    await prisma.$executeRaw`UPDATE company_settings SET myparcel_api_key = ${mp ? encryptSecret(mp) : null} WHERE id = 'singleton'`;
     if (typeof body.mollieApiKey !== "string") {
       return NextResponse.json({ ok: true, myparcelConfigured: !!mp });
     }
@@ -34,7 +36,7 @@ export async function PATCH(req: NextRequest) {
 
   await prisma.companySetting.update({
     where: { id: "singleton" },
-    data: { mollieApiKey: key || null },
+    data: { mollieApiKey: key ? encryptSecret(key) : null },
   });
 
   return NextResponse.json({ ok: true, mode: key ? (key.startsWith("live_") ? "live" : "test") : null });

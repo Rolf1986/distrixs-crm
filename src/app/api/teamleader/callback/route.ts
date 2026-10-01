@@ -3,6 +3,7 @@ import { exchangeCode } from "@/lib/teamleader";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
 import { verifyState } from "@/lib/oauth-state";
+import { encryptSecret } from "@/lib/crypto";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl";
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     await prisma.$executeRaw`
       INSERT INTO company_settings (id, updated_at, teamleader_access_token, teamleader_refresh_token, teamleader_token_expires_at)
-      VALUES ('singleton', NOW(), ${tokens.access_token}, ${tokens.refresh_token}, ${expiresAt})
+      VALUES ('singleton', NOW(), ${encryptSecret(tokens.access_token)}, ${encryptSecret(tokens.refresh_token)}, ${expiresAt})
       ON CONFLICT (id) DO UPDATE SET
         teamleader_access_token     = EXCLUDED.teamleader_access_token,
         teamleader_refresh_token    = EXCLUDED.teamleader_refresh_token,

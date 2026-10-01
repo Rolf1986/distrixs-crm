@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
 
     await prisma.$executeRaw`
       UPDATE company_settings SET
-        twinfield_access_token = ${tokens.access_token},
-        twinfield_refresh_token = ${tokens.refresh_token},
+        twinfield_access_token = ${encryptSecret(tokens.access_token)},
+        twinfield_refresh_token = ${encryptSecret(tokens.refresh_token)},
         twinfield_token_expires_at = ${expiresAt}
       WHERE id = 'singleton'
     `;

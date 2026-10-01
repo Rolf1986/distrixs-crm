@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getMollieKey } from "@/lib/mollie";
+import { recalcInvoicePaymentState } from "@/lib/payment-state";
+import { syncInvoiceInstallments } from "@/lib/installments";
 
 /**
  * Mollie webhook — wordt aangeroepen door Mollie als een betaling van status verandert.
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest) {
     const paidAmount = Math.round(parseFloat(payment.amount.value) * 100) / 100;
     const systemUser = await prisma.user.findFirst({ select: { id: true } });
 
-    await prisma.$transaction(async (tx) => {
+    const state = await prisma.$transaction(async (tx) => {
       await tx.payment.create({
         data: {
           invoiceId,
@@ -96,25 +98,13 @@ export async function POST(req: NextRequest) {
       });
 
       // Totaal herberekenen uit álle betalingen (niet optellen bij oude stand)
-      const allPayments = await tx.payment.findMany({
-        where: { invoiceId },
-        select: { amount: true },
-      });
-      const newPaid = Math.round(allPayments.reduce((s, p) => s + Number(p.amount), 0) * 100) / 100;
-      const newOpen = Math.max(0, Math.round((Number(invoice.total) - newPaid) * 100) / 100);
-      const newStatus = newOpen <= 0.01 ? "PAID" : "PARTIALLY_PAID";
-
-      await tx.invoice.update({
-        where: { id: invoiceId },
-        data: {
-          paidAmount: newPaid,
-          openAmount: newOpen,
-          status: newStatus,
-        },
-      });
-
-      console.log(`Mollie webhook: factuur ${invoice.invoiceNumber} → ${newStatus} (€ ${paidAmount})`);
+      return recalcInvoicePaymentState(invoiceId, tx);
     });
+
+    // Termijn-vinkjes + vervaldatum meebewegen (ontbrak eerder op dit pad)
+    await syncInvoiceInstallments(invoiceId);
+
+    console.log(`Mollie webhook: factuur ${invoice.invoiceNumber} → ${state.status} (€ ${paidAmount})`);
   }
 
   return NextResponse.json({ ok: true });
