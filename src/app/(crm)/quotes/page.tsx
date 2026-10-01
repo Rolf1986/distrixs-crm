@@ -4,15 +4,26 @@ import { CreateQuoteStandaloneButton } from "@/components/CreateQuoteStandaloneB
 import { QuotesClient } from "./QuotesClient";
 
 async function getQuotes() {
-  return prisma.quote.findMany({
-    include: {
-      customer: { select: { companyName: true } },
-      deal: { select: { title: true, dealNumber: true } },
-      lines: { select: { expectedMarginSnapshot: true } },
-      _count: { select: { invoices: true } },
-    },
-    orderBy: { quoteNumber: "desc" },
-  });
+  // Marge als aggregatie i.p.v. alle regels meesturen (KWAL-05: ~20k
+  // regelrijtjes minder in de payload bij 4.700 offertes)
+  const [quotes, margins] = await Promise.all([
+    prisma.quote.findMany({
+      include: {
+        customer: { select: { companyName: true } },
+        deal: { select: { title: true, dealNumber: true } },
+        _count: { select: { invoices: true } },
+      },
+      orderBy: { quoteNumber: "desc" },
+    }),
+    prisma.quoteLine.groupBy({
+      by: ["quoteId"],
+      _sum: { expectedMarginSnapshot: true },
+    }),
+  ]);
+  const marginByQuote = new Map(
+    margins.map((m) => [m.quoteId, Number(m._sum.expectedMarginSnapshot ?? 0)])
+  );
+  return quotes.map((q) => ({ ...q, margin: marginByQuote.get(q.id) ?? 0 }));
 }
 
 async function getCustomers() {
@@ -56,7 +67,7 @@ export default async function QuotesPage() {
             validUntil: q.validUntil?.toISOString() ?? null,
             subtotal: Number(q.subtotal),
             total: Number(q.total),
-            margin: q.lines.reduce((s, l) => s + Number(l.expectedMarginSnapshot), 0),
+            margin: q.margin,
             gefactureerd: q._count.invoices > 0,
             status: q.status,
           }))}
