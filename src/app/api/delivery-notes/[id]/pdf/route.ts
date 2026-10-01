@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { DeliveryNotePdf } from "@/components/pdf/DeliveryNotePdf";
-import { getCompanyInfo } from "@/lib/companySettings";
+import { buildDeliveryNotePdfData } from "@/lib/pdf-data";
 
 export async function GET(
   req: NextRequest,
@@ -16,69 +15,17 @@ export async function GET(
   }
 
   const { id } = await params;
-
-  const dn = await prisma.deliveryNote.findUnique({
-    where: { id },
-    include: {
-      customer: {
-        include: {
-          addresses: {
-            where: { isDefault: true },
-            orderBy: { type: "asc" },
-            take: 2,
-          },
-        },
-      },
-      lines: { orderBy: { createdAt: "asc" } },
-      deal: { select: { orderReference: true } },
-      contact: { select: { firstName: true, lastName: true } },
-    },
-  });
-
-  if (!dn) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-
-  const company = await getCompanyInfo();
-
-  const billingAddr = dn.customer.addresses.find(a => a.type === "BILLING");
-  const shippingAddr = dn.customer.addresses.find(a => a.type === "SHIPPING");
-  const defaultAddr = billingAddr ?? dn.customer.addresses[0];
-
-  const data = {
-    language: ("language" in dn ? (dn.language as string) : "NL"),
-    noteNumber: dn.deliveryNumber,
-    customerReference: dn.deal?.orderReference ?? null,
-    deliveryDate: dn.deliveryDate ?? new Date(),
-    notes: dn.notes,
-    company,
-    customer: {
-      companyName: dn.customer.companyName,
-      contactName: "contact" in dn && dn.contact ? `${dn.contact.firstName} ${dn.contact.lastName}` : null,
-      address: defaultAddr ? `${defaultAddr.street} ${defaultAddr.houseNumber}` : null,
-      postalCode: defaultAddr?.postalCode ?? null,
-      city: defaultAddr?.city ?? null,
-      country: defaultAddr?.country ?? null,
-    },
-    deliveryAddress: shippingAddr ? {
-      companyName: dn.customer.companyName,
-      address: `${shippingAddr.street} ${shippingAddr.houseNumber}`,
-      postalCode: shippingAddr.postalCode,
-      city: shippingAddr.city,
-      country: shippingAddr.country,
-    } : null,
-    lines: dn.lines.map((l) => ({
-      skuSnapshot: l.skuSnapshot,
-      titleSnapshot: l.titleSnapshot,
-      qty: Number(l.qty),
-    })),
-  };
+  // Zelfde databouw als eventuele andere afnemers (KWAL-06: één bron)
+  const built = await buildDeliveryNotePdfData(id);
+  if (!built) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
 
   try {
-    const element = createElement(DeliveryNotePdf, { data });
+    const element = createElement(DeliveryNotePdf, { data: built.data });
     const buffer = await renderToBuffer(element as never);
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${dn.deliveryNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="${built.dn.deliveryNumber}.pdf"`,
       },
     });
   } catch (err) {

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createElement } from "react";
 import { QuotePdf } from "@/components/pdf/QuotePdf";
-import { getCompanyInfo } from "@/lib/companySettings";
-import { isEuReverseCharge } from "@/lib/vat";
+import { buildQuotePdfData } from "@/lib/pdf-data";
 
 export async function GET(
   req: NextRequest,
@@ -17,73 +15,17 @@ export async function GET(
   }
 
   const { id } = await params;
-
-  const quote = await prisma.quote.findUnique({
-    where: { id },
-    include: {
-      customer: {
-        include: {
-          addresses: {
-            orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-          },
-        },
-      },
-      contact: true,
-      deal: { select: { title: true, orderReference: true } },
-      lines: { orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
-    },
-  });
-
-  if (!quote) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-
-  const company = await getCompanyInfo();
-  // Voorkeur: default factuuradres, anders eerste beschikbare adres
-  const addr =
-    quote.customer.addresses.find((a) => a.type === "BILLING" && a.isDefault) ??
-    quote.customer.addresses[0];
-
-  const data = {
-    language: quote.language ?? "NL",
-    quoteNumber: quote.quoteNumber,
-    projectName: quote.deal?.title,
-    customerReference: quote.deal?.orderReference ?? null,
-    publicNote: quote.publicNote ?? null,
-    quoteDate: quote.quoteDate,
-    validUntil: quote.validUntil,
-    reverseCharge: isEuReverseCharge(addr?.country, quote.customer.vatNumber),
-    subtotal: Number(quote.subtotal),
-    vatAmount: Number(quote.vatAmount),
-    total: Number(quote.total),
-    company,
-    customer: {
-      companyName: quote.customer.companyName,
-      contactName: quote.contact ? `${quote.contact.firstName} ${quote.contact.lastName}` : null,
-      email: quote.contact?.email ?? null,
-      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
-      postalCode: addr?.postalCode ?? null,
-      city: addr?.city ?? null,
-      country: addr?.country ?? null,
-      vatNumber: quote.customer.vatNumber ?? null,
-      kvkNumber: quote.customer.kvkNumber ?? null,
-    },
-    lines: quote.lines.map((l) => ({
-      skuSnapshot: l.skuSnapshot,
-      titleSnapshot: l.titleSnapshot,
-      descriptionSnapshot: null,
-      qty: Number(l.qty),
-      grossUnitPrice: Number(l.grossUnitPrice),
-      discountPercent: Number(l.discountPercent),
-      netLineTotal: Number(l.netLineTotal),
-    })),
-  };
+  // Zelfde databouw als de e-mailbijlage (KWAL-06: één bron)
+  const built = await buildQuotePdfData(id);
+  if (!built) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
 
   try {
-    const element = createElement(QuotePdf, { data });
+    const element = createElement(QuotePdf, { data: built.data });
     const buffer = await renderToBuffer(element as never);
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${quote.quoteNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="${built.quote.quoteNumber}.pdf"`,
       },
     });
   } catch (err) {

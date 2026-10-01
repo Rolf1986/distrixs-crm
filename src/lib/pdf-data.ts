@@ -204,3 +204,125 @@ export async function buildQuotePdfData(quoteId: string) {
 
   return { quote, company, data };
 }
+
+export async function buildOrderConfirmationPdfData(ocId: string) {
+  const oc = await prisma.orderConfirmation.findUnique({
+    where: { id: ocId },
+    include: {
+      deal: { select: { title: true, orderReference: true } },
+      quote: {
+        select: {
+          quoteNumber: true,
+          language: true,
+          subtotal: true,
+          vatAmount: true,
+          total: true,
+          lines: { orderBy: [{ position: "asc" }, { createdAt: "asc" }] },
+        },
+      },
+      customer: {
+        include: {
+          addresses: { orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] },
+          contacts: { where: { isPrimary: true, isActive: true }, take: 1 },
+        },
+      },
+    },
+  });
+  if (!oc) return null;
+
+  const company = await getCompanyInfo();
+  const addr = pickAddress(oc.customer.addresses);
+  const contact = oc.customer.contacts[0];
+
+  // Leverdatum per regel (quoteLineId → ISO-datum)
+  const lineDeliveries = (oc.lineDeliveries ?? {}) as Record<string, string>;
+
+  const data = {
+    language: oc.quote?.language ?? "NL",
+    confirmationNumber: oc.confirmationNumber,
+    confirmationDate: oc.confirmationDate,
+    expectedDelivery: oc.expectedDelivery,
+    projectName: oc.deal?.title ?? null,
+    customerReference: oc.deal?.orderReference ?? null,
+    quoteNumber: oc.quote?.quoteNumber ?? null,
+    notes: oc.notes ?? null,
+    subtotal: Number(oc.quote?.subtotal ?? 0),
+    vatAmount: Number(oc.quote?.vatAmount ?? 0),
+    total: Number(oc.quote?.total ?? 0),
+    company,
+    customer: {
+      companyName: oc.customer.companyName,
+      contactName: contact ? `${contact.firstName} ${contact.lastName}` : null,
+      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
+      postalCode: addr?.postalCode ?? null,
+      city: addr?.city ?? null,
+      country: addr?.country ?? null,
+    },
+    lines: (oc.quote?.lines ?? []).map((l) => ({
+      skuSnapshot: l.skuSnapshot,
+      titleSnapshot: l.titleSnapshot,
+      qty: Number(l.qty),
+      grossUnitPrice: Number(l.grossUnitPrice),
+      discountPercent: Number(l.discountPercent),
+      netLineTotal: Number(l.netLineTotal),
+      deliveryDate: lineDeliveries[l.id] ?? null,
+    })),
+  };
+
+  return { oc, company, data };
+}
+
+export async function buildDeliveryNotePdfData(dnId: string) {
+  const dn = await prisma.deliveryNote.findUnique({
+    where: { id: dnId },
+    include: {
+      customer: {
+        include: {
+          addresses: { where: { isDefault: true }, orderBy: { type: "asc" }, take: 2 },
+        },
+      },
+      lines: { orderBy: { createdAt: "asc" } },
+      deal: { select: { orderReference: true } },
+      contact: { select: { firstName: true, lastName: true } },
+    },
+  });
+  if (!dn) return null;
+
+  const company = await getCompanyInfo();
+  const billingAddr = dn.customer.addresses.find((a) => a.type === "BILLING");
+  const shippingAddr = dn.customer.addresses.find((a) => a.type === "SHIPPING");
+  const defaultAddr = billingAddr ?? dn.customer.addresses[0];
+
+  const data = {
+    language: dn.language ?? "NL",
+    noteNumber: dn.deliveryNumber,
+    customerReference: dn.deal?.orderReference ?? null,
+    deliveryDate: dn.deliveryDate ?? new Date(),
+    notes: dn.notes,
+    company,
+    customer: {
+      companyName: dn.customer.companyName,
+      contactName: dn.contact ? `${dn.contact.firstName} ${dn.contact.lastName}` : null,
+      address: defaultAddr ? `${defaultAddr.street} ${defaultAddr.houseNumber}` : null,
+      postalCode: defaultAddr?.postalCode ?? null,
+      city: defaultAddr?.city ?? null,
+      country: defaultAddr?.country ?? null,
+    },
+    deliveryAddress: shippingAddr
+      ? {
+          companyName: dn.customer.companyName,
+          address: `${shippingAddr.street} ${shippingAddr.houseNumber}`,
+          postalCode: shippingAddr.postalCode,
+          city: shippingAddr.city,
+          country: shippingAddr.country,
+        }
+      : null,
+    lines: dn.lines.map((l) => ({
+      skuSnapshot: l.skuSnapshot,
+      titleSnapshot: l.titleSnapshot,
+      qty: Number(l.qty),
+    })),
+  };
+
+  return { dn, company, data };
+}
