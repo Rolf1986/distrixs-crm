@@ -54,6 +54,10 @@ Startpunt voor een nieuwe Claude-sessie. Lees dit vóór je iets wijzigt.
 - Migratie-baseline `prisma/migrations/0_init` vervangt de oude deelmigraties en is in `_prisma_migrations` als applied geregistreerd; schemawijziging = migratie toevoegen, geen losse ALTER's meer. Handmatige SQL-historie in `prisma/manual-history/`.
 - FK-indexen op alle relatiekolommen (95 `_idx`-indexen in prod).
 - AVG (okt 2026): "Persoonsgegevens anonimiseren"-knop op de klantpagina (facturen blijven, onomkeerbaar); bewaartermijnen in `src/lib/retention.ts` (mails 2j — door Rolf bevestigd, analytics 14m, auditlog 2j) met wekelijkse cron zo 03:30 → `/api/cron/retention`; auditlog dekt nu ook logins/settings/gebruikersbeheer met IP; sessies 14d + tokenVersion-intrekking (deactiveren/wachtwoordwissel logt overal uit). RMA-enums in prod gelijkgetrokken met het schema (waren gedrift, tabel was leeg).
+- Mail-afleverstatus (MAIL-02): `/api/resend/webhook` (svix-verificatie, RESEND_WEBHOOK_SECRET in .env.production) zet DELIVERED/BOUNCED/COMPLAINED op SentEmail via resend_id; badges in Verzonden e-mails. Webhook moet in het Resend-dashboard aangemaakt worden.
+- Tests: `npm test` (vitest) — 27 unit-tests op vat/ICL, calcTotals, termijnen, marge en recalcInvoicePaymentState. Lokale `npx tsc --noEmit` werkt weer (src/generated ververst) — draai beide vóór een deploy.
+- PDF-data: álle PDF-routes bouwen via `src/lib/pdf-data.ts` (buildInvoice/CreditNote/Quote/OrderConfirmation/DeliveryNotePdfData) — nooit meer los in een route.
+- Paginatie (KWAL-05) bewust geparkeerd: query's zijn 6–91 ms met de FK-indexen en client-side zoeken-over-alles is gewenste UX; offerte-overzicht stuurt marge nu als aggregatie (geen 20k regels meer). Herzien bij merkbare traagheid.
 - Server: dagelijkse health-check 08:30 (`/usr/local/bin/crm-disk-alert.sh` → mail bij schijf ≥80%/container weg/login ≠200/backup mist), wekelijkse docker-builder-prune (zo 04:00), journald-cap 500M. SOC 2-readiness: `SOC2-READINESS.md`.
 
 ## Openstaand (augustus 2026)
