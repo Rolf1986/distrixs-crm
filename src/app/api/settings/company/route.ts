@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { logAudit, clientIpFromRequest } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 // Alleen niet-gevoelige velden — NOOIT tokens/keys/secrets teruggeven
@@ -57,6 +58,8 @@ export async function PATCH(req: NextRequest) {
       data[field] = body[field] ?? null;
     }
   }
+
+  await logAudit({ userId: session.user.id, action: "settings.updated", entityType: "CompanySetting", entityId: "company", newValue: Object.keys(data), ip: clientIpFromRequest(req) });
 
   const settings = await prisma.companySetting.upsert({
     where: { id: "singleton" },

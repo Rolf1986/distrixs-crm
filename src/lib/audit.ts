@@ -1,4 +1,15 @@
 import { prisma } from "@/lib/prisma";
+import { clientIp } from "@/lib/rate-limit";
+import type { NextRequest } from "next/server";
+
+/** IP voor het auditlog (nginx overschrijft X-Forwarded-For met het echte adres). */
+export function clientIpFromRequest(req: NextRequest | Request): string | undefined {
+  try {
+    return clientIp(req as NextRequest) || undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export async function logAudit(params: {
   userId?: string;
@@ -7,6 +18,7 @@ export async function logAudit(params: {
   entityId: string;
   oldValue?: unknown;
   newValue?: unknown;
+  ip?: string;
 }): Promise<void> {
   try {
     await prisma.auditLog.create({
@@ -23,6 +35,7 @@ export async function logAudit(params: {
           params.newValue !== undefined
             ? JSON.stringify(params.newValue)
             : null,
+        ip: params.ip ?? null,
       },
     });
   } catch {

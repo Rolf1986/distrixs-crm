@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CustomerInfoClient } from "./CustomerInfoClient";
+import { AnonymizeCustomerButton } from "./AnonymizeCustomerButton";
 
 async function getCustomer(id: string) {
   return prisma.customer.findUnique({
@@ -19,6 +20,7 @@ export default async function CustomerInfoPage({
   if (!customer) notFound();
 
   return (
+    <div className="space-y-6">
     <CustomerInfoClient
       customer={{
         id: customer.id,
@@ -42,5 +44,11 @@ export default async function CustomerInfoPage({
         })),
       }}
     />
+    <AnonymizeCustomerButton
+      customerId={customer.id}
+      companyName={customer.companyName}
+      anonymizedAt={customer.anonymizedAt ? customer.anonymizedAt.toISOString() : null}
+    />
+    </div>
   );
 }

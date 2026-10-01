@@ -193,6 +193,8 @@ model User {
   passwordHash String    @map("password_hash")
   role         UserRole  @default(SALES)
   isActive     Boolean   @default(true) @map("is_active")
+  // Ophogen trekt alle uitstaande sessies van deze gebruiker in (SEC-04)
+  tokenVersion Int       @default(0) @map("token_version")
   lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
@@ -231,6 +233,9 @@ model Customer {
   defaultLanguage     String         @default("NL") @map("default_language")
   notes               String?
   status              CustomerStatus @default(ACTIVE)
+  // AVG: persoonsgegevens verwijderd (contacten/mails/activiteiten); zakelijke
+  // gegevens (bedrijfsnaam, facturen) blijven voor de fiscale bewaarplicht
+  anonymizedAt        DateTime?      @map("anonymized_at")
   externalId          String?        @unique @map("external_id")
   twinfieldDebtorCode String?        @map("twinfield_debtor_code")
   createdAt           DateTime       @default(now()) @map("created_at")
