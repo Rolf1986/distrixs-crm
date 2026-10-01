@@ -3,6 +3,7 @@ import { exchangeCode, fetchAndStoreCluster } from "@/lib/twinfield";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
 import { verifyState } from "@/lib/oauth-state";
+import { encryptSecret } from "@/lib/crypto";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://crm.distrixs.nl";
 
