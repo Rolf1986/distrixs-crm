@@ -53,6 +53,7 @@ Startpunt voor een nieuwe Claude-sessie. Lees dit vóór je iets wijzigt.
 - Secrets (Mollie/MyParcel/Twinfield/Teamleader) staan AES-256-GCM-versleuteld in `company_settings` ("enc2:"-prefix, `src/lib/crypto.ts`); lezen/schrijven altijd via decryptSecret/encryptSecret. Alle productie-waarden zijn gemigreerd.
 - Migratie-baseline `prisma/migrations/0_init` vervangt de oude deelmigraties en is in `_prisma_migrations` als applied geregistreerd; schemawijziging = migratie toevoegen, geen losse ALTER's meer. Handmatige SQL-historie in `prisma/manual-history/`.
 - FK-indexen op alle relatiekolommen (95 `_idx`-indexen in prod).
+- AVG (okt 2026): "Persoonsgegevens anonimiseren"-knop op de klantpagina (facturen blijven, onomkeerbaar); bewaartermijnen in `src/lib/retention.ts` (mails 2j — door Rolf bevestigd, analytics 14m, auditlog 2j) met wekelijkse cron zo 03:30 → `/api/cron/retention`; auditlog dekt nu ook logins/settings/gebruikersbeheer met IP; sessies 14d + tokenVersion-intrekking (deactiveren/wachtwoordwissel logt overal uit). RMA-enums in prod gelijkgetrokken met het schema (waren gedrift, tabel was leeg).
 - Server: dagelijkse health-check 08:30 (`/usr/local/bin/crm-disk-alert.sh` → mail bij schijf ≥80%/container weg/login ≠200/backup mist), wekelijkse docker-builder-prune (zo 04:00), journald-cap 500M. SOC 2-readiness: `SOC2-READINESS.md`.
 
 ## Openstaand (augustus 2026)
