@@ -48,6 +48,13 @@ Startpunt voor een nieuwe Claude-sessie. Lees dit vóór je iets wijzigt.
 - Nummering: D/Q/F/PO-YYYY-nnn via `src/lib/sequences.ts`; klantnummers K-YYYY-nnn numeriek max+1.
 - Perl-oneliners via shell breken op escaping — gebruik Edit-tool of node-scripts voor multi-file transforms.
 
+## Security/infra (oktober 2026 — REVIEW.md ronde 2 uitgevoerd)
+- Betaalstand: altijd via `recalcInvoicePaymentState()` in `src/lib/payment-state.ts` (nooit meer los herberekenen); buiten transacties de variant `…WithInstallments`.
+- Secrets (Mollie/MyParcel/Twinfield/Teamleader) staan AES-256-GCM-versleuteld in `company_settings` ("enc2:"-prefix, `src/lib/crypto.ts`); lezen/schrijven altijd via decryptSecret/encryptSecret. Alle productie-waarden zijn gemigreerd.
+- Migratie-baseline `prisma/migrations/0_init` vervangt de oude deelmigraties en is in `_prisma_migrations` als applied geregistreerd; schemawijziging = migratie toevoegen, geen losse ALTER's meer. Handmatige SQL-historie in `prisma/manual-history/`.
+- FK-indexen op alle relatiekolommen (95 `_idx`-indexen in prod).
+- Server: dagelijkse health-check 08:30 (`/usr/local/bin/crm-disk-alert.sh` → mail bij schijf ≥80%/container weg/login ≠200/backup mist), wekelijkse docker-builder-prune (zo 04:00), journald-cap 500M. SOC 2-readiness: `SOC2-READINESS.md`.
+
 ## Openstaand (augustus 2026)
 1. **Nacalculatie Q-2026-4304 / deal D-2026-4061 "Pixel Line IP"** (klant lw productions, factuur 2026/348): Rolf heeft de China-inkoopfacturen (goederen + shipping + duty). Flow: PO aanmaken onder de deal → PO-regels → `PurchaseOrderExtraCost` (SHIPPING / IMPORT_DUTIES) → nacalculatie-kaart op deal-info toont echte vs. verwachte marge. Wacht op de PDF's van Rolf.
 2. Ampco Flashlight Rental: deal D-2026-4321 + offerte Q-2026-4326 staat op DRAFT (10 ACME spare-part-regels, subtotaal € 121,35) — nog te versturen.
