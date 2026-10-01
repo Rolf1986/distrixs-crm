@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { decryptSecret, encryptSecret, needsEncryption } from "@/lib/crypto";
 
 /**
  * Mollie-betaallink aanmaken voor het openstaande bedrag van een factuur.
@@ -22,7 +23,16 @@ export async function getMollieKey(): Promise<string | null> {
     where: { id: "singleton" },
     select: { mollieApiKey: true },
   });
-  return settings?.mollieApiKey?.trim() || process.env.MOLLIE_API_KEY || null;
+  const stored = settings?.mollieApiKey?.trim() || null;
+  // Lazy migratie (PRIV-01): een nog-plaintext key wordt bij eerste gebruik
+  // versleuteld teruggeschreven
+  if (needsEncryption(stored)) {
+    await prisma.companySetting.update({
+      where: { id: "singleton" },
+      data: { mollieApiKey: encryptSecret(stored!) },
+    }).catch(() => {});
+  }
+  return decryptSecret(stored) || process.env.MOLLIE_API_KEY || null;
 }
 
 export async function createMolliePaymentLink(invoiceId: string): Promise<PaymentLinkResult> {

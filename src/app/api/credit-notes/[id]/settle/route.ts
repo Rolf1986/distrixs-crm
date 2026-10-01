@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { syncInvoiceInstallments } from "@/lib/installments";
+import { recalcInvoicePaymentStateWithInstallments } from "@/lib/payment-state";
 
 // Verreken een creditnota met het openstaande bedrag van de gekoppelde
 // factuur. Dit registreert een betaling (method OTHER) met een vast
@@ -63,26 +63,8 @@ export async function POST(
   });
 
   // Herbereken paidAmount / openAmount / status vanuit alle betalingen
-  const payments = await prisma.payment.findMany({
-    where: { invoiceId: cn.invoiceId },
-    select: { amount: true },
-  });
-  const paidAmount = payments.reduce((s, p) => s + Number(p.amount), 0);
-  const total = Number(cn.invoice.total);
-  const openAmount = Math.max(0, total - paidAmount);
-
-  let newStatus = cn.invoice.status;
-  if (newStatus !== "CREDITED") {
-    if (openAmount <= 0) newStatus = "PAID";
-    else if (paidAmount > 0) newStatus = "PARTIALLY_PAID";
-  }
-
-  const updated = await prisma.invoice.update({
-    where: { id: cn.invoiceId },
-    data: { paidAmount, openAmount, status: newStatus },
-  });
-
-  await syncInvoiceInstallments(cn.invoiceId);
+  // (CREDITED blijft CREDITED; dat regelt payment-state.ts)
+  const updated = await recalcInvoicePaymentStateWithInstallments(cn.invoiceId);
 
   await logAudit({
     userId: session.user.id,

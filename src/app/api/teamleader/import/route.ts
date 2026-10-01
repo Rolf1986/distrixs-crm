@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/authz";
 import {
-  refreshTokens,
   fetchCompanies,
   fetchContacts,
   fetchDeals,
@@ -23,48 +22,8 @@ import type { DealStatus, InvoiceStatus, QuoteStatus } from "@/generated/prisma"
 
 export const maxDuration = 300;
 
-// ─── Token helpers ────────────────────────────────────────────────────────────
-
-async function getValidAccessToken(): Promise<string> {
-  const row = await prisma.$queryRaw<
-    Array<{
-      teamleader_access_token: string | null;
-      teamleader_refresh_token: string | null;
-      teamleader_token_expires_at: Date | null;
-    }>
-  >`
-    SELECT teamleader_access_token, teamleader_refresh_token, teamleader_token_expires_at
-    FROM company_settings WHERE id = 'singleton'
-  `;
-
-  if (!row.length || !row[0].teamleader_access_token) {
-    throw new Error("Teamleader niet gekoppeld. Koppel eerst via de importpagina.");
-  }
-
-  const { teamleader_access_token, teamleader_refresh_token, teamleader_token_expires_at } =
-    row[0];
-
-  const soon = new Date(Date.now() + 5 * 60 * 1000);
-  if (
-    teamleader_token_expires_at &&
-    teamleader_token_expires_at < soon &&
-    teamleader_refresh_token
-  ) {
-    const tokens = await refreshTokens(teamleader_refresh_token);
-    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
-    await prisma.$executeRaw`
-      UPDATE company_settings SET
-        teamleader_access_token     = ${tokens.access_token},
-        teamleader_refresh_token    = ${tokens.refresh_token},
-        teamleader_token_expires_at = ${expiresAt},
-        updated_at                  = NOW()
-      WHERE id = 'singleton'
-    `;
-    return tokens.access_token;
-  }
-
-  return teamleader_access_token;
-}
+// ─── Token helper: gedeeld met de backfill-routes (en versleuteld, PRIV-01) ───
+import { getValidAccessToken } from "@/lib/teamleader-token";
 
 // ─── Status mappers ───────────────────────────────────────────────────────────
 

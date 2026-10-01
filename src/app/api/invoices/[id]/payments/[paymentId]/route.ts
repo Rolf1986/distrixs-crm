@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
-import { syncInvoiceInstallments } from "@/lib/installments";
+import { recalcInvoicePaymentStateWithInstallments } from "@/lib/payment-state";
 
 export async function DELETE(
   req: NextRequest,
@@ -27,27 +27,8 @@ export async function DELETE(
 
   await prisma.payment.delete({ where: { id: paymentId } });
 
-  // Herbereken paidAmount / openAmount / status
-  const remaining = await prisma.payment.findMany({
-    where: { invoiceId },
-    select: { amount: true },
-  });
-
-  const paidAmount = remaining.reduce((s, p) => s + Number(p.amount), 0);
-  const total = Number(invoice.total);
-  const openAmount = Math.max(0, total - paidAmount);
-
-  let newStatus = invoice.status;
-  if (openAmount <= 0) newStatus = "PAID";
-  else if (paidAmount > 0) newStatus = "PARTIALLY_PAID";
-  else newStatus = invoice.status === "PAID" || invoice.status === "PARTIALLY_PAID" ? "SENT" : invoice.status;
-
-  await prisma.invoice.update({
-    where: { id: invoiceId },
-    data: { paidAmount, openAmount, status: newStatus },
-  });
-
-  await syncInvoiceInstallments(invoiceId);
+  // Herbereken paidAmount / openAmount / status + termijn-vinkjes
+  await recalcInvoicePaymentStateWithInstallments(invoiceId);
 
   await logAudit({
     userId: session.user.id,

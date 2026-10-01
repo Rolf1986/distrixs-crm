@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { normalizeCountry } from "@/lib/vat";
+import { decryptSecret, encryptSecret, needsEncryption } from "@/lib/crypto";
 
 const MYPARCEL_BASE_URL = "https://api.myparcel.nl";
 const MYPARCEL_TRACKING_BASE = "https://myparcel.me/track-trace";
@@ -58,7 +59,16 @@ async function getApiKey(): Promise<string | null> {
     const rows = await prisma.$queryRaw<Array<{ myparcel_api_key: string | null }>>`
       SELECT myparcel_api_key FROM company_settings WHERE id = 'singleton' LIMIT 1
     `;
-    if (rows[0]?.myparcel_api_key) return rows[0].myparcel_api_key;
+    const stored = rows[0]?.myparcel_api_key ?? null;
+    if (stored) {
+      // Lazy migratie (PRIV-01): plaintext key bij eerste gebruik versleutelen
+      if (needsEncryption(stored)) {
+        await prisma.$executeRaw`
+          UPDATE company_settings SET myparcel_api_key = ${encryptSecret(stored)} WHERE id = 'singleton'
+        `.catch(() => {});
+      }
+      return decryptSecret(stored);
+    }
   } catch { /* kolom bestaat nog niet / geen DB → val terug op env */ }
   return process.env.MYPARCEL_API_KEY ?? null;
 }

@@ -5,6 +5,7 @@ import { logAudit } from "@/lib/audit";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled } from "@/lib/twinfield";
 import { syncInvoiceInstallments } from "@/lib/installments";
+import { sumInvoicePayments } from "@/lib/payment-state";
 import { termDays } from "@/lib/payment-terms";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -52,11 +53,7 @@ export async function PATCH(
   let extraData: Record<string, unknown> = {};
 
   if (newStatus === "PAID") {
-    const allPayments = await prisma.payment.findMany({
-      where: { invoiceId: id },
-      select: { amount: true },
-    });
-    const actualPaid = allPayments.reduce((s, p) => s + Number(p.amount), 0);
+    const actualPaid = await sumInvoicePayments(id);
     const total = Number(invoice.total);
     // Als er al betalingen zijn die het totaal dekken, gebruik die — anders zet alles op betaald
     extraData = {
@@ -65,15 +62,11 @@ export async function PATCH(
     };
   } else if (newStatus === "SENT" || newStatus === "OVERDUE" || newStatus === "PARTIALLY_PAID") {
     // Herbereken vanuit werkelijke betalingen
-    const allPayments = await prisma.payment.findMany({
-      where: { invoiceId: id },
-      select: { amount: true },
-    });
-    const actualPaid = allPayments.reduce((s, p) => s + Number(p.amount), 0);
+    const actualPaid = await sumInvoicePayments(id);
     const total = Number(invoice.total);
     extraData = {
       paidAmount: actualPaid,
-      openAmount: Math.max(0, total - actualPaid),
+      openAmount: Math.max(0, Math.round((total - actualPaid) * 100) / 100),
     };
   }
 
