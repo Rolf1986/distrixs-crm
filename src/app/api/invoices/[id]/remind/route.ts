@@ -103,6 +103,7 @@ export async function POST(
   }).catch((e) => console.warn("[invoice remind] mail-log niet opgeslagen:", e));
 
   await logSentEmail({
+    resendId: result.id || null,
     category: "REMINDER",
     to: to.trim(),
     cc: cc?.trim() || null,

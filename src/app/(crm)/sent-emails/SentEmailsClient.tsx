@@ -14,6 +14,8 @@ type SentEmail = {
   relatedLabel: string | null;
   customerName: string | null;
   sentAt: string;
+  deliveryStatus: string | null;
+  deliveryDetail: string | null;
 };
 
 const CATEGORIES = [
@@ -137,7 +139,12 @@ export function SentEmailsClient({ emails }: { emails: SentEmail[] }) {
                       <span className="text-slate-300">{e.relatedLabel ?? "—"}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{fmt(e.sentAt)}</td>
+                  <td className="px-4 py-3 text-slate-500 text-xs whitespace-nowrap">{fmt(e.sentAt)}
+                    {e.deliveryStatus === "BOUNCED" && <span title={e.deliveryDetail ?? undefined} className="ml-2 inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">Bounce</span>}
+                    {e.deliveryStatus === "COMPLAINED" && <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">Spamklacht</span>}
+                    {e.deliveryStatus === "DELAYED" && <span className="ml-2 inline-block px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">Vertraagd</span>}
+                    {e.deliveryStatus === "DELIVERED" && <span title="Afgeleverd" className="ml-2 text-green-600">✓</span>}
+                  </td>
                   <td className="px-4 py-3 text-center">
                     <button onClick={() => view(e.id)} disabled={loadingId === e.id} className="inline-flex text-slate-400 hover:text-brand-blue disabled:opacity-50" title="Bekijk mail">
                       {loadingId === e.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}

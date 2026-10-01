@@ -146,6 +146,7 @@ export async function POST(
   }).catch((e) => console.warn("[invoice send] mail-log niet opgeslagen:", e));
 
   await logSentEmail({
+    resendId: result.id || null,
     category: "INVOICE",
     to: to.trim(),
     cc: cc?.trim() || null,

@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
   }
 
   await logSentEmail({
+    resendId: result.id || null,
     category: "OTHER",
     to,
     subject,

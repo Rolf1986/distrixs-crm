@@ -551,9 +551,15 @@ model SentEmail {
   customerName String?           @map("customer_name")
   sentAt       DateTime          @default(now()) @map("sent_at")
   createdBy    String?           @map("created_by")
+  // Afleverstatus via de Resend-webhook (MAIL-02)
+  resendId       String?   @map("resend_id")
+  deliveryStatus String?   @map("delivery_status") // DELIVERED | BOUNCED | COMPLAINED | DELAYED
+  deliveryDetail String?   @map("delivery_detail") // bv. bounce-reden
+  deliveryAt     DateTime? @map("delivery_at")
 
   @@index([relatedType, relatedId])
   @@index([sentAt])
+  @@index([resendId])
   @@map("sent_emails")
 }
 

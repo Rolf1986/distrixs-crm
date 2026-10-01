@@ -97,6 +97,7 @@ export async function POST(
   }).catch((e) => console.warn("[quote send] mail-log niet opgeslagen:", e));
 
   await logSentEmail({
+    resendId: result.id || null,
     category: "QUOTE",
     to: to.trim(),
     cc: cc?.trim() || null,
