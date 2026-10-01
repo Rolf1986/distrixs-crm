@@ -61,6 +61,7 @@ export async function POST(
   }
 
   await logSentEmail({
+    resendId: result.id || null,
     category: "CREDIT_NOTE",
     to: to.trim(),
     cc: cc?.trim() || null,

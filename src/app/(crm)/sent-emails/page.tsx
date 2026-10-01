@@ -9,6 +9,7 @@ export default async function SentEmailsPage() {
     select: {
       id: true, category: true, toAddress: true, subject: true,
       relatedType: true, relatedId: true, relatedLabel: true, customerName: true, sentAt: true,
+      deliveryStatus: true, deliveryDetail: true,
     },
     orderBy: { sentAt: "desc" },
     take: 500,
@@ -29,6 +30,8 @@ export default async function SentEmailsPage() {
             relatedLabel: e.relatedLabel,
             customerName: e.customerName,
             sentAt: e.sentAt.toISOString(),
+            deliveryStatus: e.deliveryStatus,
+            deliveryDetail: e.deliveryDetail,
           }))}
         />
       </div>

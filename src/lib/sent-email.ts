@@ -17,6 +17,8 @@ export async function logSentEmail(data: {
   relatedLabel?: string | null;
   customerName?: string | null;
   createdBy?: string | null;
+  /** Resend message-id — nodig om de afleverstatus (webhook) terug te koppelen */
+  resendId?: string | null;
 }): Promise<void> {
   try {
     await prisma.sentEmail.create({
@@ -31,6 +33,7 @@ export async function logSentEmail(data: {
         relatedLabel: data.relatedLabel || null,
         customerName: data.customerName || null,
         createdBy: data.createdBy || null,
+        resendId: data.resendId || null,
       },
     });
   } catch (e) {

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "ts-node --project tsconfig.json -e 'require(\"dotenv/config\")' prisma/seed.ts",
-    "import:teamleader": "node --loader ts-node/esm scripts/import-teamleader.ts"
+    "import:teamleader": "node --loader ts-node/esm scripts/import-teamleader.ts",
+    "test": "vitest run"
   },
   "prisma": {
     "seed": "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"
@@ -56,6 +57,7 @@
     "postcss": "^8.5.13",
     "tailwindcss": "^3.4.19",
     "ts-node": "^10.9.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }
