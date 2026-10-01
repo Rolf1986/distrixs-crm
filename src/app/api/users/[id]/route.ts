@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/authz";
+import { logAudit, clientIpFromRequest } from "@/lib/audit";
 import bcrypt from "bcryptjs";
 
 const VALID_ROLES = ["ADMIN", "SALES", "FINANCE", "VIEWER"] as const;
@@ -41,10 +42,25 @@ export async function PATCH(
     data.passwordHash = await bcrypt.hash(body.password, 12);
   }
 
+  // SEC-04: deactiveren, wachtwoordwissel of roldegradatie trekt alle
+  // uitstaande sessies van deze gebruiker per direct in
+  if (data.isActive === false || "passwordHash" in data || "role" in data) {
+    data.tokenVersion = { increment: 1 };
+  }
+
   const user = await prisma.user.update({
     where: { id },
     data,
     select: { id: true, name: true, email: true, role: true, isActive: true, lastLoginAt: true, createdAt: true },
+  });
+
+  await logAudit({
+    userId: auth.user.id,
+    action: "user.updated",
+    entityType: "User",
+    entityId: id,
+    newValue: Object.keys(data).filter((k) => k !== "passwordHash"),
+    ip: clientIpFromRequest(req),
   });
 
   return NextResponse.json(user);

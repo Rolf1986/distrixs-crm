@@ -1,9 +1,13 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 const COOKIE_NAME = "crm-session";
-const JWT_EXPIRY = "30d";
+// SEC-04: 14 dagen i.p.v. 30; gecombineerd met de tokenVersion-check hieronder
+// is een sessie bovendien per direct intrekbaar (deactiveren/wachtwoordwissel).
+const JWT_EXPIRY = "14d";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 14;
 
 function getSecret(): Uint8Array {
   const secret = process.env.AUTH_SECRET;
@@ -22,7 +26,11 @@ function getCookieFromRequest(req: Request | NextRequest, name: string): string 
 }
 
 export async function createSession(userId: string): Promise<string> {
-  const token = await new SignJWT({ sub: userId })
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { tokenVersion: true },
+  });
+  const token = await new SignJWT({ sub: userId, ver: user?.tokenVersion ?? 0 })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(JWT_EXPIRY)
@@ -47,6 +55,19 @@ export async function getSession(
   try {
     const { payload } = await jwtVerify(token, getSecret());
     if (!payload.sub) return null;
+
+    // SEC-04: het JWT alleen is niet genoeg — de gebruiker moet nog actief
+    // zijn en de tokenVersion moet kloppen. Zo stopt deactiveren of een
+    // wachtwoordwissel álle uitstaande sessies per direct (de proxy blijft de
+    // goedkope eerste poort; dit is de DB-gestaafde tweede).
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { isActive: true, tokenVersion: true },
+    });
+    if (!user?.isActive) return null;
+    const tokenVer = typeof payload.ver === "number" ? payload.ver : 0;
+    if (tokenVer !== user.tokenVersion) return null;
+
     return { user: { id: payload.sub } };
   } catch {
     return null;
@@ -60,7 +81,7 @@ export function sessionCookieOptions(token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30, // 30 days in seconds
+    maxAge: COOKIE_MAX_AGE,
     sameSite: "lax" as const,
   };
 }

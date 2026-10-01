@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { createSession, sessionCookieOptions } from "@/lib/session";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
+import { logAudit } from "@/lib/audit";
 
 function siteUrl(req: NextRequest, path: string): string {
   const proto = req.headers.get("x-forwarded-proto") ?? "https";
@@ -65,13 +66,18 @@ export async function POST(req: NextRequest) {
     if (!user || !user.isActive) {
       // Zelfde kosten als een echte wachtwoordcheck: geen user-enumeratie via timing
       await bcrypt.compare(password, "$2a$10$C6UzMDM.H6dfI/f/IKcEeO7Kfp0dpQdWnP0nqOZ7SgdOMSN0nQpGe");
+      await logAudit({ action: "login.failed", entityType: "User", entityId: email, newValue: { reden: user ? "inactief" : "onbekend account" }, ip });
       return NextResponse.redirect(siteUrl(req, "/login?error=invalid"));
     }
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
+      await logAudit({ action: "login.failed", entityType: "User", entityId: user.id, newValue: { reden: "fout wachtwoord" }, ip });
       return NextResponse.redirect(siteUrl(req, "/login?error=invalid"));
     }
+
+    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    await logAudit({ userId: user.id, action: "login.success", entityType: "User", entityId: user.id, ip });
 
     const token = await createSession(user.id);
     const opts = sessionCookieOptions(token);

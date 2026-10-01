@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { logAudit, clientIpFromRequest } from "@/lib/audit";
 import { prisma } from "@/lib/prisma";
 
 const ALLOWED_FIELDS = [
@@ -66,6 +67,8 @@ export async function PATCH(req: NextRequest) {
       UPDATE company_settings SET twinfield_auto_sync = ${body.twinfield_auto_sync} WHERE id = 'singleton'
     `;
   }
+
+  await logAudit({ userId: session.user.id, action: "settings.updated", entityType: "CompanySetting", entityId: "twinfield", newValue: Object.keys(updates), ip: clientIpFromRequest(req) });
 
   return NextResponse.json({ ok: true });
 }
