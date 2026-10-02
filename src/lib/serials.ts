@@ -1,13 +1,18 @@
 // Serienummers: gebruikers plakken lijsten in allerlei vormen (één per regel,
 // komma's, puntkomma's, tabs uit Excel). We normaliseren naar één per regel.
 
+// Labels die leveranciers vóór het nummer zetten ("Batch Code: AE-123",
+// "S/N: 456") worden weggestript, zodat kopiëren uit hun documenten werkt.
+// (dubbele punt verplicht, anders zouden nummers die zelf met "SN " beginnen sneuvelen)
+const LABEL_PREFIX = /^(batch\s*code|batch|serial\s*(number|no\.?)?|s\/n|sn|serienummer)\s*:\s*/i;
+
 /** Parse vrije invoer naar een nette lijst serienummers (volgorde behouden, duplicaten weg). */
 export function parseSerialNumbers(raw: string | null | undefined): string[] {
   if (!raw) return [];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const part of raw.split(/[\n\r,;\t]+| {2,}/)) {
-    const s = part.trim();
+    const s = part.trim().replace(LABEL_PREFIX, "").trim();
     if (s && !seen.has(s)) {
       seen.add(s);
       out.push(s);

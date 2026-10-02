@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcTotals, calcLineVat } from "@/lib/recalc";
 import { assertQuoteEditable } from "@/lib/document-guard";
+import { normalizeSerialNumbers } from "@/lib/serials";
 
 function calcNetLineTotal(grossUnitPrice: number, qty: number, discountPercent: number) {
   return grossUnitPrice * qty * (1 - discountPercent / 100);
@@ -24,10 +25,20 @@ export async function PATCH(
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: quoteId, lineId } = await params;
+  const body = await req.json();
+
+  // Alleen-serienummers raakt geen bedragen en mag in elke offertestatus
+  const serialsOnly = Object.keys(body).length === 1 && "serialNumbers" in body;
+  if (serialsOnly) {
+    const line = await prisma.quoteLine.update({
+      where: { id: lineId, quoteId },
+      data: { serialNumbers: normalizeSerialNumbers(String(body.serialNumbers ?? "")) },
+    });
+    return NextResponse.json(line);
+  }
+
   const guardError = await assertQuoteEditable(quoteId);
   if (guardError) return NextResponse.json({ error: guardError }, { status: 409 });
-
-  const body = await req.json();
 
   const existing = await prisma.quoteLine.findUnique({ where: { id: lineId } });
   if (!existing) return NextResponse.json({ error: "Regel niet gevonden" }, { status: 404 });

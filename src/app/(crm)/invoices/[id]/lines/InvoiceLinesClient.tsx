@@ -314,8 +314,7 @@ export function InvoiceLinesClient({
                       {!isEditing && (
                         <div>
                           <SerialNumbersEditor
-                            invoiceId={invoiceId}
-                            lineId={line.id}
+                            patchUrl={`/api/invoices/${invoiceId}/lines/${line.id}`}
                             initial={line.serialNumbers}
                           />
                         </div>

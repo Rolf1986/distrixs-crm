@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, Image, Link, StyleSheet } from "@react-pdf/renderer";
 import { shared, C, fmt, fmtDate, t, DEFAULT_TERMS_NL, DEFAULT_TERMS_EN, breakSku } from "./PdfLayout";
+import { SERIALS_INLINE_MAX } from "@/lib/serials";
 
 export interface QuotePdfData {
   language?: string;
@@ -53,12 +54,17 @@ export interface QuotePdfData {
     grossUnitPrice: number;
     discountPercent: number;
     netLineTotal: number;
+    serialNumbers?: string[];
   }>;
 }
 
 const S = StyleSheet.create({
   colSku:     { width: "11%", fontSize: 8, color: C.muted, paddingRight: 4 },
   colDesc:    { flex: 1 },
+  serialWrap: { flexDirection: "row", flexWrap: "wrap", marginTop: 2 },
+  serialLabel:{ fontSize: 6.5, color: C.muted, marginTop: 2, width: "100%" },
+  serialItem: { fontSize: 6.5, color: C.muted, fontFamily: "Courier", width: "25%", paddingRight: 4 },
+  appendixItem: { fontSize: 7.5, fontFamily: "Courier", width: "20%", paddingRight: 6, marginBottom: 2 },
   colQty:     { width: "8%", textAlign: "right" },
   colPrice:   { width: "11%", textAlign: "right" },
   colDiscount:{ width: "9%", textAlign: "right", color: C.muted },
@@ -183,6 +189,23 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
                       {line.descriptionSnapshot}
                     </Text>
                   ) : null}
+                  {line.serialNumbers && line.serialNumbers.length > 0 && line.serialNumbers.length <= SERIALS_INLINE_MAX ? (
+                    <View style={S.serialWrap}>
+                      <Text style={S.serialLabel}>
+                        {lang === "EN" ? "Serial numbers:" : "Serienummers:"}
+                      </Text>
+                      {line.serialNumbers.map((sn, j) => (
+                        <Text key={`sn-${i}-${j}`} style={S.serialItem}>{sn}</Text>
+                      ))}
+                    </View>
+                  ) : null}
+                  {line.serialNumbers && line.serialNumbers.length > SERIALS_INLINE_MAX ? (
+                    <Text style={S.serialLabel}>
+                      {lang === "EN"
+                        ? `${line.serialNumbers.length} serial numbers — see appendix`
+                        : `${line.serialNumbers.length} serienummers — zie bijlage`}
+                    </Text>
+                  ) : null}
                 </View>
                 <Text style={S.colQty}>{isText ? "" : line.qty}</Text>
                 <Text style={S.colPrice}>{isText ? "" : fmt(line.grossUnitPrice, lang)}</Text>
@@ -283,6 +306,46 @@ export function QuotePdf({ data }: { data: QuotePdfData }) {
           </View>
         </View>
       </Page>
+
+      {/* ── Bijlage: serienummers (alleen bij grote aantallen) ── */}
+      {data.lines.some((l) => (l.serialNumbers?.length ?? 0) > SERIALS_INLINE_MAX) && (
+        <Page size="A4" style={shared.avPage}>
+          <View style={shared.headerRow}>
+            {co?.logoUrl ? (
+              <Image src={co.logoUrl} style={shared.logo} />
+            ) : (
+              <Text style={shared.logoText}>{coName}</Text>
+            )}
+          </View>
+          <Text style={shared.avTitle}>
+            {lang === "EN"
+              ? `Appendix — serial numbers for quote ${data.quoteNumber}`
+              : `Bijlage — serienummers bij offerte ${data.quoteNumber}`}
+          </Text>
+          {data.lines
+            .filter((l) => (l.serialNumbers?.length ?? 0) > SERIALS_INLINE_MAX)
+            .map((line, i) => (
+              <View key={`appendix-${i}`} style={{ marginBottom: 14 }} wrap>
+                <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", marginBottom: 4 }}>
+                  {line.titleSnapshot}
+                  {line.skuSnapshot ? `  (${line.skuSnapshot})` : ""} — {line.serialNumbers!.length}{" "}
+                  {lang === "EN" ? "serial numbers" : "serienummers"}
+                </Text>
+                <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                  {line.serialNumbers!.map((sn, j) => (
+                    <Text key={`asn-${i}-${j}`} style={S.appendixItem}>{sn}</Text>
+                  ))}
+                </View>
+              </View>
+            ))}
+          <View style={shared.pageFooter} fixed>
+            <Text style={shared.footerText}>{coName}</Text>
+            <Text style={shared.footerText} render={({ pageNumber, totalPages }) =>
+              `${pageNumber} / ${totalPages}`
+            } />
+          </View>
+        </Page>
+      )}
 
       {/* ── Pagina 2+: Algemene voorwaarden ── */}
       <Page size="A4" style={shared.avPage}>
