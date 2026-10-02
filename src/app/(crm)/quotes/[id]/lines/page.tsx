@@ -53,6 +53,7 @@ export default async function QuoteLinesPage({ params }: { params: Promise<{ id:
           vatRate: Number(l.vatRate),
           vatAmount: Number(l.vatAmount),
           costSnapshot: Number(l.costSnapshot),
+          serialNumbers: l.serialNumbers,
         }))}
         products={products.map((p) => ({
           id: p.id,

@@ -20,4 +20,9 @@ describe("parseSerialNumbers", () => {
   it("normaliseert naar één per regel", () => {
     expect(normalizeSerialNumbers("A1, A2")).toBe("A1\nA2");
   });
+  it("stript leverancierslabels zoals 'Batch Code:' en 'S/N'", () => {
+    expect(
+      parseSerialNumbers("Batch Code: AE-032605730\nAE-032605729\nBatch Code: AE-032605706\nS/N: X1")
+    ).toEqual(["AE-032605730", "AE-032605729", "AE-032605706", "X1"]);
+  });
 });

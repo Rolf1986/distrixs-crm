@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Plus, Loader2, Check, X, GripVertical } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { SerialNumbersEditor } from "@/components/SerialNumbersEditor";
 
 const VAT_RATES = [0, 9, 21] as const;
 type VatRate = (typeof VAT_RATES)[number];
@@ -12,6 +13,7 @@ type Line = {
   id: string;
   skuSnapshot: string;
   titleSnapshot: string;
+  serialNumbers?: string | null;
   qty: number;
   grossUnitPrice: number;
   discountPercent: number;
@@ -424,6 +426,14 @@ export function QuoteLinesClient({
                         </div>
                       ) : (
                         <span className="text-slate-700 font-medium">{line.titleSnapshot}</span>
+                      )}
+                      {!isEditing && !(line.qty === 0 && line.grossUnitPrice === 0) && (
+                        <div>
+                          <SerialNumbersEditor
+                            patchUrl={`/api/quotes/${quoteId}/lines/${line.id}`}
+                            initial={line.serialNumbers ?? null}
+                          />
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">

@@ -4,16 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Hash, Loader2 } from "lucide-react";
 
-// Serienummers per factuurregel. Plak gerust een hele lijst (één per regel,
+// Serienummers per factuur- of offerteregel. Plak gerust een hele lijst (één per regel,
 // komma's, of rechtstreeks uit Excel) — de server normaliseert. Mag ook op
 // verzonden facturen (raakt geen bedragen).
 export function SerialNumbersEditor({
-  invoiceId,
-  lineId,
+  patchUrl,
   initial,
 }: {
-  invoiceId: string;
-  lineId: string;
+  /** PATCH-endpoint van de regel (factuur- of offerteregel) */
+  patchUrl: string;
   initial: string | null;
 }) {
   const router = useRouter();
@@ -27,7 +26,7 @@ export function SerialNumbersEditor({
   async function save() {
     setBusy(true);
     try {
-      const res = await fetch(`/api/invoices/${invoiceId}/lines/${lineId}`, {
+      const res = await fetch(patchUrl, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ serialNumbers: value }),

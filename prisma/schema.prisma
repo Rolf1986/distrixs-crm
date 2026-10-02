@@ -581,6 +581,8 @@ model QuoteLine {
   vatAmount              Decimal  @default(0) @map("vat_amount") @db.Decimal(12, 2)
   costSnapshot           Decimal  @map("cost_snapshot") @db.Decimal(12, 2)
   expectedMarginSnapshot Decimal  @map("expected_margin_snapshot") @db.Decimal(12, 2)
+  // Serienummers (één per regel); gaan bij "Akkoord + factuur" mee naar de factuur
+  serialNumbers          String?  @map("serial_numbers")
   position               Int      @default(0)
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")

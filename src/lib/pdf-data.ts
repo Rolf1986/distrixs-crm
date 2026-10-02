@@ -201,6 +201,7 @@ export async function buildQuotePdfData(quoteId: string) {
       grossUnitPrice: Number(l.grossUnitPrice),
       discountPercent: Number(l.discountPercent),
       netLineTotal: Number(l.netLineTotal),
+      serialNumbers: parseSerialNumbers(l.serialNumbers),
     })),
   };
 

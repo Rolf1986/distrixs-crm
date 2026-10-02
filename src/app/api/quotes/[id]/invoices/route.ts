@@ -74,6 +74,7 @@ export async function POST(
           netLineTotal: l.netLineTotal,
           vatRate: l.vatRate,
           vatAmount: l.vatAmount,
+          serialNumbers: l.serialNumbers,
         })),
       },
     },

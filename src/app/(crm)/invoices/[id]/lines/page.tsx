@@ -108,7 +108,7 @@ export default async function InvoiceLinesPage({
                 <td className="px-4 py-3">
                   <span className="text-slate-700 font-medium">{line.titleSnapshot}</span>
                   <div>
-                    <SerialNumbersEditor invoiceId={id} lineId={line.id} initial={line.serialNumbers} />
+                    <SerialNumbersEditor patchUrl={`/api/invoices/${id}/lines/${line.id}`} initial={line.serialNumbers} />
                   </div>
                 </td>
                 <td className="px-4 py-3 text-right text-slate-600">{Number(line.qty)}</td>
