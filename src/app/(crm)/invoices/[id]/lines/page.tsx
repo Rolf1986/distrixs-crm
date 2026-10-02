@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/utils";
 import { Lock } from "lucide-react";
 import { InvoiceLinesClient } from "./InvoiceLinesClient";
+import { SerialNumbersEditor } from "@/components/SerialNumbersEditor";
 import { calcTotals } from "@/lib/recalc";
 import { defaultVatRateForCustomer } from "@/lib/vat";
 
@@ -60,6 +61,7 @@ export default async function InvoiceLinesPage({
           netLineTotal: Number(l.netLineTotal),
           vatRate: Number(l.vatRate),
           vatAmount: Number(l.vatAmount),
+          serialNumbers: l.serialNumbers,
         }))}
         products={products.map((p) => ({
           id: p.id,
@@ -103,7 +105,12 @@ export default async function InvoiceLinesPage({
             {invoice.lines.map((line) => (
               <tr key={line.id}>
                 <td className="px-4 py-3 font-mono text-xs text-slate-400">{line.skuSnapshot}</td>
-                <td className="px-4 py-3 text-slate-700 font-medium">{line.titleSnapshot}</td>
+                <td className="px-4 py-3">
+                  <span className="text-slate-700 font-medium">{line.titleSnapshot}</span>
+                  <div>
+                    <SerialNumbersEditor invoiceId={id} lineId={line.id} initial={line.serialNumbers} />
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-right text-slate-600">{Number(line.qty)}</td>
                 <td className="px-4 py-3 text-right text-slate-600">{formatCurrency(Number(line.grossUnitPrice))}</td>
                 <td className="px-4 py-3 text-right text-slate-500">

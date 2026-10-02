@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Plus, Loader2, Check, X } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { SerialNumbersEditor } from "@/components/SerialNumbersEditor";
 
 const VAT_RATES = [0, 9, 21] as const;
 type VatRate = (typeof VAT_RATES)[number];
@@ -18,6 +19,7 @@ type Line = {
   netLineTotal: number;
   vatRate: number;
   vatAmount: number;
+  serialNumbers: string | null;
 };
 
 type Product = {
@@ -143,6 +145,7 @@ export function InvoiceLinesClient({
                 netLineTotal: Number(updated.netLineTotal),
                 vatRate: Number(updated.vatRate),
                 vatAmount: Number(updated.vatAmount),
+                serialNumbers: updated.serialNumbers ?? null,
               }
             : l
         )
@@ -200,6 +203,7 @@ export function InvoiceLinesClient({
           netLineTotal: Number(line.netLineTotal),
           vatRate: Number(line.vatRate),
           vatAmount: Number(line.vatAmount),
+          serialNumbers: line.serialNumbers ?? null,
         },
       ]);
       // Reset form
@@ -306,6 +310,15 @@ export function InvoiceLinesClient({
                         />
                       ) : (
                         <span className="text-slate-700 font-medium">{line.titleSnapshot}</span>
+                      )}
+                      {!isEditing && (
+                        <div>
+                          <SerialNumbersEditor
+                            invoiceId={invoiceId}
+                            lineId={line.id}
+                            initial={line.serialNumbers}
+                          />
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
