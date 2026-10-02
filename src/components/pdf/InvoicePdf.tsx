@@ -94,6 +94,14 @@ const S = StyleSheet.create({
     fontSize: 18,
     color: C.orange,
     marginLeft: "auto",
+    flexShrink: 1,
+  },
+  // "PROFORMA FACTUUR" past niet naast 5 metakolommen op 18pt → twee
+  // regels, iets kleiner, rechts uitgelijnd (viel eerst van de pagina af)
+  docTypeLabelProforma: {
+    fontSize: 13,
+    textAlign: "right",
+    lineHeight: 1.2,
   },
 });
 
@@ -176,7 +184,9 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
               <Text style={shared.metaValue}>{data.customer.customerNumber}</Text>
             </View>
           )}
-          <View style={{ marginRight: 24 }}>
+          {/* maxWidth: "14 dagen na facturatiedatum" brak anders niet af en
+              liep tegen de volgende kolom aan */}
+          <View style={{ marginRight: 24, maxWidth: 95 }}>
             <Text style={shared.metaLabel}>{t("paymentTerm", lang)}</Text>
             <Text style={shared.metaValue}>{paymentTermLabel}</Text>
           </View>
@@ -186,9 +196,9 @@ export function InvoicePdf({ data }: { data: InvoicePdfData }) {
               <Text style={shared.metaValue}>{data.customerReference}</Text>
             </View>
           )}
-          <Text style={S.docTypeLabel}>
+          <Text style={isDraft ? [S.docTypeLabel, S.docTypeLabelProforma] : S.docTypeLabel}>
             {isDraft
-              ? (lang === "EN" ? "PROFORMA INVOICE" : "PROFORMA FACTUUR")
+              ? (lang === "EN" ? "PROFORMA\nINVOICE" : "PROFORMA\nFACTUUR")
               : t("invoice", lang).toUpperCase()}
           </Text>
         </View>
