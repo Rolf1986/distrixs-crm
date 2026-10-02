@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { calcTotals, calcLineVat } from "@/lib/recalc";
 import { assertInvoiceEditable } from "@/lib/document-guard";
+import { normalizeSerialNumbers } from "@/lib/serials";
 
 function calcNetLineTotal(grossUnitPrice: number, qty: number, discountPercent: number) {
   return grossUnitPrice * qty * (1 - discountPercent / 100);
@@ -26,10 +27,22 @@ export async function PATCH(
   if (!session?.user?.id) return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
 
   const { id: invoiceId, lineId } = await params;
+  const body = await req.json();
+
+  // Alleen-serienummers mag ook op verzonden/Twinfield-gelockte facturen:
+  // het raakt geen bedragen, en nummers zijn vaak pas bij levering bekend.
+  const serialsOnly =
+    Object.keys(body).length === 1 && "serialNumbers" in body;
+  if (serialsOnly) {
+    const line = await prisma.invoiceLine.update({
+      where: { id: lineId, invoiceId },
+      data: { serialNumbers: normalizeSerialNumbers(String(body.serialNumbers ?? "")) },
+    });
+    return NextResponse.json(line);
+  }
+
   const guardError = await assertInvoiceEditable(invoiceId);
   if (guardError) return NextResponse.json({ error: guardError }, { status: 409 });
-
-  const body = await req.json();
 
   const existing = await prisma.invoiceLine.findUnique({ where: { id: lineId } });
   if (!existing) return NextResponse.json({ error: "Regel niet gevonden" }, { status: 404 });
@@ -46,6 +59,7 @@ export async function PATCH(
     data: {
       ...(body.titleSnapshot !== undefined && { titleSnapshot: body.titleSnapshot }),
       ...(body.skuSnapshot !== undefined && { skuSnapshot: body.skuSnapshot }),
+      ...(body.serialNumbers !== undefined && { serialNumbers: normalizeSerialNumbers(String(body.serialNumbers ?? "")) }),
       grossUnitPrice,
       qty,
       discountPercent,

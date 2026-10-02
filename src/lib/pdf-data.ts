@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCompanyInfo } from "@/lib/companySettings";
 import { isEuReverseCharge } from "@/lib/vat";
+import { parseSerialNumbers } from "@/lib/serials";
 
 /**
  * Gedeelde PDF-databouwers: zorgen dat de download-route en de e-mailbijlage
@@ -91,6 +92,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
       grossUnitPrice: Number(l.grossUnitPrice),
       discountPercent: Number(l.discountPercent),
       netLineTotal: Number(l.netLineTotal),
+      serialNumbers: parseSerialNumbers(l.serialNumbers),
     })),
   };
 
