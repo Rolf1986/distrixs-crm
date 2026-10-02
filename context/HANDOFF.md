@@ -58,6 +58,7 @@ Startpunt voor een nieuwe Claude-sessie. Lees dit vóór je iets wijzigt.
 - Tests: `npm test` (vitest) — 27 unit-tests op vat/ICL, calcTotals, termijnen, marge en recalcInvoicePaymentState. Lokale `npx tsc --noEmit` werkt weer (src/generated ververst) — draai beide vóór een deploy.
 - PDF-data: álle PDF-routes bouwen via `src/lib/pdf-data.ts` (buildInvoice/CreditNote/Quote/OrderConfirmation/DeliveryNotePdfData) — nooit meer los in een route.
 - Paginatie (KWAL-05) bewust geparkeerd: query's zijn 6–91 ms met de FK-indexen en client-side zoeken-over-alles is gewenste UX; offerte-overzicht stuurt marge nu als aggregatie (geen 20k regels meer). Herzien bij merkbare traagheid.
+- Deploy-builds: na elke `docker compose build` op de server direct `docker builder prune -f --keep-storage=8GB` draaien (elke build laat ~7GB cache achter; 6 builds op één dag = 80%-alert). Dagelijkse prune-cron 04:00 is de backstop.
 - Server: dagelijkse health-check 08:30 (`/usr/local/bin/crm-disk-alert.sh` → mail bij schijf ≥80%/container weg/login ≠200/backup mist), wekelijkse docker-builder-prune (zo 04:00), journald-cap 500M. SOC 2-readiness: `SOC2-READINESS.md`.
 
 ## Openstaand (augustus 2026)
