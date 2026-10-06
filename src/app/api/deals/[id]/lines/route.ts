@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { resolveUnitPrice, calcNetLineTotal } from "@/lib/pricing";
-import { calcExpectedMargin, CHINA_COST_MULTIPLIER } from "@/lib/margin";
+import { buildDealLineData } from "@/lib/dealLines";
 
 export async function POST(
   req: NextRequest,
@@ -34,39 +33,11 @@ export async function POST(
   }
 
   const qtyNum = Number(qty);
-  const grossUnitPrice =
-    grossUnitPriceOverride != null
-      ? Number(grossUnitPriceOverride)
-      : resolveUnitPrice(qtyNum, Number(product.advisorySellPrice), product.priceTiers);
-
-  const discountPct = Number(discountPercent);
-  const netLineTotal = calcNetLineTotal(grossUnitPrice, qtyNum, discountPct);
-  const netUnitPrice = grossUnitPrice * (1 - discountPct / 100);
-
-  const isChina = product.supplier.supplierType === "CHINA";
-  const baseCostPerUnit = Number(product.baseCostPrice);
-  const { expectedMargin: marginPerUnit } = calcExpectedMargin(netUnitPrice, baseCostPerUnit, isChina);
-
-  const baseCostSnapshot = baseCostPerUnit;
-  const chinaFactor = isChina ? CHINA_COST_MULTIPLIER : 1;
-  const expectedCostTotal = baseCostPerUnit * chinaFactor * qtyNum;
-  const expectedMarginTotal = netLineTotal - expectedCostTotal;
-
   const line = await prisma.dealLine.create({
     data: {
       dealId,
       productId,
-      skuSnapshot: product.sku,
-      titleSnapshot: product.title,
-      supplierIdSnapshot: product.supplier.id,
-      supplierTypeSnapshot: product.supplier.supplierType,
-      qty: qtyNum,
-      grossUnitPrice,
-      discountPercent: discountPct,
-      netLineTotal,
-      baseCostSnapshot,
-      expectedCostTotal,
-      expectedMarginTotal,
+      ...buildDealLineData(product, qtyNum, { grossUnitPriceOverride, discountPercent }),
     },
     include: { product: { select: { sku: true, unit: true } } },
   });
