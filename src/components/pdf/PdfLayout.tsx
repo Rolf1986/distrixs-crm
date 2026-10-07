@@ -219,7 +219,12 @@ export const shared = StyleSheet.create({
 // ── Helpers ─────────────────────────────────────────────────────────────────
 export function fmt(n: number, lang = "NL"): string {
   const locale = lang === "EN" ? "en-NL" : "nl-NL";
-  return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(n);
+  // Intl zet een smalle/non-breaking spatie na "€"; Helvetica rendert die
+  // vrijwel onzichtbaar ("€14.906,05") → twee echte spaties voor duidelijk
+  // zichtbare ruimte, ook in de vette totalen (react-pdf collapst niet)
+  return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" })
+    .format(n)
+    .replace(/€[\s  ]*/g, "€  ");
 }
 
 export function fmtDate(d: string | Date | null | undefined, lang = "NL"): string {
