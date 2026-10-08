@@ -97,7 +97,9 @@ export async function POST(req: NextRequest) {
         if (!product) continue;
         const line = buildDealLineData(product, item.qty);
         // Algemeen CRM-product (bv. "Catalogus gobo grijsschaal"): het specifieke website-artikel in de regel noemen.
-        if (item.crmSku && item.crmSku !== item.sku) line.titleSnapshot = `${product.title} – ${item.name}`.slice(0, 250);
+        if (item.crmSku && item.crmSku !== item.sku) {
+          line.titleSnapshot = `${product.title} – ${item.name}${item.sku ? ` (${item.sku})` : ""}`.slice(0, 250);
+        }
         await tx.dealLine.create({ data: { dealId: deal.id, productId: product.id, ...line } });
       }
 
