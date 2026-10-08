@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { nextDealNumber } from "@/lib/sequences";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
@@ -72,14 +73,7 @@ export async function POST(req: NextRequest) {
   try {
     const { customerId, contactId, matchedBy } = await resolveCustomer(data);
 
-    const skus = [...new Set(data.items.map((i) => i.sku).filter((s): s is string => !!s))];
-    const products = skus.length
-      ? await prisma.product.findMany({
-          where: { sku: { in: skus }, isActive: true },
-          include: { supplier: { select: { id: true, supplierType: true } }, priceTiers: true },
-        })
-      : [];
-    const bySku = new Map(products.map((p) => [p.sku, p]));
+    const productPerItem = await resolveProducts(data.items);
 
     const year = new Date().getFullYear();
     const dealNumber = await nextDealNumber(year);
@@ -92,18 +86,19 @@ export async function POST(req: NextRequest) {
           customerId,
           primaryContactId: contactId,
           status: "NEW",
-          notes: buildNotes(data, matchedBy, bySku),
+          notes: buildNotes(data, matchedBy, productPerItem),
           externalId,
           createdBy: systemUser.id,
         },
       });
 
-      for (const item of data.items) {
-        const product = item.sku ? bySku.get(item.sku) : undefined;
+      for (const [i, item] of data.items.entries()) {
+        const product = productPerItem[i];
         if (!product) continue;
-        await tx.dealLine.create({
-          data: { dealId: deal.id, productId: product.id, ...buildDealLineData(product, item.qty) },
-        });
+        const line = buildDealLineData(product, item.qty);
+        // Algemeen CRM-product (bv. "Catalogus gobo grijsschaal"): het specifieke website-artikel in de regel noemen.
+        if (item.crmSku && item.crmSku !== item.sku) line.titleSnapshot = `${product.title} – ${item.name}`.slice(0, 250);
+        await tx.dealLine.create({ data: { dealId: deal.id, productId: product.id, ...line } });
       }
 
       await tx.activity.create({
@@ -136,6 +131,39 @@ export async function POST(req: NextRequest) {
     console.error("[intake] aanmaken deal mislukt", e);
     return NextResponse.json({ error: "Interne fout" }, { status: 500 });
   }
+}
+
+const productInclude = { supplier: { select: { id: true, supplierType: true } }, priceTiers: true } as const;
+type ProductMetLijn = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
+
+/** Zelfde normalisatie als bij het vergelijken van artikelnummers: alleen letters/cijfers, kleine letters. */
+const normSku = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/**
+ * CRM-product per aangevraagde regel: eerst het door de website opgegeven CRM-artikelnummer
+ * (koppeling of gobo-regel), anders het website-artikelnummer; exact, en anders zonder
+ * spaties/streepjes/hoofdletters.
+ */
+async function resolveProducts(items: QuoteRequest["items"]): Promise<(ProductMetLijn | undefined)[]> {
+  const sleutels = items.map((i) => i.crmSku ?? i.sku);
+  const exact = await prisma.product.findMany({
+    where: { sku: { in: [...new Set(sleutels.filter((s): s is string => !!s))] }, isActive: true },
+    include: productInclude,
+  });
+  const bySku = new Map(exact.map((p) => [p.sku, p]));
+
+  const missend = sleutels.filter((s): s is string => !!s && !bySku.has(s));
+  let byNorm = new Map<string, ProductMetLijn>();
+  if (missend.length) {
+    const alle = await prisma.product.findMany({ where: { isActive: true }, select: { id: true, sku: true } });
+    const gezocht = new Set(missend.map(normSku));
+    const ids = alle.filter((p) => gezocht.has(normSku(p.sku))).map((p) => p.id);
+    if (ids.length) {
+      const gevonden = await prisma.product.findMany({ where: { id: { in: ids } }, include: productInclude });
+      byNorm = new Map(gevonden.map((p) => [normSku(p.sku), p]));
+    }
+  }
+  return sleutels.map((s) => (s ? bySku.get(s) ?? byNorm.get(normSku(s)) : undefined));
 }
 
 /** Zoek de klant bij deze aanvraag; maak zo nodig een contactpersoon of prospect aan. */
@@ -242,7 +270,7 @@ async function createProspect(c: QuoteRequest["contact"]): Promise<{ id: string;
   throw new Error("Geen vrij klantnummer gevonden");
 }
 
-function buildNotes(data: QuoteRequest, matchedBy: MatchedBy, bySku: Map<string, unknown>): string {
+function buildNotes(data: QuoteRequest, matchedBy: MatchedBy, productPerItem: (unknown | undefined)[]): string {
   const c = data.contact;
   const lines = [
     "Offerteaanvraag via distrixs.nl",
@@ -252,8 +280,8 @@ function buildNotes(data: QuoteRequest, matchedBy: MatchedBy, bySku: Map<string,
   if (data.message) lines.push("", "Bericht van de klant:", data.message);
 
   lines.push("", "Aangevraagde producten:");
-  for (const item of data.items) {
-    const inCrm = item.sku && bySku.has(item.sku);
+  for (const [i, item] of data.items.entries()) {
+    const inCrm = !!productPerItem[i];
     lines.push(
       `- ${item.qty}× ${item.name}${item.sku ? ` (SKU ${item.sku})` : ""}${inCrm ? "" : " — niet in CRM gevonden, geen dealregel"}`
     );

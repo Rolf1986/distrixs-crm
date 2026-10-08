@@ -33,6 +33,8 @@ export function verifyIntakeSignature(
 
 export type QuoteRequestItem = {
   sku: string | null;
+  /** CRM-artikelnummer als dat afwijkt van het website-artikelnummer (koppeling of gobo-regel). */
+  crmSku: string | null;
   name: string;
   qty: number;
   productUrl: string | null;
@@ -112,7 +114,7 @@ export function parseQuoteRequest(body: unknown): Result<QuoteRequest> {
         if (label && value) options.push({ label, value });
       }
     }
-    items.push({ sku: text(it.sku, 100), name, qty, productUrl: httpsUrl(it.productUrl), options });
+    items.push({ sku: text(it.sku, 100), crmSku: text(it.crmSku, 100), name, qty, productUrl: httpsUrl(it.productUrl), options });
   }
 
   return {
