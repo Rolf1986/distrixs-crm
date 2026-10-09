@@ -19,6 +19,7 @@ export function CreateCustomerButton() {
   const [email, setEmail] = useState("");
   // Adres
   const [street, setStreet] = useState("");
+  const [addition, setAddition] = useState("");
   const [houseNumber, setHouseNumber] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [city, setCity] = useState("");
@@ -102,7 +103,7 @@ export function CreateCustomerButton() {
           defaultPaymentTerm: paymentTerm,
           defaultLanguage: language,
           address: (street.trim() && city.trim())
-            ? { street: street.trim(), houseNumber: houseNumber.trim(), postalCode: postalCode.trim(), city: city.trim(), country }
+            ? { street: street.trim(), houseNumber: houseNumber.trim(), addition: addition.trim() || null, postalCode: postalCode.trim(), city: city.trim(), country }
             : null,
           contact: (cFirst.trim() || cLast.trim())
             ? { firstName: cFirst.trim(), lastName: cLast.trim(), email: cEmail.trim() || null, phone: cPhone.trim() || null }
@@ -218,11 +219,14 @@ export function CreateCustomerButton() {
               <FormField label="Plaats">
                 <input className={inputClass} value={city} onChange={(e) => setCity(e.target.value)} placeholder="Amsterdam" />
               </FormField>
-              <div className="col-span-3">
+              <div className="col-span-2">
                 <FormField label="Straat">
                   <input className={inputClass} value={street} onChange={(e) => setStreet(e.target.value)} placeholder="Dorpsstraat" />
                 </FormField>
               </div>
+              <FormField label="Toevoeging (ruimte/unit)">
+                <input className={inputClass} value={addition} onChange={(e) => setAddition(e.target.value)} placeholder="Ruimte 2.14" />
+              </FormField>
             </div>
           </div>
 

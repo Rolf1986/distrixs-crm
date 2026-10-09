@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     defaultLanguage?: string;
     status?: string;
     email?: string | null;
-    address?: { street?: string; houseNumber?: string; postalCode?: string; city?: string; country?: string } | null;
+    address?: { street?: string; houseNumber?: string; addition?: string | null; postalCode?: string; city?: string; country?: string } | null;
     contact?: { firstName?: string; lastName?: string; email?: string; phone?: string } | null;
   };
 
@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
                     isDefault: true,
                     street: address!.street!.trim(),
                     houseNumber: address!.houseNumber?.trim() || "",
+                    addition: address!.addition?.trim() || null,
                     postalCode: address!.postalCode?.trim() || "",
                     city: address!.city!.trim(),
                     country: address!.country?.trim() || "NL",
