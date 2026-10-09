@@ -182,6 +182,7 @@ export interface MyParcelRecipient {
   city: string;
   street: string;
   number: string;
+  street_additional_info?: string | null; // toevoeging: ruimte/unit/verdieping
   person: string;        // contactpersoon
   company?: string | null; // bedrijfsnaam (verplicht bij o.a. DHL Europlus)
   email?: string | null;
@@ -214,6 +215,7 @@ export async function createMyParcelShipments(opts: {
       city: opts.recipient.city,
       street: opts.recipient.street,
       number: opts.recipient.number,
+      ...(opts.recipient.street_additional_info ? { street_additional_info: opts.recipient.street_additional_info } : {}),
       person: opts.recipient.person,
       ...(opts.recipient.company ? { company: opts.recipient.company } : {}),
       ...(opts.recipient.email ? { email: opts.recipient.email } : {}),

@@ -38,6 +38,7 @@ export default async function CustomerInfoPage({
           isDefault: a.isDefault,
           street: a.street,
           houseNumber: a.houseNumber,
+          addition: a.addition,
           postalCode: a.postalCode,
           city: a.city,
           country: a.country,

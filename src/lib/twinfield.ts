@@ -340,6 +340,7 @@ type DebtorAddress = {
   postalCode: string;
   street: string;
   houseNumber: string;
+  addition?: string | null;
 };
 
 /** Adres-/btw-blok voor de debiteur-dimensie. Twinfield leidt het
@@ -351,7 +352,7 @@ function debtorDetailsXml(companyName: string, vatNumber: string | null | undefi
     ? `<vatnumber>${escapeXml(cleanVat)}</vatnumber>`
     : "";
   const address = addr
-    ? `<addresses><address default="true" type="invoice"><name>${escapeXml(companyName)}</name><country>${escapeXml(addr.country)}</country><city>${escapeXml(addr.city)}</city><postcode>${escapeXml(addr.postalCode)}</postcode><field2>${escapeXml(`${addr.street} ${addr.houseNumber}`.trim())}</field2></address></addresses>`
+    ? `<addresses><address default="true" type="invoice"><name>${escapeXml(companyName)}</name><country>${escapeXml(addr.country)}</country><city>${escapeXml(addr.city)}</city><postcode>${escapeXml(addr.postalCode)}</postcode><field2>${escapeXml(`${addr.street} ${addr.houseNumber}`.trim() + (addr.addition ? `, ${addr.addition}` : ""))}</field2></address></addresses>`
     : "";
   return vat + address;
 }
@@ -611,6 +612,7 @@ export async function syncInvoiceToTwinfield(
             city: custAddr.city,
             postalCode: custAddr.postalCode,
             street: custAddr.street,
+            addition: custAddr.addition,
             houseNumber: custAddr.houseNumber,
           }
         : null,
@@ -797,6 +799,7 @@ export async function syncCreditNoteToTwinfield(
             city: custAddr.city,
             postalCode: custAddr.postalCode,
             street: custAddr.street,
+            addition: custAddr.addition,
             houseNumber: custAddr.houseNumber,
           }
         : null,

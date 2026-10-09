@@ -13,7 +13,7 @@ export async function POST(
 
   const { id: customerId } = await params;
   const body = await req.json();
-  const { type, street, houseNumber, postalCode, city, country = "NL", isDefault = false } = body;
+  const { type, street, houseNumber, addition, postalCode, city, country = "NL", isDefault = false } = body;
 
   if (!type || !street?.trim() || !houseNumber?.trim() || !postalCode?.trim() || !city?.trim()) {
     return NextResponse.json({ error: "Type, straat, huisnummer, postcode en stad zijn verplicht" }, { status: 400 });
@@ -33,6 +33,7 @@ export async function POST(
       type,
       street: street.trim(),
       houseNumber: houseNumber.trim(),
+      addition: addition?.trim() || null,
       postalCode: postalCode.trim(),
       city: city.trim(),
       country: country.trim() || "NL",

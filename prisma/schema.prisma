@@ -268,6 +268,8 @@ model CustomerAddress {
   isDefault   Boolean     @default(false) @map("is_default")
   street      String
   houseNumber String      @map("house_number")
+  // Toevoeging naast straat/huisnummer: ruimte-/unitnummer, verdieping, bedrijfsverzamelgebouw
+  addition    String?
   postalCode  String      @map("postal_code")
   city        String
   country     String      @default("NL")

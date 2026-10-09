@@ -56,6 +56,7 @@ export async function POST(
       city: addr.city,
       street: addr.street,
       number: addr.houseNumber || "",
+      street_additional_info: addr.addition || null,
       person,
       company: dn.customer.companyName,
       email,

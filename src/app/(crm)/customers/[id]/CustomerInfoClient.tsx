@@ -20,6 +20,7 @@ type CustomerInfo = {
     isDefault: boolean;
     street: string;
     houseNumber: string;
+    addition: string | null;
     postalCode: string;
     city: string;
     country: string;
@@ -114,7 +115,7 @@ const ADDRESS_TYPES = [
   { value: "VISITING", label: "Bezoekadres" },
 ];
 
-const blankAddress = { type: "BILLING", street: "", houseNumber: "", postalCode: "", city: "", country: "NL", isDefault: false };
+const blankAddress = { type: "BILLING", street: "", houseNumber: "", addition: "", postalCode: "", city: "", country: "NL", isDefault: false };
 
 /**
  * Parseert een VIES-adresblok naar losse velden.
@@ -656,6 +657,10 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
                   <input className={inputClass} value={addressForm.houseNumber} onChange={(e) => setAddressForm((f) => ({ ...f, houseNumber: e.target.value }))} onBlur={(e) => lookupAddressForm(addressForm.postalCode, e.target.value)} placeholder="1A" />
                 </div>
                 <div>
+                  <label className="block text-xs text-slate-500 mb-1">Toevoeging (ruimte/unit)</label>
+                  <input className={inputClass} value={addressForm.addition} onChange={(e) => setAddressForm((f) => ({ ...f, addition: e.target.value }))} placeholder="Ruimte 2.14" />
+                </div>
+                <div>
                   <label className="block text-xs text-slate-500 mb-1">Postcode</label>
                   <input className={inputClass} value={addressForm.postalCode} onChange={(e) => setAddressForm((f) => ({ ...f, postalCode: e.target.value }))} onBlur={(e) => lookupAddressForm(e.target.value, addressForm.houseNumber)} placeholder="1234 AB" />
                 </div>
@@ -712,6 +717,10 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
                       <input className={inputClass} value={editAddressForm.houseNumber} onChange={(e) => setEditAddressForm((f) => ({ ...f, houseNumber: e.target.value }))} />
                     </div>
                     <div>
+                      <label className="block text-xs text-slate-500 mb-1">Toevoeging (ruimte/unit)</label>
+                      <input className={inputClass} value={editAddressForm.addition} onChange={(e) => setEditAddressForm((f) => ({ ...f, addition: e.target.value }))} placeholder="Ruimte 2.14" />
+                    </div>
+                    <div>
                       <label className="block text-xs text-slate-500 mb-1">Postcode</label>
                       <input className={inputClass} value={editAddressForm.postalCode} onChange={(e) => setEditAddressForm((f) => ({ ...f, postalCode: e.target.value }))} />
                     </div>
@@ -740,7 +749,7 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
                         </span>
                         {addr.isDefault && <span className="text-xs text-slate-400">Standaard</span>}
                       </div>
-                      <p className="text-sm text-slate-900">{addr.street} {addr.houseNumber}</p>
+                      <p className="text-sm text-slate-900">{addr.street} {addr.houseNumber}{addr.addition ? `, ${addr.addition}` : ""}</p>
                       <p className="text-sm text-slate-600">{addr.postalCode} {addr.city}</p>
                       <p className="text-sm text-slate-500">{addr.country}</p>
                     </div>
@@ -748,7 +757,7 @@ export function CustomerInfoClient({ customer: initial }: { customer: CustomerIn
                       <button
                         onClick={() => {
                           setEditingAddressId(addr.id);
-                          setEditAddressForm({ type: addr.type, street: addr.street, houseNumber: addr.houseNumber, postalCode: addr.postalCode, city: addr.city, country: addr.country, isDefault: addr.isDefault });
+                          setEditAddressForm({ type: addr.type, street: addr.street, houseNumber: addr.houseNumber, addition: addr.addition ?? "", postalCode: addr.postalCode, city: addr.city, country: addr.country, isDefault: addr.isDefault });
                         }}
                         className="p-1.5 rounded text-slate-300 hover:text-slate-600 hover:bg-slate-100"
                       >

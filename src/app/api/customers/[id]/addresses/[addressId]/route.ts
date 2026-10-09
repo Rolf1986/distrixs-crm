@@ -15,10 +15,11 @@ export async function PATCH(
   const body = await req.json();
 
   const data: Record<string, unknown> = {};
-  const allowed = ["type", "street", "houseNumber", "postalCode", "city", "country", "isDefault"];
+  const allowed = ["type", "street", "houseNumber", "addition", "postalCode", "city", "country", "isDefault"];
   for (const f of allowed) {
     if (f in body) data[f] = body[f];
   }
+  if (typeof data.addition === "string") data.addition = data.addition.trim() || null;
 
   // If setting as default, unset others of same type
   if (body.isDefault === true) {

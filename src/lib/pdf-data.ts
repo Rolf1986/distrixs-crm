@@ -19,6 +19,14 @@ type AddressRow = {
   country: string;
 };
 
+
+/** Straatregel incl. eventuele toevoeging (ruimte/unit): "Hoofdstraat 1A, Ruimte 2.14" */
+function streetLine(a: { street: string; houseNumber: string; addition?: string | null } | null | undefined): string | null {
+  if (!a) return null;
+  const base = `${a.street} ${a.houseNumber}`.trim();
+  return a.addition ? `${base}, ${a.addition}` : base;
+}
+
 function pickAddress<T extends AddressRow>(addresses: T[]): T | undefined {
   return addresses.find((a) => a.type === "BILLING" && a.isDefault) ?? addresses[0];
 }
@@ -77,7 +85,7 @@ export async function buildInvoicePdfData(invoiceId: string) {
       contactName: invoice.contact
         ? `${invoice.contact.firstName} ${invoice.contact.lastName}`
         : null,
-      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
+      address: streetLine(addr),
       postalCode: addr?.postalCode ?? null,
       city: addr?.city ?? null,
       country: addr?.country ?? null,
@@ -130,7 +138,7 @@ export async function buildCreditNotePdfData(creditNoteId: string) {
     customer: {
       companyName: cn.customer.companyName,
       customerNumber: cn.customer.customerNumber,
-      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
+      address: streetLine(addr),
       postalCode: addr?.postalCode ?? null,
       city: addr?.city ?? null,
       country: addr?.country ?? null,
@@ -186,7 +194,7 @@ export async function buildQuotePdfData(quoteId: string) {
       companyName: quote.customer.companyName,
       contactName: quote.contact ? `${quote.contact.firstName} ${quote.contact.lastName}` : null,
       email: quote.contact?.email ?? null,
-      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
+      address: streetLine(addr),
       postalCode: addr?.postalCode ?? null,
       city: addr?.city ?? null,
       country: addr?.country ?? null,
@@ -256,7 +264,7 @@ export async function buildOrderConfirmationPdfData(ocId: string) {
     customer: {
       companyName: oc.customer.companyName,
       contactName: contact ? `${contact.firstName} ${contact.lastName}` : null,
-      address: addr ? `${addr.street} ${addr.houseNumber}`.trim() : null,
+      address: streetLine(addr),
       postalCode: addr?.postalCode ?? null,
       city: addr?.city ?? null,
       country: addr?.country ?? null,
@@ -306,7 +314,7 @@ export async function buildDeliveryNotePdfData(dnId: string) {
     customer: {
       companyName: dn.customer.companyName,
       contactName: dn.contact ? `${dn.contact.firstName} ${dn.contact.lastName}` : null,
-      address: defaultAddr ? `${defaultAddr.street} ${defaultAddr.houseNumber}` : null,
+      address: streetLine(defaultAddr),
       postalCode: defaultAddr?.postalCode ?? null,
       city: defaultAddr?.city ?? null,
       country: defaultAddr?.country ?? null,
@@ -314,7 +322,7 @@ export async function buildDeliveryNotePdfData(dnId: string) {
     deliveryAddress: shippingAddr
       ? {
           companyName: dn.customer.companyName,
-          address: `${shippingAddr.street} ${shippingAddr.houseNumber}`,
+          address: streetLine(shippingAddr)!,
           postalCode: shippingAddr.postalCode,
           city: shippingAddr.city,
           country: shippingAddr.country,
