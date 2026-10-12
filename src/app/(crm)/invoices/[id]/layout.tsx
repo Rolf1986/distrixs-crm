@@ -195,7 +195,11 @@ export default async function InvoiceLayout({
             </div>
           </div>
 
-          {/* Actieknoppen */}
+          {/* Actieknoppen — drie rustige, rechts uitgelijnde rijen:
+              1) document (kopie/credit/pdf/taal/betaallink)
+              2) verzenden (herinnering/factuur/Twinfield)
+              3) betaalstatus */}
+          <div className="flex flex-col items-start xl:items-end gap-2">
           <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             <DeleteInvoiceButton invoiceId={id} status={invoice.status} />
             <CopyInvoiceButton invoiceId={id} />
@@ -233,6 +237,8 @@ export default async function InvoiceLayout({
               openAmount={Number(invoice.openAmount)}
               status={invoice.status}
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             <SendReminderButton
               invoiceId={id}
               invoiceNumber={invoice.invoiceNumber}
@@ -266,11 +272,14 @@ export default async function InvoiceLayout({
               syncStatus={invoice.twinfieldSyncStatus}
               reference={invoice.twinfieldReference ?? null}
             />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
             <InvoiceStatusActions
               invoiceId={id}
               currentStatus={invoice.status as "DRAFT" | "SENT" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CREDITED"}
               twinfieldLocked={invoice.twinfieldLocked}
             />
+          </div>
           </div>
         </div>
 
