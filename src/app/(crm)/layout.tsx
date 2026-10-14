@@ -5,6 +5,7 @@ import { getSession } from "@/lib/session";
 import { Sidebar } from "@/components/Sidebar";
 import { InstallAppHint } from "@/components/InstallAppHint";
 import { BackButton } from "@/components/BackButton";
+import { StaleClientGuard } from "@/components/StaleClientGuard";
 import { prisma } from "@/lib/prisma";
 
 async function getOverdueActivityCount() {
@@ -30,6 +31,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
       <main className="flex-1 md:ml-56 pt-14 md:pt-0 min-h-screen w-full min-w-0">{children}</main>
       <InstallAppHint />
       <BackButton />
+      <StaleClientGuard />
     </div>
   );
 }
