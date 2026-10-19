@@ -29,7 +29,14 @@ function daysOut(outSince: string | null): number | null {
   return Math.floor((Date.now() - new Date(outSince).getTime()) / 86400000);
 }
 
-export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
+type DemoCustomer = {
+  companyName: string;
+  contactName: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
+export function DemoItemsClient({ initialItems, customers = [] }: { initialItems: Item[]; customers?: DemoCustomer[] }) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [search, setSearch] = usePersistentState("demo-items.search", "");
@@ -47,6 +54,8 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
   const [issueContact, setIssueContact] = useState("");
   const [issuePhone, setIssuePhone] = useState("");
   const [issueEmail, setIssueEmail] = useState("");
+  // Klantherkenning: suggesties zolang er getypt wordt en nog niets gekozen is
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Inline notities bewerken
   const [editNotesId, setEditNotesId] = useState<string | null>(null);
@@ -380,9 +389,46 @@ export function DemoItemsClient({ initialItems }: { initialItems: Item[] }) {
               </p>
             </div>
             <div className="px-6 py-4 space-y-3">
-              <div>
+              <div className="relative">
                 <label className="block text-xs text-slate-500 mb-1">Locatie / bedrijf *</label>
-                <input className={`${inputClass} w-full`} autoFocus value={issueLocation} onChange={(e) => setIssueLocation(e.target.value)} placeholder="bijv. Addlive" />
+                <input
+                  className={`${inputClass} w-full`}
+                  autoFocus
+                  value={issueLocation}
+                  onChange={(e) => { setIssueLocation(e.target.value); setShowSuggestions(true); }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Zoek klant of typ vrij, bijv. Addlive"
+                />
+                {showSuggestions && issueLocation.trim().length >= 2 && (() => {
+                  const q = issueLocation.trim().toLowerCase();
+                  const matches = customers
+                    .filter((c) => c.companyName.toLowerCase().includes(q) && c.companyName.toLowerCase() !== q)
+                    .slice(0, 8);
+                  if (matches.length === 0) return null;
+                  return (
+                    <div className="absolute z-10 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                      {matches.map((c) => (
+                        <button
+                          key={c.companyName}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setIssueLocation(c.companyName);
+                            if (c.contactName) setIssueContact(c.contactName);
+                            if (c.phone) setIssuePhone(c.phone);
+                            if (c.email) setIssueEmail(c.email);
+                            setShowSuggestions(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b border-slate-50 last:border-0"
+                        >
+                          <span className="text-slate-900 font-medium">{c.companyName}</span>
+                          {c.contactName && <span className="text-slate-400 text-xs ml-2">{c.contactName}</span>}
+                        </button>
+                      ))}
+                      <p className="px-3 py-1.5 text-[11px] text-slate-400 bg-slate-50">Klik om klantgegevens over te nemen — of typ gewoon door</p>
+                    </div>
+                  );
+                })()}
               </div>
               <div>
                 <label className="block text-xs text-slate-500 mb-1">Contactpersoon</label>

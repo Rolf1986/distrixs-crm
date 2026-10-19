@@ -10,8 +10,28 @@ async function getDemoItems() {
   });
 }
 
+// Voor klantherkenning in de uitgeef-dialoog: kiezen vult bedrijf +
+// contactgegevens in; vrij typen blijft mogelijk voor niet-klanten
+async function getCustomers() {
+  return prisma.customer.findMany({
+    where: { status: "ACTIVE" },
+    select: {
+      id: true,
+      companyName: true,
+      email: true,
+      contacts: {
+        where: { isActive: true },
+        orderBy: { isPrimary: "desc" },
+        take: 1,
+        select: { firstName: true, lastName: true, email: true, phone: true },
+      },
+    },
+    orderBy: { companyName: "asc" },
+  });
+}
+
 export default async function DemoItemsPage() {
-  const items = await getDemoItems();
+  const [items, customers] = await Promise.all([getDemoItems(), getCustomers()]);
   const outstanding = items.filter((i) => i.location.toLowerCase() !== "kantoor").length;
 
   return (
@@ -32,6 +52,12 @@ export default async function DemoItemsPage() {
             email: i.email,
             notes: i.notes,
             outSince: i.outSince ? i.outSince.toISOString() : null,
+          }))}
+          customers={customers.map((c) => ({
+            companyName: c.companyName,
+            contactName: c.contacts[0] ? `${c.contacts[0].firstName} ${c.contacts[0].lastName}`.trim() : null,
+            phone: c.contacts[0]?.phone ?? null,
+            email: c.contacts[0]?.email ?? c.email ?? null,
           }))}
         />
       </div>
