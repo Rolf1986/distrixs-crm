@@ -249,6 +249,8 @@ export function QuoteLinesClient({
           netLineTotal: Number(line.netLineTotal),
           vatRate: Number(line.vatRate),
           vatAmount: Number(line.vatAmount),
+          costSnapshot: Number(line.costSnapshot ?? 0),
+          serialNumbers: line.serialNumbers ?? null,
         },
       ]);
       // Reset form
