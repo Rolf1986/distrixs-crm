@@ -235,7 +235,8 @@ export function fmtDate(d: string | Date | null | undefined, lang = "NL"): strin
 
 // Taalsleutels
 type LangKey =
-  | "quote" | "invoice" | "deliveryNote" | "orderConfirmation"
+  | "quote" | "invoice" | "deliveryNote" | "orderConfirmation" | "purchaseOrder"
+  | "supplier" | "expectedDelivery" | "poFooterNote"
   | "number" | "date" | "validUntil" | "paymentTerm" | "yourRef" | "ourRef"
   | "deliveryDate" | "deliveryAddress"
   | "description" | "qty" | "unitPrice" | "total"
@@ -249,6 +250,10 @@ const NL: Record<LangKey, string> = {
   invoice: "Factuur",
   deliveryNote: "Leveringsbon",
   orderConfirmation: "Orderbevestiging",
+  purchaseOrder: "Inkooporder",
+  supplier: "Leverancier",
+  expectedDelivery: "Verwachte levering",
+  poFooterNote: "Vermeld bij levering en facturatie altijd ons inkoopordernummer.",
   number: "Nummer",
   date: "Datum",
   validUntil: "Geldig tot",
@@ -281,6 +286,10 @@ const EN: Record<LangKey, string> = {
   invoice: "Invoice",
   deliveryNote: "Delivery Note",
   orderConfirmation: "Order Confirmation",
+  purchaseOrder: "Purchase Order",
+  supplier: "Supplier",
+  expectedDelivery: "Expected delivery",
+  poFooterNote: "Please state our purchase order number on all deliveries and invoices.",
   number: "Number",
   date: "Date",
   validUntil: "Valid until",

@@ -7,7 +7,7 @@ import { TabNav } from "@/components/TabNav";
 import { PoStatusActions } from "@/components/PoStatusActions";
 import { PoSupplierSelect } from "@/components/PoSupplierSelect";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 
 async function getSuppliers() {
   return prisma.supplier.findMany({
@@ -97,7 +97,17 @@ export default async function PurchaseOrderLayout({
             </div>
           </div>
 
-          <PoStatusActions poId={id} currentStatus={po.status as "DRAFT" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED"} />
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/purchase-orders/${id}/pdf`}
+              download={`${po.poNumber}.pdf`}
+              className="flex items-center gap-1.5 border border-slate-200 hover:border-slate-300 bg-white text-slate-700 hover:text-slate-900 text-sm font-medium px-3 py-2 rounded-lg transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              PDF
+            </a>
+            <PoStatusActions poId={id} currentStatus={po.status as "DRAFT" | "ORDERED" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CLOSED" | "CANCELLED"} />
+          </div>
         </div>
 
         {/* KPI's */}

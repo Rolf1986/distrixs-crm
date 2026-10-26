@@ -283,6 +283,45 @@ export async function buildOrderConfirmationPdfData(ocId: string) {
   return { oc, company, data };
 }
 
+export async function buildPurchaseOrderPdfData(poId: string) {
+  const po = await prisma.purchaseOrder.findUnique({
+    where: { id: poId },
+    include: {
+      supplier: { select: { name: true, supplierType: true, email: true, phone: true } },
+      deal: { select: { dealNumber: true } },
+      lines: { orderBy: { createdAt: "asc" } },
+    },
+  });
+  if (!po) return null;
+
+  const company = await getCompanyInfo();
+
+  const data = {
+    // Chinese leveranciers krijgen het document in het Engels
+    language: po.supplier.supplierType === "CHINA" ? "EN" : "NL",
+    poNumber: po.poNumber,
+    orderDate: po.orderDate,
+    dealNumber: po.deal?.dealNumber ?? null,
+    notes: po.notes ?? null,
+    company,
+    supplier: {
+      name: po.supplier.name,
+      email: po.supplier.email ?? null,
+      phone: po.supplier.phone ?? null,
+    },
+    lines: po.lines.map((l) => ({
+      skuSnapshot: l.skuSnapshot,
+      titleSnapshot: l.titleSnapshot,
+      qty: Number(l.qtyOrdered),
+      unitCost: Number(l.baseCostSnapshot),
+      lineTotal: Number(l.baseCostSnapshot) * Number(l.qtyOrdered),
+      expectedDeliveryDate: l.expectedDeliveryDate,
+    })),
+  };
+
+  return { po, company, data };
+}
+
 export async function buildDeliveryNotePdfData(dnId: string) {
   const dn = await prisma.deliveryNote.findUnique({
     where: { id: dnId },
