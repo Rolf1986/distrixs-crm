@@ -20,6 +20,52 @@ export async function PATCH(
     if (key in body) data[key] = body[key];
   }
 
+  // Klant wijzigen: concept-documenten van de deal verhuizen mee, verzonden/
+  // definitieve documenten blijven (immutable) bij de oude klant staan.
+  if (typeof body.customerId === "string" && body.customerId) {
+    const [customer, deal] = await Promise.all([
+      prisma.customer.findUnique({ where: { id: body.customerId }, select: { id: true } }),
+      prisma.deal.findUnique({ where: { id }, select: { customerId: true } }),
+    ]);
+    if (!deal) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
+    if (!customer) return NextResponse.json({ error: "Klant niet gevonden" }, { status: 400 });
+
+    if (deal.customerId !== body.customerId) {
+      // Oude contactpersoon hoort bij de oude klant → loskoppelen
+      data.customerId = body.customerId;
+      data.primaryContactId = null;
+      const [, quotes, invoices, deliveryNotes, orderConfirmations] = await prisma.$transaction([
+        prisma.deal.update({ where: { id }, data }),
+        prisma.quote.updateMany({
+          where: { dealId: id, status: "DRAFT" },
+          data: { customerId: body.customerId, contactId: null },
+        }),
+        prisma.invoice.updateMany({
+          where: { dealId: id, status: "DRAFT" },
+          data: { customerId: body.customerId, contactId: null },
+        }),
+        prisma.deliveryNote.updateMany({
+          where: { dealId: id, status: "DRAFT" },
+          data: { customerId: body.customerId, contactId: null },
+        }),
+        prisma.orderConfirmation.updateMany({
+          where: { dealId: id, status: "DRAFT" },
+          data: { customerId: body.customerId },
+        }),
+      ]);
+      return NextResponse.json({
+        ok: true,
+        moved: {
+          quotes: quotes.count,
+          invoices: invoices.count,
+          deliveryNotes: deliveryNotes.count,
+          orderConfirmations: orderConfirmations.count,
+        },
+      });
+    }
+    // Zelfde klant gekozen: alleen eventuele overige velden bijwerken
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Geen geldige velden" }, { status: 400 });
   }

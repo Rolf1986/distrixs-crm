@@ -13,6 +13,7 @@ import { DealPipeline } from "@/components/DealPipeline";
 import { WinProbabilityEditor } from "@/components/WinProbabilityEditor";
 import { ExpectedCloseDateEditor } from "@/components/ExpectedCloseDateEditor";
 import { DealOrderReferenceEditor } from "@/components/DealOrderReferenceEditor";
+import { DealCustomerSelect } from "@/components/DealCustomerSelect";
 
 async function getDeal(id: string) {
   return prisma.deal.findUnique({
@@ -26,6 +27,14 @@ async function getDeal(id: string) {
       },
       _count: { select: { quotes: true, invoices: true, purchaseOrders: true } },
     },
+  });
+}
+
+async function getCustomers() {
+  return prisma.customer.findMany({
+    where: { status: { not: "INACTIVE" } },
+    select: { id: true, companyName: true, customerNumber: true },
+    orderBy: { companyName: "asc" },
   });
 }
 
@@ -45,7 +54,7 @@ export default async function DealLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [deal, suppliers] = await Promise.all([getDeal(id), getSuppliers()]);
+  const [deal, suppliers, customers] = await Promise.all([getDeal(id), getSuppliers(), getCustomers()]);
   if (!deal) notFound();
 
   // Bereken omzet uit offertes (voorkeur: geaccepteerde, anders verzonden, anders alle niet-afgewezen)
@@ -71,9 +80,12 @@ export default async function DealLayout({
           <div className="min-w-[260px]">
             <h1 className="text-xl font-semibold text-slate-900">{deal.title}</h1>
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              <Link href={`/customers/${deal.customerId}`} className="text-sm text-brand-blue hover:underline">
-                {deal.customer.companyName}
-              </Link>
+              <DealCustomerSelect
+                dealId={id}
+                currentCustomerId={deal.customerId}
+                currentCustomerName={deal.customer.companyName}
+                customers={customers}
+              />
               {deal.primaryContact && (
                 <span className="text-sm text-slate-400">
                   · {deal.primaryContact.firstName} {deal.primaryContact.lastName}
