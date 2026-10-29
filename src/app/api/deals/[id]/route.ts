@@ -72,6 +72,33 @@ export async function PATCH(
 
   try {
     const deal = await prisma.deal.update({ where: { id }, data });
+
+    // Nieuwe contactpersoon op de deal → ook op de concept-documenten zetten
+    // (alleen als het contact bij de klant van dat document hoort; verzonden
+    // documenten blijven onaangeroerd)
+    if (typeof data.primaryContactId === "string" && data.primaryContactId) {
+      const contact = await prisma.customerContact.findUnique({
+        where: { id: data.primaryContactId },
+        select: { customerId: true },
+      });
+      if (contact) {
+        await prisma.$transaction([
+          prisma.quote.updateMany({
+            where: { dealId: id, status: "DRAFT", customerId: contact.customerId },
+            data: { contactId: data.primaryContactId },
+          }),
+          prisma.invoice.updateMany({
+            where: { dealId: id, status: "DRAFT", customerId: contact.customerId },
+            data: { contactId: data.primaryContactId },
+          }),
+          prisma.deliveryNote.updateMany({
+            where: { dealId: id, status: "DRAFT", customerId: contact.customerId },
+            data: { contactId: data.primaryContactId },
+          }),
+        ]);
+      }
+    }
+
     return NextResponse.json(deal);
   } catch {
     return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
