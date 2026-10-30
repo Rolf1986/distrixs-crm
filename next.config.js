@@ -14,6 +14,11 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // Het CRM hoort niet in zoekmachines; alleen de publieke firmware-aanmeldpagina mag geïndexeerd worden.
+        source: "/((?!firmware-updates).*)",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+      {
         source: "/(.*)",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
