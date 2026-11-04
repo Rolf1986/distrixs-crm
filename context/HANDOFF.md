@@ -47,6 +47,8 @@ Startpunt voor een nieuwe Claude-sessie. Lees dit vóór je iets wijzigt.
 - ICL-klanten (EU + BTW-nr): 0% wordt server-side afgedwongen op offerte/factuurregels; PDF toont "BTW verlegd".
 - Nummering: D/Q/F/PO-YYYY-nnn via `src/lib/sequences.ts`; klantnummers K-YYYY-nnn numeriek max+1.
 - Perl-oneliners via shell breken op escaping — gebruik Edit-tool of node-scripts voor multi-file transforms.
+- Dubbele klanten (bv. intake-prospect + handmatige klant): "Samenvoegen"-knop op de klantpagina — `/api/customers/[id]/merge` verhuist ALLE verwijzingen dynamisch via information_schema (dekt ook server-only tabellen zoals firmware), dedupet contacten/adressen en logt in het auditlog.
+- Klant wijzigen op een deal: concept-documenten verhuizen mee, verzonden blijven bij de oude klant; nieuwe contactpersoon op een deal gaat door naar concept-documenten.
 
 ## Security/infra (oktober 2026 — REVIEW.md ronde 2 uitgevoerd)
 - Betaalstand: altijd via `recalcInvoicePaymentState()` in `src/lib/payment-state.ts` (nooit meer los herberekenen); buiten transacties de variant `…WithInstallments`.
