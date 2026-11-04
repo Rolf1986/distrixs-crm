@@ -5,6 +5,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { TabNav } from "@/components/TabNav";
 import { CustomerQuickCreate } from "@/components/CustomerQuickCreate";
+import { MergeCustomerButton } from "@/components/MergeCustomerButton";
 import { ChevronRight } from "lucide-react";
 
 async function getCustomer(id: string) {
@@ -16,6 +17,14 @@ async function getCustomer(id: string) {
   });
 }
 
+async function getMergeCandidates(excludeId: string) {
+  return prisma.customer.findMany({
+    where: { id: { not: excludeId } },
+    select: { id: true, companyName: true, customerNumber: true },
+    orderBy: { companyName: "asc" },
+  });
+}
+
 export default async function CustomerLayout({
   children,
   params,
@@ -24,7 +33,7 @@ export default async function CustomerLayout({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const customer = await getCustomer(id);
+  const [customer, mergeCandidates] = await Promise.all([getCustomer(id), getMergeCandidates(id)]);
   if (!customer) notFound();
 
   const statusMap: Record<string, string> = {
@@ -54,7 +63,15 @@ export default async function CustomerLayout({
               <StatusBadge status={customer.status} />
             </div>
           </div>
-          <CustomerQuickCreate customerId={id} companyName={customer.companyName} />
+          <div className="flex flex-wrap items-center gap-2">
+            <MergeCustomerButton
+              customerId={id}
+              companyName={customer.companyName}
+              customerNumber={customer.customerNumber}
+              customers={mergeCandidates}
+            />
+            <CustomerQuickCreate customerId={id} companyName={customer.companyName} />
+          </div>
         </div>
 
         {/* KPI's */}
