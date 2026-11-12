@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { logAudit } from "@/lib/audit";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled } from "@/lib/twinfield";
-import { syncInvoiceInstallments } from "@/lib/installments";
+import { syncInvoiceInstallments, shiftInstallmentsToBookDate } from "@/lib/installments";
 import { sumInvoicePayments } from "@/lib/payment-state";
 import { termDays } from "@/lib/payment-terms";
 
@@ -89,6 +89,10 @@ export async function PATCH(
     data: { status: newStatus, ...extraData },
   });
 
+  // Termijndata schuiven mee naar de boekdatum (bv. +30/+60/+90 vanaf nu)
+  if (extraData.invoiceDate instanceof Date) {
+    await shiftInstallmentsToBookDate(id, new Date(invoice.invoiceDate), extraData.invoiceDate);
+  }
   // Termijnen (indien ingevuld) zijn leidend voor vinkjes + vervaldatum
   await syncInvoiceInstallments(id);
 

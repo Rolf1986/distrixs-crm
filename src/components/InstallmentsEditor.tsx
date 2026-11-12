@@ -18,6 +18,8 @@ type Installment = {
 interface Props {
   invoiceId: string;
   invoiceTotal: number;
+  /** Factuurdatum (bij een concept = voorlopige boekdatum); termijnen plannen hiertegen aan */
+  invoiceDate: string;
   installments: Installment[];
   locked?: boolean;
 }
@@ -26,13 +28,13 @@ function dateStr(d: Date) {
   return d.toISOString().slice(0, 10);
 }
 
-function addMonths(base: Date, months: number): string {
+function addDays(base: Date, days: number): string {
   const d = new Date(base);
-  d.setMonth(d.getMonth() + months);
+  d.setDate(d.getDate() + days);
   return dateStr(d);
 }
 
-export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: initial, locked = false }: Props) {
+export function InstallmentsEditor({ invoiceId, invoiceTotal, invoiceDate, installments: initial, locked = false }: Props) {
   const router = useRouter();
   const [installments, setInstallments] = useState<Installment[]>(initial);
   const [showForm, setShowForm] = useState(false);
@@ -46,10 +48,13 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
     return data.error ?? "Er ging iets mis";
   }
 
-  // Nieuwe termijn form
+  // Termijnen plannen tegen de factuurdatum aan: 1e op de factuurdatum,
+  // daarna steeds +30 dagen. Bij het verzenden van een concept schuift de
+  // server alle data automatisch mee naar de verzenddag.
   const today = new Date();
+  const baseDate = new Date(invoiceDate);
   const [form, setForm] = useState({
-    dueDate: addMonths(today, 1),
+    dueDate: addDays(baseDate, initial.length * 30),
     usePercent: true,
     percentage: "",
     amount: "",
@@ -71,7 +76,7 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             installmentNumber: i + 1,
-            dueDate: addMonths(today, i + 1),
+            dueDate: addDays(baseDate, i * 30),
             percentage: parts[i],
             amount: null,
           }),
@@ -112,7 +117,7 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
       if (res.ok) {
         const data = await res.json() as Installment;
         setInstallments(prev => [...prev, { ...data, dueDate: new Date(data.dueDate).toISOString() }]);
-        setForm({ dueDate: addMonths(today, installments.length + 2), usePercent: true, percentage: "", amount: "", notes: "" });
+        setForm({ dueDate: addDays(baseDate, (installments.length + 1) * 30), usePercent: true, percentage: "", amount: "", notes: "" });
         setShowForm(false);
         router.refresh();
       } else {
@@ -120,6 +125,24 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function updateDueDate(inst: Installment, newDate: string) {
+    if (!newDate || newDate === inst.dueDate.slice(0, 10)) return;
+    setError(null);
+    const res = await fetch(`/api/invoices/${invoiceId}/installments/${inst.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dueDate: newDate }),
+    });
+    if (res.ok) {
+      setInstallments(prev =>
+        prev.map(i => i.id === inst.id ? { ...i, dueDate: new Date(newDate).toISOString() } : i)
+      );
+      router.refresh();
+    } else {
+      setError(await readError(res));
     }
   }
 
@@ -217,7 +240,16 @@ export function InstallmentsEditor({ invoiceId, invoiceTotal, installments: init
                   <tr key={inst.id} className={inst.isPaid ? "opacity-60" : ""}>
                     <td className="px-4 py-3 text-slate-400 text-xs">{inst.installmentNumber}</td>
                     <td className={`px-4 py-3 ${overdue ? "text-red-600 font-medium" : "text-slate-600"}`}>
-                      {formatDate(new Date(inst.dueDate))}
+                      {!locked && !inst.isPaid ? (
+                        <input
+                          type="date"
+                          value={inst.dueDate.slice(0, 10)}
+                          onChange={e => updateDueDate(inst, e.target.value)}
+                          className="rounded border border-transparent hover:border-slate-200 focus:border-slate-300 bg-transparent px-1 py-0.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-blue/30"
+                        />
+                      ) : (
+                        formatDate(new Date(inst.dueDate))
+                      )}
                       {inst.notes && (
                         <span className="ml-2 text-xs text-slate-400">· {inst.notes}</span>
                       )}

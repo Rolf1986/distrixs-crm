@@ -10,7 +10,7 @@ import { formatCurrency } from "@/lib/utils";
 import { nextInvoiceNumber } from "@/lib/sequences";
 import { logSentEmail } from "@/lib/sent-email";
 import { syncInvoiceToTwinfield, isTwinfieldAutoSyncEnabled, type TwinfieldSyncResult } from "@/lib/twinfield";
-import { syncInvoiceInstallments } from "@/lib/installments";
+import { syncInvoiceInstallments, shiftInstallmentsToBookDate } from "@/lib/installments";
 import { termDays } from "@/lib/payment-terms";
 
 export async function POST(
@@ -36,7 +36,7 @@ export async function POST(
   // waarop het concept werd aangemaakt); vervaldatum schuift mee.
   const current = await prisma.invoice.findUnique({
     where: { id },
-    select: { invoiceNumber: true, paymentTermType: true, dueDateManual: true, dueDate: true },
+    select: { invoiceNumber: true, paymentTermType: true, dueDateManual: true, dueDate: true, invoiceDate: true },
   });
   if (!current) {
     return NextResponse.json({ error: "Factuur niet gevonden" }, { status: 404 });
@@ -55,6 +55,8 @@ export async function POST(
         dueDate: current.dueDateManual ? current.dueDate : newDue,
       },
     });
+    // Termijndata schuiven mee naar de verzenddag (bv. +30/+60/+90 vanaf nu)
+    await shiftInstallmentsToBookDate(id, new Date(current.invoiceDate), bookDate);
     // Termijnen (indien ingevuld) zijn leidend voor de vervaldatum
     await syncInvoiceInstallments(id);
     // Onderwerp/bericht zijn in het venster vaak vooraf ingevuld met het

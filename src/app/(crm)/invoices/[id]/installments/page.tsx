@@ -8,6 +8,8 @@ async function getInvoice(id: string) {
     select: {
       id: true,
       total: true,
+      status: true,
+      invoiceDate: true,
       twinfieldLocked: true,
       installments: { orderBy: { installmentNumber: "asc" } },
     },
@@ -29,12 +31,16 @@ export default async function InvoiceInstallmentsPage({
         <h2 className="text-sm font-semibold text-slate-800 mb-1">Betalingstermijnen</h2>
         <p className="text-xs text-slate-400">
           Verdeel de factuur in termijnen per percentage of vast bedrag. Gebruik de snelstart-presets of voeg termijnen handmatig toe.
+          {invoice.status === "DRAFT" && (
+            <> De 1e termijn valt op de factuurdatum, daarna steeds +30 dagen; bij het verzenden schuiven alle data automatisch mee naar de verzenddag.</>
+          )}
         </p>
       </div>
 
       <InstallmentsEditor
         invoiceId={id}
         invoiceTotal={Number(invoice.total)}
+        invoiceDate={invoice.invoiceDate.toISOString()}
         installments={invoice.installments.map((i) => ({
           id: i.id,
           installmentNumber: i.installmentNumber,

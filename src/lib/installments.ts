@@ -53,3 +53,27 @@ export async function syncInvoiceInstallments(invoiceId: string): Promise<void> 
     }
   }
 }
+
+// Bij het definitief maken van een concept wordt de factuurdatum de boekdatum
+// (dag van verzenden). Termijndata zijn in het concept gepland t.o.v. de oude
+// factuurdatum (bv. +30/+60/+90) → schuif onbetaalde termijnen met hetzelfde
+// aantal dagen mee, zodat het schema vanaf de verzenddag loopt.
+export async function shiftInstallmentsToBookDate(
+  invoiceId: string,
+  oldInvoiceDate: Date,
+  bookDate: Date
+): Promise<void> {
+  const day = (d: Date) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  const deltaDays = Math.round((day(bookDate) - day(oldInvoiceDate)) / 86400000);
+  if (deltaDays === 0) return;
+
+  const terms = await prisma.invoiceInstallment.findMany({
+    where: { invoiceId, isPaid: false },
+    select: { id: true, dueDate: true },
+  });
+  for (const t of terms) {
+    const d = new Date(t.dueDate);
+    d.setDate(d.getDate() + deltaDays);
+    await prisma.invoiceInstallment.update({ where: { id: t.id }, data: { dueDate: d } });
+  }
+}
