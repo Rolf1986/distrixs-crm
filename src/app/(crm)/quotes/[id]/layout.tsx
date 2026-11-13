@@ -159,10 +159,11 @@ export default async function QuoteLayout({
         </div>
 
         {/* KPI's */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 mt-5">
           <KpiCard label="Subtotaal excl. BTW" value={formatCurrency(Number(quote.subtotal))} />
           <KpiCard label="BTW 21%" value={formatCurrency(Number(quote.vatAmount))} />
           <KpiCard label="Totaal incl. BTW" value={formatCurrency(Number(quote.total))} />
+          <KpiCard label="Totaal inkoop" value={formatCurrency(inkoop)} />
           <KpiCard
             label="Verwachte marge"
             value={formatCurrency(marge)}
